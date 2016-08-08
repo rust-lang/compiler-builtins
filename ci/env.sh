@@ -26,6 +26,7 @@ case $TARGET in
         ;;
     mips-unknown-linux-musl)
         export PREFIX=$TARGET-
+        export QEMU=qemu-mips
         export QEMU_LD_PREFIX=/usr/$TARGET/sysroot
         ;;
 esac

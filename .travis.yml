@@ -9,7 +9,7 @@ matrix:
       sudo: required
       addons:
         apt:
-          packages: &qemu
+          packages:
             - binfmt-support
             - qemu-user-static
     - env: TARGET=arm-unknown-linux-gnueabi
@@ -50,11 +50,11 @@ matrix:
             - gcc-multilib
     - env: TARGET=mips-unknown-linux-musl
       os: linux
-      dist: trusty
       sudo: required
       addons:
         apt:
-          packages: *qemu
+          packages:
+            - qemu-user
     - env: TARGET=x86_64-apple-darwin
       os: osx
     - env: TARGET=x86_64-unknown-linux-gnu
