@@ -50,6 +50,7 @@ matrix:
             - gcc-multilib
     - env: TARGET=mips-unknown-linux-musl
       os: linux
+      sudo: required
       addons:
         apt:
           packages: *qemu
