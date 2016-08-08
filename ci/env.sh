@@ -24,4 +24,9 @@ case $TARGET in
         export PREFIX=arm-linux-gnueabihf-
         export QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf
         ;;
+    mips-unknown-linux-musl)
+        export PREFIX=$TARGET-
+        export QEMU=qemu-mips
+        export QEMU_LD_PREFIX=/usr/$TARGET/sysroot
+        ;;
 esac
