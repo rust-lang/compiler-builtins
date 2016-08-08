@@ -59,7 +59,6 @@ matrix:
         apt:
           packages:
             - gcc-mingw-w64
-            - wine
   allow_failures:
     # FIXME(#2)
     - env: TARGET=armv7-unknown-linux-gnueabihf
