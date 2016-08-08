@@ -50,6 +50,7 @@ matrix:
             - gcc-multilib
     - env: TARGET=mips-unknown-linux-musl
       os: linux
+      dist: trusty
       sudo: required
       addons:
         apt:
