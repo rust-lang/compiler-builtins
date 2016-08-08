@@ -13,7 +13,7 @@ install_binutils() {
 }
 
 install_c_toolchain() {
-    local dropbox_url=https://www.dropbox.com/sh/y9w7l5fk57vyikt/AABhZePp6j827VielYZvSa4Pa
+    local dropbox_url=https://www.dropbox.com/sh/y9w7l5fk57vyikt/AACpAjqN4u5mvRSGtgzD71yua
 
     case $TARGET in
         aarch64-unknown-linux-gnu)
@@ -21,7 +21,7 @@ install_c_toolchain() {
                  gcc-aarch64-linux-gnu libc6-arm64-cross libc6-dev-arm64-cross
             ;;
         mips-unknown-linux-musl)
-            curl -sL $dropbox_url/gcc-$TARGET.tar.gz | sudo tar -C /usr/ -xJ
+            curl -sL $dropbox_url/gcc-$TARGET.tar.xz?dl=1 | sudo tar -C /usr/ -xJ
             ;;
         *)
             ;;
