@@ -23,6 +23,15 @@ install_c_toolchain() {
     esac
 }
 
+install_wine() {
+    case $TARGET in
+        x86_64-pc-windows-gnu)
+            sudo apt-get install -y --no-install-recommends \
+                 wine1.6-amd64
+            ;;
+    esac
+}
+
 install_rust() {
     curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain=nightly
 
@@ -51,6 +60,7 @@ EOF
 main() {
     install_binutils
     install_c_toolchain
+    install_wine
     install_rust
     add_rustup_target
     configure_cargo
