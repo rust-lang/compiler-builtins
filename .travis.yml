@@ -6,7 +6,6 @@ matrix:
     - env: TARGET=aarch64-unknown-linux-gnu
       os: linux
       dist: trusty
-      sudo: required
       addons:
         apt:
           packages:
@@ -52,6 +51,15 @@ matrix:
       os: osx
     - env: TARGET=x86_64-unknown-linux-gnu
       os: linux
+    - env: TARGET=x86_64-pc-windows-gnu
+      os: linux
+      dist: trusty
+      sudo: required
+      addons:
+        apt:
+          packages:
+            - gcc-mingw-w64
+            - wine
   allow_failures:
     # FIXME(#2)
     - env: TARGET=armv7-unknown-linux-gnueabihf

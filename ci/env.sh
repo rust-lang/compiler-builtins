@@ -24,4 +24,7 @@ case $TARGET in
         export PREFIX=arm-linux-gnueabihf-
         export QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf
         ;;
+    x86_64-pc-windows-gnu)
+        export PREFIX=x86_64-w64-mingw32-
+        ;;
 esac
