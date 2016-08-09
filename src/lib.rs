@@ -9,6 +9,8 @@
 #[cfg(test)]
 extern crate core;
 
+extern crate rlibc;
+
 use core::mem;
 
 #[cfg(target_arch = "arm")]
