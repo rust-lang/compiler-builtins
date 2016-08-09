@@ -2,9 +2,12 @@
 #![cfg_attr(not(test), no_std)]
 #![feature(asm)]
 #![feature(core_intrinsics)]
+#![feature(linkage)]
 #![feature(naked_functions)]
+#![no_builtins]
 // TODO(rust-lang/rust#35021) uncomment when that PR lands
 // #![feature(rustc_builtins)]
+// #![rustc_builtins]
 
 #[cfg(test)]
 extern crate core;
@@ -13,6 +16,11 @@ use core::mem;
 
 #[cfg(target_arch = "arm")]
 pub mod arm;
+
+// NOTE LLVM's weak linkage only appears to work with the ELF backend
+#[cfg(not(any(target_os = "macos",
+              target_os = "windows")))]
+pub mod libc;
 
 #[cfg(test)]
 mod test;
