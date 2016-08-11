@@ -1,0 +1,7 @@
+[package]
+authors = ["Jorge Aparicio <japaricious@gmail.com>"]
+name = "rlibc"
+version = "0.1.0"
+
+[lib]
+crate-type = ["staticlib"]
