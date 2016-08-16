@@ -37,6 +37,7 @@ extern "C" {
 }
 
 // Create aliases for the *4 and *8 variants
+#[cfg(not(test))]
 #[link_args = "-Wl,--defsym=__aeabi_memcpy4=__aeabi_memcpy -Wl,--defsym=__aeabi_memcpy8=__aeabi_memcpy"]
 extern {}
 
@@ -45,6 +46,7 @@ pub unsafe extern "C" fn __aeabi_memcpy(dest: *mut u8, src: *const u8, n: usize)
     memcpy(dest, src, n);
 }
 
+#[cfg(not(test))]
 #[link_args = "-Wl,--defsym=__aeabi_memmove4=__aeabi_memmove -Wl,--defsym=__aeabi_memmove8=__aeabi_memmove"]
 extern {}
 
@@ -53,6 +55,7 @@ pub unsafe extern "C" fn __aeabi_memmove(dest: *mut u8, src: *const u8, n: usize
     memmove(dest, src, n);
 }
 
+#[cfg(not(test))]
 #[link_args = "-Wl,--defsym=__aeabi_memset4=__aeabi_memset -Wl,--defsym=__aeabi_memset8=__aeabi_memset"]
 extern {}
 
@@ -62,6 +65,7 @@ pub unsafe extern "C" fn __aeabi_memset(dest: *mut u8, n: usize, c: i32) {
     memset(dest, c, n);
 }
 
+#[cfg(not(test))]
 #[link_args = "-Wl,--defsym=__aeabi_memclr4=__aeabi_memclr -Wl,--defsym=__aeabi_memclr8=__aeabi_memclr"]
 extern {}
 
