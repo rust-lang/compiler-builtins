@@ -1,14 +1,20 @@
 [package]
 authors = ["Jorge Aparicio <japaricious@gmail.com>"]
 build = "build.rs"
-name = "rustc_builtins"
-version = "0.1.0"
+name = "compiler_builtins"
+version = "0.0.0"
+
+[lib]
+name = "compiler_builtins"
+path = "lib.rs"
 
 [build-dependencies]
-gcc = "0.3.35"
+gcc = "0.3.27"
 rustc-cfg = "0.2.0"
 
-[dependencies]
+[dependencies.core]
+optional = true
+path = "../libcore"
 
 [dependencies.rlibc]
 git = "https://github.com/alexcrichton/rlibc"
@@ -23,6 +29,8 @@ compiler-rt = { path = "compiler-rt" }
 [features]
 # Build the missing intrinsics from compiler-rt C source code
 c = []
+# for integration into rust-lang/rust
+rustbuild = ["core"]
 weak = ["rlibc/weak"]
 
 [workspace]
