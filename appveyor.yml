@@ -14,10 +14,7 @@ install:
 build: false
 
 test_script:
-  - cargo build
-  - cargo build --release
-  - cargo test
-  - cargo test --release
+  - exit 1
 
 branches:
   only:
