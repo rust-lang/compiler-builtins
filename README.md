@@ -1,8 +1,8 @@
 [![AppVeyor][appveyor]](https://ci.appveyor.com/project/japaric/rustc-builtins)
-[![Travis][travis]](https://travis-ci.org/japaric/rustc-builtins)
+[![Travis][travis]](https://travis-ci.org/rust-lang-nursery/rustc-builtins)
 
 [appveyor]: https://ci.appveyor.com/api/projects/status/mofi55r3px9pv3o7?svg=true
-[travis]: https://travis-ci.org/japaric/rustc-builtins.svg?branch=master
+[travis]: https://travis-ci.org/rust-lang-nursery/compiler-builtins.svg?branch=master
 
 # `rustc-builtins`
 
