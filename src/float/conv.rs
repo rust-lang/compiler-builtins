@@ -14,16 +14,16 @@ macro_rules! floatunsisf {
 
             // CC    const int aWidth = sizeof a * CHAR_BIT;
             let a_width : usize = <$ity>::bits() as usize;
-            // CC    
+            // CC
             // CC    // Handle zero as a special case to protect clz
             // CC    if (a == 0) return fromRep(0);
             if a == 0 { return (<$fty as Float>::from_repr)(<$fty>::zero().0); }
-            // CC    
+            // CC
             // CC    // Exponent of (fp_t)a is the width of abs(a).
             // CC    const int exponent = (aWidth - 1) - __builtin_clz(a);
             let exponent : usize = (a_width - 1usize) - a.leading_zeros() as usize;
             // CC    rep_t result;
-            // CC    
+            // CC
             let mut result =
             // CC    // Shift a into the significand field, rounding if it is a right-shift
             // CC    if (exponent <= significandBits) {
@@ -47,7 +47,7 @@ macro_rules! floatunsisf {
                 result
             // CC    }
             };
-            // CC    
+            // CC
             // CC    // Insert the exponent
             // CC    result += (rep_t)(exponent + exponentBias) << significandBits;
             result += Wrapping((exponent + <$fty>::exponent_bias()) as <$fty as Float>::Int) << <$fty>::significand_bits();
@@ -64,11 +64,31 @@ floatunsisf!(__floatunsisf: u32 => f32);
 #[cfg(test)]
 mod tests {
     use qc::{U32};
+    use float::{Float};
 
     check! {
         fn __floatunsisf(f: extern fn(u32) -> f32, a: U32)
                     -> Option<f32> {
             Some(f(a.0))
         }
+    }
+
+    #[test]
+    fn test_floatunsisf_conv_zero() {
+        let r = super::__floatunsisf(0);
+        assert!(r.eq_repr(0.0f32));
+    }
+
+    use std::mem;
+
+    #[test]
+    fn test_floatunsisf_libcompilerrt() {
+        let compiler_rt_fn = ::compiler_rt::get("__floatunsisf");
+        let compiler_rt_fn : extern fn(u32) -> f32 = unsafe { mem::transmute(compiler_rt_fn) };
+        //println!("1231515 {:?}", compiler_rt_fn);
+        let ans = compiler_rt_fn(0);
+        println!("{:?}", ans);
+        assert!(ans.eq_repr(0.0f32));
+
     }
 }
