@@ -405,3 +405,7 @@ extern "C" fn eh_personality() {}
 #[cfg(not(test))]
 #[lang = "panic_fmt"]
 extern "C" fn panic_fmt() {}
+
+#[cfg(not(test))]
+#[lang = "eh_unwind_resume"]
+extern "C" fn eh_unwind_resume() {}
