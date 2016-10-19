@@ -68,6 +68,11 @@ pub extern "C" fn __aeabi_fadd(a: f32, b: f32) -> f32 {
     ::float::add::__addsf3(a, b)
 }
 
+#[cfg_attr(not(test), no_mangle)]
+pub extern "C" fn __aeabi_ui2f(a: u32) -> f32 {
+    ::float::conv::__floatunsisf(a)
+}
+
 #[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"), not(thumbv6m))))]
 #[cfg_attr(not(test), no_mangle)]
 pub extern "C" fn __aeabi_idiv(a: i32, b: i32) -> i32 {

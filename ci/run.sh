@@ -62,7 +62,7 @@ case $TRAVIS_OS_NAME in
 esac
 
 # NOTE On i586, It's normal that the get_pc_thunk symbol appears several times so ignore it
-if [ $TRAVIS_OS_NAME = osx ]; then
+if [ "$TRAVIS_OS_NAME" = "osx" ]; then
     path=target/${1}/debug/libcompiler_builtins.rlib
 else
     path=/target/${1}/debug/libcompiler_builtins.rlib

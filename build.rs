@@ -145,7 +145,6 @@ fn main() {
                          "floatundisf.c",
                          "floatundixf.c",
                          "floatunsidf.c",
-                         "floatunsisf.c",
                          "int_util.c",
                          "muldc3.c",
                          "muldf3.c",
