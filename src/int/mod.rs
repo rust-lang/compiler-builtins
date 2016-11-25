@@ -6,29 +6,62 @@ pub mod udiv;
 
 /// Trait for some basic operations on integers
 pub trait Int {
+    type UnsignedInt;
     /// Returns the bitwidth of the int type
     fn bits() -> u32;
+    fn init_float(self) -> (bool, Self::UnsignedInt);
 }
 
 // TODO: Once i128/u128 support lands, we'll want to add impls for those as well
 impl Int for u32 {
+    type UnsignedInt = u32;
     fn bits() -> u32 {
         32
+    }
+
+    fn init_float(self) -> (bool, u32) {
+        (false, self)
     }
 }
 impl Int for i32 {
+    type UnsignedInt = u32;
+
     fn bits() -> u32 {
         32
     }
+
+    fn init_float(self) -> (bool, u32) {
+        if self < 0 {
+            (true, !(self as u32) + 1)
+        } else {
+            (false, self as u32)
+        }
+    }
 }
 impl Int for u64 {
+    type UnsignedInt = u64;
+
     fn bits() -> u32 {
         64
     }
+
+    fn init_float(self) -> (bool, u64) {
+        (false, self)
+    }
 }
 impl Int for i64 {
+    type UnsignedInt = u64;
+
     fn bits() -> u32 {
         64
+    }
+
+    fn init_float(self) -> (bool, u64) {
+        if self < 0 {
+            (true, !(self as u64) + 1)
+        } else {
+            (false, self as u64)
+        }
     }
 }
 
