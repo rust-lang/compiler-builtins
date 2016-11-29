@@ -2,7 +2,7 @@ use core::mem;
 
 pub mod add;
 pub mod pow;
-pub mod convert;
+pub mod conv;
 
 /// Trait for some basic operations on floats
 pub trait Float: Sized + Copy {
