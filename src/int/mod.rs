@@ -6,9 +6,24 @@ pub mod udiv;
 
 /// Trait for some basic operations on integers
 pub trait Int {
+    /// Unsigned version of Self
     type UnsignedInt;
     /// Returns the bitwidth of the int type
     fn bits() -> u32;
+
+    /// Extracts the sign from self and returns a tuple.
+    ///
+    /// This is used by the module float to prepare conversions.   
+    /// This is needed by the generic code supporting signed and unsigned conversions.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// let i = -25;
+    /// let (sign, u) = i.init_float();
+    /// assert_eq!(sign, true);
+    /// assert_eq!(u, 25);
+    /// ```
     fn init_float(self) -> (bool, Self::UnsignedInt);
 }
 
