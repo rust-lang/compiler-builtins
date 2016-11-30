@@ -28,7 +28,10 @@ matrix:
     - env: TARGET=thumbv7m-none-eabi
     - env: TARGET=x86_64-apple-darwin
       os: osx
-env: TARGET=x86_64-unknown-linux-gnu
+env:
+  global:
+    - TARGET=x86_64-unknown-linux-gnu
+    - SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
 before_install:
   - test "$TRAVIS_OS_NAME" = "osx" || docker run --rm --privileged multiarch/qemu-user-static:register
