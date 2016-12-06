@@ -6,30 +6,75 @@ pub mod udiv;
 
 /// Trait for some basic operations on integers
 pub trait Int {
+    /// Unsigned version of Self
+    type UnsignedInt;
     /// Returns the bitwidth of the int type
     fn bits() -> u32;
+
+    /// Extracts the sign from self and returns a tuple.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// let i = -25_i32;
+    /// let (sign, u) = i.extract_sign();
+    /// assert_eq!(sign, true);
+    /// assert_eq!(u, 25_u32);
+    /// ```
+    fn extract_sign(self) -> (bool, Self::UnsignedInt);
 }
 
 // TODO: Once i128/u128 support lands, we'll want to add impls for those as well
 impl Int for u32 {
-    fn bits() -> u32 {
-        32
-    }
+  type UnsignedInt = u32;
+   fn bits() -> u32 {
+       32
+   }
+
+  fn extract_sign(self) -> (bool, u32) {
+      (false, self)
+  }
 }
 impl Int for i32 {
-    fn bits() -> u32 {
-        32
-    }
+  type UnsignedInt = u32;
+
+   fn bits() -> u32 {
+       32
+   }
+
+  fn extract_sign(self) -> (bool, u32) {
+      if self < 0 {
+          (true, !(self as u32) + 1)
+      } else {
+          (false, self as u32)
+      }
+  }
 }
 impl Int for u64 {
-    fn bits() -> u32 {
-        64
-    }
+  type UnsignedInt = u64;
+
+   fn bits() -> u32 {
+       64
+   }
+
+  fn extract_sign(self) -> (bool, u64) {
+      (false, self)
+  }
 }
 impl Int for i64 {
-    fn bits() -> u32 {
-        64
-    }
+  type UnsignedInt = u64;
+
+   fn bits() -> u32 {
+       64
+   }
+
+  fn extract_sign(self) -> (bool, u64) {
+      if self < 0 {
+          (true, !(self as u64) + 1)
+      } else {
+          (false, self as u64)
+      }
+  }
 }
 
 /// Trait to convert an integer to/from smaller parts

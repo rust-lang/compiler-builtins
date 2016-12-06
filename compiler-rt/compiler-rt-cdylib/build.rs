@@ -60,6 +60,12 @@ fn main() {
         "addsf3.c",
         "powidf2.c",
         "powisf2.c",
+        "floatsisf.c",
+        "floatsidf.c",
+        "floatdidf.c",
+        "floatunsisf.c",
+        "floatunsidf.c",
+        "floatundidf.c",
     ]);
 
     for src in sources.files.iter() {
