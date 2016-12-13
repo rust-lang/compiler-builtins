@@ -24,6 +24,12 @@ extern {
     fn __adddf3();
     fn __powisf2();
     fn __powidf2();
+    fn __floatsisf();
+    fn __floatsidf();
+    fn __floatdidf();
+    fn __floatunsisf();
+    fn __floatunsidf();
+    fn __floatundidf();
 }
 
 macro_rules! declare {
@@ -57,6 +63,12 @@ declare!(___addsf3, __addsf3);
 declare!(___adddf3, __adddf3);
 declare!(___powisf2, __powisf2);
 declare!(___powidf2, __powidf2);
+declare!(___floatsisf, __floatsisf);
+declare!(___floatsidf, __floatsidf);
+declare!(___floatdidf, __floatdidf);
+declare!(___floatunsisf, __floatunsisf);
+declare!(___floatunsidf, __floatunsidf);
+declare!(___floatundidf, __floatundidf);
 
 #[lang = "eh_personality"]
 fn eh_personality() {}
