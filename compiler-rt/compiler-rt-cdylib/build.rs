@@ -66,6 +66,14 @@ fn main() {
         "floatunsisf.c",
         "floatunsidf.c",
         "floatundidf.c",
+        "fixsfsi.c",
+        "fixsfdi.c",
+        "fixdfsi.c",
+        "fixdfdi.c",
+        "fixunssfsi.c",
+        "fixunssfdi.c",
+        "fixunsdfsi.c",
+        "fixunsdfdi.c",
     ]);
 
     for src in sources.files.iter() {

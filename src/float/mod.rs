@@ -35,6 +35,9 @@ pub trait Float: Sized + Copy {
     /// Returns a mask for the significand
     fn significand_mask() -> Self::Int;
 
+    // Returns the implicit bit of the float format
+    fn implicit_bit() -> Self::Int;
+
     /// Returns a mask for the exponent
     fn exponent_mask() -> Self::Int;
 
@@ -66,6 +69,9 @@ impl Float for f32 {
     }
     fn significand_bits() -> u32 {
         23
+    }
+    fn implicit_bit() -> Self::Int {
+        1 << Self::significand_bits()
     }
     fn sign_mask() -> Self::Int {
         1 << (Self::bits() - 1)
@@ -108,6 +114,10 @@ impl Float for f64 {
     }
     fn significand_bits() -> u32 {
         52
+    }
+    // Returns the implicit bit of the float format
+    fn implicit_bit() -> Self::Int {
+        1 << Self::significand_bits()
     }
     fn sign_mask() -> Self::Int {
         1 << (Self::bits() - 1)
