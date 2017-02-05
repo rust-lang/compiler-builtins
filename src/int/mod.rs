@@ -19,6 +19,8 @@ pub mod udiv;
 pub trait Int {
     /// Type with the same width but other signedness
     type OtherSign;
+    /// Type with the same width but unsigned
+    type UnsignedInt;
     /// Returns the bitwidth of the int type
     fn bits() -> u32;
 }
@@ -27,12 +29,14 @@ macro_rules! int_impl {
     ($ity:ty, $sty:ty, $bits:expr) => {
         impl Int for $ity {
             type OtherSign = $sty;
+            type UnsignedInt = $sty;
             fn bits() -> u32 {
                 $bits
             }
         }
         impl Int for $sty {
             type OtherSign = $ity;
+            type UnsignedInt = $sty;
             fn bits() -> u32 {
                 $bits
             }
