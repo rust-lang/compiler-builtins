@@ -71,6 +71,20 @@ fn main() {
         "ashlti3.c",
         "ashrti3.c",
         "divti3.c",
+        "floatsisf.c",
+        "floatsidf.c",
+        "floatdidf.c",
+        "floatunsisf.c",
+        "floatunsidf.c",
+        "floatundidf.c",
+        "fixsfsi.c",
+        "fixsfdi.c",
+        "fixdfsi.c",
+        "fixdfdi.c",
+        "fixunssfsi.c",
+        "fixunssfdi.c",
+        "fixunsdfsi.c",
+        "fixunsdfdi.c",
     ]);
 
     let builtins_dir = Path::new("compiler-rt/lib/builtins");

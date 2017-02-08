@@ -103,6 +103,12 @@ pub extern "aapcs" fn __aeabi_uidiv(a: u32, b: u32) -> u32 {
     ::int::udiv::__udivsi3(a, b)
 }
 
+#[cfg(not(feature = "c"))]
+#[cfg_attr(not(test), no_mangle)]
+pub extern "C" fn __aeabi_ui2d(a: u32) -> f64 {
+    ::float::conv::__floatunsidf(a)
+}
+
 #[cfg(not(feature = "mem"))]
 extern "C" {
     fn memcpy(dest: *mut u8, src: *const u8, n: usize) -> *mut u8;
