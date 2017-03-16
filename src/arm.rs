@@ -3,9 +3,8 @@ use core::intrinsics;
 #[cfg(feature = "mem")]
 use mem::{memcpy, memmove, memset};
 
-// NOTE This function and the ones below are implemented using assembly because they using a custom
-// calling convention which can't be implemented using a normal Rust function
-
+// Thumb1 code can't encode hardware float operations, so some targets
+// need functions that wrap the appropriate ARM instructions.
 #[naked]
 #[cfg_attr(not(test), no_mangle)]
 pub unsafe fn __adddf3vfp() {
@@ -140,6 +139,8 @@ pub unsafe fn __subsf3vfp() {
     intrinsics::unreachable();
 }
 
+// NOTE This function and the ones below are implemented using assembly because they using a custom
+// calling convention which can't be implemented using a normal Rust function
 #[naked]
 #[cfg_attr(not(test), no_mangle)]
 pub unsafe fn __aeabi_uidivmod() {
