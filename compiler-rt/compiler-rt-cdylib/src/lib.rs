@@ -124,3 +124,5 @@ pub mod int_128 {
 fn eh_personality() {}
 #[lang = "panic_fmt"]
 fn panic_fmt() {}
+#[lang = "eh_unwind_resume"]
+fn eh_unwind_resume() {}

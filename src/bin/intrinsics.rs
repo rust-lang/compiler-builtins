@@ -453,3 +453,7 @@ extern "C" fn eh_personality() {}
 #[lang = "panic_fmt"]
 #[no_mangle]
 extern "C" fn panic_fmt() {}
+
+#[cfg(not(test))]
+#[lang = "eh_unwind_resume"]
+extern "C" fn eh_unwind_resume() {}
