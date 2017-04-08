@@ -314,11 +314,7 @@ fn main() {
 
             if llvm_target.last().unwrap().ends_with("eabihf") {
                 if !llvm_target[0].starts_with("thumbv7em") {
-                    sources.extend(&["arm/adddf3vfp.S",
-                                    "arm/addsf3vfp.S",
-                                    "arm/divdf3vfp.S",
-                                    "arm/divsf3vfp.S",
-                                    "arm/eqdf2vfp.S",
+                    sources.extend(&["arm/eqdf2vfp.S",
                                     "arm/eqsf2vfp.S",
                                     "arm/extendsfdf2vfp.S",
                                     "arm/fixdfsivfp.S",
@@ -337,18 +333,11 @@ fn main() {
                                     "arm/lesf2vfp.S",
                                     "arm/ltdf2vfp.S",
                                     "arm/ltsf2vfp.S",
-                                    "arm/muldf3vfp.S",
-                                    "arm/mulsf3vfp.S",
                                     "arm/nedf2vfp.S",
                                     "arm/nesf2vfp.S",
                                     "arm/restore_vfp_d8_d15_regs.S",
-                                    "arm/save_vfp_d8_d15_regs.S",
-                                    "arm/subdf3vfp.S",
-                                    "arm/subsf3vfp.S"]);
+                                    "arm/save_vfp_d8_d15_regs.S"]);
                 }
-
-                sources.extend(&["arm/negdf2vfp.S", "arm/negsf2vfp.S"]);
-
             }
 
             if target_arch == "aarch64" {
@@ -432,5 +421,11 @@ fn main() {
     // THUMBv2 support. We have to cfg our code accordingly.
     if llvm_target[0] == "thumbv6m" {
         println!("cargo:rustc-cfg=thumbv6m")
+    }
+
+    // Needed for ARM VFP assembly functions
+    if llvm_target.last().unwrap().ends_with("hf") ||
+        llvm_target[0] == "aarch64" {
+        println!("cargo:rustc-cfg=armhf")
     }
 }

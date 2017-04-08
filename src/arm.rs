@@ -3,6 +3,142 @@ use core::intrinsics;
 #[cfg(feature = "mem")]
 use mem::{memcpy, memmove, memset};
 
+// Thumb1 code can't encode hardware float operations, so some targets
+// need functions that wrap the appropriate ARM instructions.
+#[naked]
+#[cfg_attr(not(test), no_mangle)]
+pub unsafe fn __adddf3vfp() {
+    #[cfg(armhf)]
+    asm!("vadd.f64 d0, d0, d1");
+    #[cfg(not(armhf))]
+    asm!("vmov d6, r0, r1
+          vmov d7, r2, r3
+          vadd.f64 d6, d6, d7
+          vmov r0, r1, d6");
+    asm!("bx lr");
+    intrinsics::unreachable();
+}
+
+#[naked]
+#[cfg_attr(not(test), no_mangle)]
+pub unsafe fn __addsf3vfp() {
+    #[cfg(armhf)]
+    asm!("vadd.f32 s0, s0, s1");
+    #[cfg(not(armhf))]
+    asm!("vmov s14, r0
+          vmov s15, r1
+          vadd.f32 s14, s14, s15
+          vmov r0, s14");
+    asm!("bx lr");
+    intrinsics::unreachable();
+}
+
+#[naked]
+#[cfg_attr(not(test), no_mangle)]
+pub unsafe fn __divdf3vfp() {
+    #[cfg(armhf)]
+    asm!("vdiv.f64 d0, d0, d1");
+    #[cfg(not(armhf))]
+    asm!("vmov d6, r0, r1
+          vmov d7, r2, r3
+          vdiv.f64 d5, d6, d7
+          vmov r0, r1, d5");
+    asm!("bx lr");
+    intrinsics::unreachable();
+}
+
+#[naked]
+#[cfg_attr(not(test), no_mangle)]
+pub unsafe fn __divsf3vfp() {
+    #[cfg(armhf)]
+    asm!("vdiv.f32 s0, s0, s1");
+    #[cfg(not(armhf))]
+    asm!("vmov s14, r0
+          vmov s15, r1
+          vdiv.f32 s13, s14, s15
+          vmov r0, s13");
+    asm!("bx lr");
+    intrinsics::unreachable();
+}
+
+#[naked]
+#[cfg_attr(not(test), no_mangle)]
+pub unsafe fn __muldf3vfp() {
+    #[cfg(armhf)]
+    asm!("vmul.f64 d0, d0, d1");
+    #[cfg(not(armhf))]
+    asm!("vmov d6, r0, r1
+          vmov d7, r2, r3
+          vmul.f64 d6, d6, d7
+          vmov r0, r1, d6");
+    asm!("bx lr");
+    intrinsics::unreachable();
+}
+
+#[naked]
+#[cfg_attr(not(test), no_mangle)]
+pub unsafe fn __mulsf3vfp() {
+    #[cfg(armhf)]
+    asm!("vmul.f32 s0, s0, s1");
+    #[cfg(not(armhf))]
+    asm!("vmov s14, r0
+          vmov s15, r1
+          vmul.f32 s13, s14, s15
+          vmov r0, s13");
+    asm!("bx lr");
+    intrinsics::unreachable();
+}
+
+#[naked]
+#[cfg_attr(not(test), no_mangle)]
+pub unsafe fn __negdf2vfp() {
+    #[cfg(armhf)]
+    asm!("vneg.f64 d0, d0");
+    #[cfg(not(armhf))]
+    asm!("eor r1, r1, #-2147483648");
+    asm!("bx lr");
+    intrinsics::unreachable();
+}
+
+#[naked]
+#[cfg_attr(not(test), no_mangle)]
+pub unsafe fn __negsf2vfp() {
+    #[cfg(armhf)]
+    asm!("vneg.f32 s0, s0");
+    #[cfg(not(armhf))]
+    asm!("eor r0, r0, #-2147483648");
+    asm!("bx lr");
+    intrinsics::unreachable();
+}
+
+#[naked]
+#[cfg_attr(not(test), no_mangle)]
+pub unsafe fn __subdf3vfp() {
+    #[cfg(armhf)]
+    asm!("vsub.f64 d0, d0, d1");
+    #[cfg(not(armhf))]
+    asm!("vmov d6, r0, r1
+          vmov d7, r2, r3
+          vsub.f64 d6, d6, d7
+          vmov r0, r1, d6");
+    asm!("bx lr");
+    intrinsics::unreachable();
+}
+
+#[naked]
+#[cfg_attr(not(test), no_mangle)]
+pub unsafe fn __subsf3vfp() {
+    #[cfg(armhf)]
+    asm!("vsub.f32 s0, s0, s1");
+    #[cfg(not(armhf))]
+    asm!("vmov s14, r0
+          vmov s15, r1
+          vsub.f32 s14, s14, s15
+          vmov r0, s14");
+    asm!("bx lr");
+    intrinsics::unreachable();
+}
+
 // NOTE This function and the ones below are implemented using assembly because they using a custom
 // calling convention which can't be implemented using a normal Rust function
 #[naked]
