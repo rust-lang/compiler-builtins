@@ -3,7 +3,7 @@
 // compiling a C implementation and forget to implement that intrinsic in Rust, this file will fail
 // to link due to the missing intrinsic (symbol).
 
-#![allow(unused_features)]
+#![allow(unused_features, private_no_mangle_fns)]
 #![cfg_attr(thumb, no_main)]
 #![deny(dead_code)]
 #![feature(asm)]
