@@ -18,6 +18,7 @@ run() {
            --user $(id -u):$(id -g) \
            -e CARGO_HOME=/cargo \
            -e CARGO_TARGET_DIR=/target \
+           -e SSL_CERT_FILE=$SSL_CERT_FILE \
            -v $HOME/.cargo:/cargo \
            -v `pwd`/target:/target \
            -v `pwd`:/checkout:ro \
