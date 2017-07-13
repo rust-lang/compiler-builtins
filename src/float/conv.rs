@@ -148,7 +148,6 @@ macro_rules! float_to_int {
         let sign_bit = <$fty>::sign_mask();
         let significand_bits = <$fty>::significand_bits() as usize;
         let exponent_bias = <$fty>::exponent_bias() as usize;
-        //let exponent_max = <$fty>::exponent_max() as usize;
 
         // Break a into sign, exponent, significand
         let a_rep = <$fty>::repr(f);

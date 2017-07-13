@@ -1,4 +1,7 @@
 use core::mem;
+use core::ops;
+
+use ::int::Int;
 
 pub mod conv;
 pub mod add;
@@ -6,9 +9,28 @@ pub mod pow;
 pub mod sub;
 
 /// Trait for some basic operations on floats
-pub trait Float: Sized + Copy {
+pub trait Float: 
+    Copy +
+    PartialEq +
+    PartialOrd +
+    ops::AddAssign +
+    ops::Add<Output = Self> +
+    ops::Sub<Output = Self> +
+    ops::Div<Output = Self> +
+    ops::Rem<Output = Self> +
+{
     /// A uint of the same with as the float
-    type Int;
+    type Int: Int;
+
+    fn zero() -> Self;
+    fn one() -> Self;
+
+    fn zero_int() -> Self::Int {
+        Self::zero().repr()
+    }
+    fn one_int() -> Self::Int {
+        Self::one().repr()
+    }
 
     /// Returns the bitwidth of the float type
     fn bits() -> u32;
@@ -20,6 +42,7 @@ pub trait Float: Sized + Copy {
     fn exponent_bits() -> u32 {
         Self::bits() - Self::significand_bits() - 1
     }
+    
     /// Returns the maximum value of the exponent
     fn exponent_max() -> u32 {
         (1 << Self::exponent_bits()) - 1
@@ -40,7 +63,9 @@ pub trait Float: Sized + Copy {
     fn implicit_bit() -> Self::Int;
 
     /// Returns a mask for the exponent
-    fn exponent_mask() -> Self::Int;
+    fn exponent_mask() -> Self::Int {
+        !(Self::sign_mask() | Self::significand_mask())
+    }
 
     /// Returns `self` transmuted to `Self::Int`
     fn repr(self) -> Self::Int;
@@ -61,96 +86,60 @@ pub trait Float: Sized + Copy {
     fn normalize(significand: Self::Int) -> (i32, Self::Int);
 }
 
-// FIXME: Some of this can be removed if RFC Issue #1424 is resolved
-//        https://github.com/rust-lang/rfcs/issues/1424
-impl Float for f32 {
-    type Int = u32;
-    fn bits() -> u32 {
-        32
-    }
-    fn significand_bits() -> u32 {
-        23
-    }
-    fn implicit_bit() -> Self::Int {
-        1 << Self::significand_bits()
-    }
-    fn sign_mask() -> Self::Int {
-        1 << (Self::bits() - 1)
-    }
-    fn significand_mask() -> Self::Int {
-        (1 << Self::significand_bits()) - 1
-    }
-    fn exponent_mask() -> Self::Int {
-        !(Self::sign_mask() | Self::significand_mask())
-    }
-    fn repr(self) -> Self::Int {
-        unsafe { mem::transmute(self) }
-    }
-    #[cfg(test)]
-    fn eq_repr(self, rhs: Self) -> bool {
-        if self.is_nan() && rhs.is_nan() {
-            true
-        } else {
-            self.repr() == rhs.repr()
+macro_rules! float_impl {
+    ($fty:ty, $uty:ty, $bits:expr, $sigbits:expr) => {
+        impl Float for $fty {
+            type Int = $uty;
+            fn zero() -> Self {
+                0.0
+            }
+            fn one() -> Self {
+                1.0
+            }
+            fn bits() -> u32 {
+                $bits
+            }
+            fn significand_bits() -> u32 {
+                $sigbits
+            }
+            fn implicit_bit() -> Self::Int {
+                1 << Self::significand_bits()
+            }
+            fn sign_mask() -> Self::Int {
+                1 << (Self::bits() - 1)
+            }
+            fn significand_mask() -> Self::Int {
+                (1 << Self::significand_bits()) - 1
+            }
+            fn repr(self) -> Self::Int {
+                unsafe { mem::transmute(self) }
+            }
+            #[cfg(test)]
+            fn eq_repr(self, rhs: Self) -> bool {
+                if self.is_nan() && rhs.is_nan() {
+                    true
+                } else {
+                    self.repr() == rhs.repr()
+                }
+            }
+            // FIXME: This can be implemented in the trait if RFC Issue #1424 is resolved
+            //        https://github.com/rust-lang/rfcs/issues/1424
+            fn from_repr(a: Self::Int) -> Self {
+                unsafe { mem::transmute(a) }
+            }
+            fn from_parts(sign: bool, exponent: Self::Int, significand: Self::Int) -> Self {
+                Self::from_repr(((sign as Self::Int) << (Self::bits() - 1)) |
+                    ((exponent << Self::significand_bits()) & Self::exponent_mask()) |
+                    (significand & Self::significand_mask()))
+            }
+            fn normalize(significand: Self::Int) -> (i32, Self::Int) {
+                let shift = significand.leading_zeros()
+                    .wrapping_sub((1 as $uty << Self::significand_bits()).leading_zeros());
+                (1i32.wrapping_sub(shift as i32), significand << shift as Self::Int)
+            }
         }
     }
-    fn from_repr(a: Self::Int) -> Self {
-        unsafe { mem::transmute(a) }
-    }
-    fn from_parts(sign: bool, exponent: Self::Int, significand: Self::Int) -> Self {
-        Self::from_repr(((sign as Self::Int) << (Self::bits() - 1)) |
-            ((exponent << Self::significand_bits()) & Self::exponent_mask()) |
-            (significand & Self::significand_mask()))
-    }
-    fn normalize(significand: Self::Int) -> (i32, Self::Int) {
-        let shift = significand.leading_zeros()
-            .wrapping_sub((1u32 << Self::significand_bits()).leading_zeros());
-        (1i32.wrapping_sub(shift as i32), significand << shift as Self::Int)
-    }
 }
-impl Float for f64 {
-    type Int = u64;
-    fn bits() -> u32 {
-        64
-    }
-    fn significand_bits() -> u32 {
-        52
-    }
-    // Returns the implicit bit of the float format
-    fn implicit_bit() -> Self::Int {
-        1 << Self::significand_bits()
-    }
-    fn sign_mask() -> Self::Int {
-        1 << (Self::bits() - 1)
-    }
-    fn significand_mask() -> Self::Int {
-        (1 << Self::significand_bits()) - 1
-    }
-    fn exponent_mask() -> Self::Int {
-        !(Self::sign_mask() | Self::significand_mask())
-    }
-    fn repr(self) -> Self::Int {
-        unsafe { mem::transmute(self) }
-    }
-    #[cfg(test)]
-    fn eq_repr(self, rhs: Self) -> bool {
-        if self.is_nan() && rhs.is_nan() {
-            true
-        } else {
-            self.repr() == rhs.repr()
-        }
-    }
-    fn from_repr(a: Self::Int) -> Self {
-        unsafe { mem::transmute(a) }
-    }
-    fn from_parts(sign: bool, exponent: Self::Int, significand: Self::Int) -> Self {
-        Self::from_repr(((sign as Self::Int) << (Self::bits() - 1)) |
-            ((exponent << Self::significand_bits()) & Self::exponent_mask()) |
-            (significand & Self::significand_mask()))
-    }
-    fn normalize(significand: Self::Int) -> (i32, Self::Int) {
-        let shift = significand.leading_zeros()
-            .wrapping_sub((1u64 << Self::significand_bits()).leading_zeros());
-        (1i32.wrapping_sub(shift as i32), significand << shift as Self::Int)
-    }
-}
+
+float_impl!(f32, u32, 32, 23);
+float_impl!(f64, u64, 64, 52);
