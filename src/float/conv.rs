@@ -93,6 +93,11 @@ intrinsics! {
     }
 
     #[unadjusted_on_win64]
+    pub extern "C" fn __floatdisf(i: i64) -> f32 {
+        int_to_float!(i, i64, f32)
+    }
+
+    #[unadjusted_on_win64]
     pub extern "C" fn __floattisf(i: i128) -> f32 {
         int_to_float!(i, i128, f32)
     }
@@ -118,6 +123,11 @@ intrinsics! {
     #[arm_aeabi_alias = __aeabi_ul2d]
     pub extern "C" fn __floatundidf(i: u64) -> f64 {
         int_to_float!(i, u64, f64)
+    }
+
+    #[unadjusted_on_win64]
+    pub extern "C" fn __floatundisf(i: u64) -> f32 {
+        int_to_float!(i, u64, f32)
     }
 
     #[unadjusted_on_win64]
