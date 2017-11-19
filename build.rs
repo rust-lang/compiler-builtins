@@ -4499,7 +4499,6 @@ mod c {
                 "divdc3.c",
                 "divdf3.c",
                 "divsc3.c",
-                "divsf3.c",
                 "divxc3.c",
                 "extendsfdf2.c",
                 "extendhfsf2.c",
