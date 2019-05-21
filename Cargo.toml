@@ -42,7 +42,12 @@ default = ["compiler-builtins"]
 
 # Enable compilation of C code in compiler-rt, filling in some more optimized
 # implementations and also filling in unimplemented intrinsics
-c = ["cc"]
+c-vendor = ["cc"]
+
+# Link against system clang_rt.* libraries. LLVM_CONFIG must be set.
+c-system = []
+
+c = ["c-vendor"]
 
 # Flag this library as the unstable compiler-builtins lib
 compiler-builtins = []

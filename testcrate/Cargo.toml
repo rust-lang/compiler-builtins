@@ -23,6 +23,8 @@ utest-macros = { git = "https://github.com/japaric/utest" }
 
 [features]
 c = ["compiler_builtins/c"]
+c-vendor = ["compiler_builtins/c-vendor"]
+c-system = ["compiler_builtins/c-system"]
 mem = ["compiler_builtins/mem"]
 mangled-names = ["compiler_builtins/mangled-names"]
 default = ["mangled-names"]
