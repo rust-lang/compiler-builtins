@@ -460,33 +460,85 @@ mod c_vendor {
 #[cfg(feature = "c-system")]
 mod c_system {
     use std::env;
-    use std::process::Command;
+    use std::process::{Command, Output};
     use std::str;
+    use std::path::Path;
     use sources;
+
+    fn success_output(err: &str, cmd: &mut Command) -> Output {
+        let output = cmd.output().expect(err);
+        let status = output.status;
+        if !status.success() {
+            panic!("{}: {:?}", err, status.code());
+        }
+        output
+    }
+
+    // This function recreates the logic of getArchNameForCompilerRTLib,
+    // defined in clang/lib/Driver/ToolChain.cpp.
+    fn get_arch_name_for_compiler_rtlib() -> String {
+        let target = env::var("TARGET").unwrap();
+        let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
+        let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
+        let r = match target_arch.as_str() {
+            "arm" => if target.ends_with("eabihf") && target_os != "windows" {
+                "armhf"
+            } else {
+                "arm"
+            },
+            "x86" => if target_os == "android" {
+                "i686"
+            } else {
+                "i386"
+            },
+            _ => target_arch.as_str(),
+        };
+        r.to_string()
+    }
 
     /// Link against system clang runtime libraries
     pub fn compile(llvm_target: &[&str]) {
+        let target = env::var("TARGET").unwrap();
         let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
+        let compiler_rt_arch = get_arch_name_for_compiler_rtlib();
 
-        let llvm_config = env::var("LLVM_CONFIG").expect("LLVM_CONFIG not set");
-        let (subpath, libname) = match target_os.as_str() {
-            "linux" => ("linux", format!("clang_rt.builtins-{}", llvm_target[0])),
-            "macos" => ("darwin", "clang_rt.builtins_osx_dynamic".to_string()),
-            _ => panic!("unsupported target os: {}", target_os),
-        };
-        let cmd = format!("ls -1d $({} --libdir)/clang/*/lib/{}", llvm_config, subpath);
-        let output = Command::new("sh")
-            .args(&["-ec", &cmd])
-            .output()
-            .expect("failed to find clang lib dir");
-        let status = output.status;
-        if !status.success() {
-            panic!(format!("failed to find clang lib dir: {:?}", status.code()));
+        if let Ok(clang) = env::var("CLANG") {
+            let output = success_output(
+                "failed to find clang's compiler-rt",
+                Command::new(clang)
+                    .arg(format!("--target={}", target))
+                    .arg("--rtlib=compiler-rt")
+                    .arg("--print-libgcc-file-name"),
+            );
+            let fullpath = Path::new(str::from_utf8(&output.stdout).unwrap());
+            let libpath = fullpath.parent().unwrap().display();
+            let libname = fullpath
+                .file_stem()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .trim_start_matches("lib");
+            println!("cargo:rustc-link-search=native={}", libpath);
+            println!("cargo:rustc-link-lib=static={}", libname);
+        } else if let Ok(llvm_config) = env::var("LLVM_CONFIG") {
+            // fallback if clang is not installed
+            let (subpath, libname) = match target_os.as_str() {
+                "linux" => ("linux", format!("clang_rt.builtins-{}", &compiler_rt_arch)),
+                "macos" => ("darwin", "clang_rt.builtins_osx_dynamic".to_string()),
+                _ => panic!("unsupported target os: {}", target_os),
+            };
+            let cmd = format!("ls -1d $({} --libdir)/clang/*/lib/{}", llvm_config, subpath);
+            let output = success_output(
+                "failed to find clang's lib dir",
+                Command::new("sh").args(&["-ec", &cmd]),
+            );
+            for search_dir in str::from_utf8(&output.stdout).unwrap().lines() {
+                println!("cargo:rustc-link-search=native={}", search_dir);
+            }
+            println!("cargo:rustc-link-lib=static={}", libname);
+        } else {
+            panic!("neither CLANG nor LLVM_CONFIG could be read");
         }
-        for search_dir in str::from_utf8(&output.stdout).unwrap().lines() {
-            println!("cargo:rustc-link-search=native={}", search_dir);
-        }
-        println!("cargo:rustc-link-lib=static={}", libname);
 
         let sources = sources::get_sources(llvm_target);
         for (sym, _src) in sources.map.iter() {

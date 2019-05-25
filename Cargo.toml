@@ -44,7 +44,8 @@ default = ["compiler-builtins"]
 # implementations and also filling in unimplemented intrinsics
 c-vendor = ["cc"]
 
-# Link against system clang_rt.* libraries. LLVM_CONFIG must be set.
+# Link against system clang_rt.* libraries.
+# LLVM_CONFIG or CLANG (more reliable) must be set.
 c-system = []
 
 c = ["c-vendor"]
