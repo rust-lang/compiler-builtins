@@ -28,6 +28,22 @@ fn main() {
         println!("cargo:rustc-cfg=feature=\"mem\"");
     }
 
+    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
+    if target_os != "windows" {
+        let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
+        if target_arch == "x86_64" {
+            let cfg = &mut cc::Build::new();
+            cfg.file(&"src/probestack_x86_64.S");
+            cfg.compile("libcompiler-probestack.a");
+        }
+
+        if target_arch == "x86" {
+            let cfg = &mut cc::Build::new();
+            cfg.file(&"src/probestack_x86.S");
+            cfg.compile("libcompiler-probestack.a");
+        }
+    }
+
     // NOTE we are going to assume that llvm-target, what determines our codegen option, matches the
     // target triple. This is usually correct for our built-in targets but can break in presence of
     // custom targets, which can have arbitrary names.
