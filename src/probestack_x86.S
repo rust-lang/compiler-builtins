@@ -9,10 +9,10 @@
 .type   __rust_probestack, @function
 __rust_probestack:
     .cfi_startproc
-    pushq  %ebp
+    push   %ebp
     .cfi_def_cfa_offset 8
     .cfi_offset 6, -8
-    movq   %esp, %ebp
+    mov    %esp, %ebp
     .cfi_def_cfa_register 6
     push   %ecx
     mov    %eax,%ecx
