@@ -474,6 +474,12 @@ mod c_system {
         output
     }
 
+    // This can be obtained by adding the line:
+    //   message(STATUS "All builtin supported architectures: ${ALL_BUILTIN_SUPPORTED_ARCH}")
+    // to the bottom of compiler-rt/cmake/builtin-config-ix.cmake, then running
+    // cmake and looking at the output.
+    const ALL_SUPPORTED_ARCHES : &'static str = "i386;x86_64;arm;armhf;armv6m;armv7m;armv7em;armv7;armv7s;armv7k;aarch64;hexagon;mips;mipsel;mips64;mips64el;powerpc64;powerpc64le;riscv32;riscv64;wasm32;wasm64";
+
     // This function recreates the logic of getArchNameForCompilerRTLib,
     // defined in clang/lib/Driver/ToolChain.cpp.
     fn get_arch_name_for_compiler_rtlib() -> String {
@@ -501,6 +507,10 @@ mod c_system {
         let target = env::var("TARGET").unwrap();
         let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
         let compiler_rt_arch = get_arch_name_for_compiler_rtlib();
+
+        if ALL_SUPPORTED_ARCHES.split(";").find(|x| *x == compiler_rt_arch) == None {
+            return;
+        }
 
         if let Ok(clang) = env::var("CLANG") {
             let output = success_output(
