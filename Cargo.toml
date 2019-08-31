@@ -33,6 +33,7 @@ core = { version = "1.0.0", optional = true, package = 'rustc-std-workspace-core
 
 [build-dependencies]
 cc = { optional = true, version = "1.0" }
+ar = { optional = true, version = "0.8" }
 
 [dev-dependencies]
 panic-handler = { path = 'crates/panic-handler' }
@@ -46,7 +47,7 @@ c-vendor = ["cc"]
 
 # Link against system clang_rt.* libraries.
 # LLVM_CONFIG or CLANG (more reliable) must be set.
-c-system = []
+c-system = ["ar"]
 
 c = ["c-vendor"]
 

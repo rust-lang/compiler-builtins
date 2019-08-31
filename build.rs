@@ -459,10 +459,15 @@ mod c_vendor {
 
 #[cfg(feature = "c-system")]
 mod c_system {
+    extern crate ar;
+
+    use std::collections::HashMap;
     use std::env;
+    use std::fs::File;
     use std::process::{Command, Output};
     use std::str;
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
+
     use sources;
 
     fn success_output(err: &str, cmd: &mut Command) -> Output {
@@ -502,17 +507,37 @@ mod c_system {
         r.to_string()
     }
 
+    fn find_library<I>(dirs: I, libname: &str) -> Result<PathBuf, Vec<String>>
+    where
+        I: Iterator<Item = PathBuf>
+    {
+        let mut paths = Vec::new();
+        for dir in dirs {
+            let try_path = dir.join(format!("lib{}.a", libname));
+            if try_path.exists() {
+                return Ok(try_path.to_path_buf());
+            } else {
+                paths.push(format!("{:?}", try_path))
+            }
+        }
+        Err(paths)
+    }
+
     /// Link against system clang runtime libraries
     pub fn compile(llvm_target: &[&str]) {
         let target = env::var("TARGET").unwrap();
         let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
         let compiler_rt_arch = get_arch_name_for_compiler_rtlib();
+        let out_dir = env::var("OUT_DIR").unwrap();
 
         if ALL_SUPPORTED_ARCHES.split(";").find(|x| *x == compiler_rt_arch) == None {
             return;
         }
 
-        if let Ok(clang) = env::var("CLANG") {
+        println!("cargo:rerun-if-env-changed=CLANG");
+        println!("cargo:rerun-if-env-changed=LLVM_CONFIG");
+
+        let fullpath = if let Ok(clang) = env::var("CLANG") {
             let output = success_output(
                 "failed to find clang's compiler-rt",
                 Command::new(clang)
@@ -520,16 +545,8 @@ mod c_system {
                     .arg("--rtlib=compiler-rt")
                     .arg("--print-libgcc-file-name"),
             );
-            let fullpath = Path::new(str::from_utf8(&output.stdout).unwrap());
-            let libpath = fullpath.parent().unwrap().display();
-            let libname = fullpath
-                .file_stem()
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .trim_start_matches("lib");
-            println!("cargo:rustc-link-search=native={}", libpath);
-            println!("cargo:rustc-link-lib=static={}", libname);
+            let path = str::from_utf8(&output.stdout).unwrap().trim_end();
+            Path::new(path).to_path_buf()
         } else if let Ok(llvm_config) = env::var("LLVM_CONFIG") {
             // fallback if clang is not installed
             let (subpath, libname) = match target_os.as_str() {
@@ -537,22 +554,52 @@ mod c_system {
                 "macos" => ("darwin", "clang_rt.builtins_osx_dynamic".to_string()),
                 _ => panic!("unsupported target os: {}", target_os),
             };
-            let cmd = format!("ls -1d $({} --libdir)/clang/*/lib/{}", llvm_config, subpath);
             let output = success_output(
-                "failed to find clang's lib dir",
-                Command::new("sh").args(&["-ec", &cmd]),
+                "failed to find llvm-config's lib dir",
+                Command::new(llvm_config).arg("--libdir"),
             );
-            for search_dir in str::from_utf8(&output.stdout).unwrap().lines() {
-                println!("cargo:rustc-link-search=native={}", search_dir);
+            let libdir = str::from_utf8(&output.stdout).unwrap().trim_end();
+            let paths = std::fs::read_dir(Path::new(libdir).join("clang")).unwrap().map(|e| {
+                e.unwrap().path().join("lib").join(subpath)
+            });
+            match find_library(paths, &libname) {
+                Ok(p) => p,
+                Err(paths) => panic!("failed to find llvm-config's compiler-rt: {}", paths.join(":")),
             }
-            println!("cargo:rustc-link-lib=static={}", libname);
         } else {
             panic!("neither CLANG nor LLVM_CONFIG could be read");
+        };
+
+        let mut index = 0;
+        let mut files = HashMap::new();
+        let mut orig = ar::Archive::new(File::open(&fullpath).unwrap());
+        while let Some(entry_result) = orig.next_entry() {
+            let entry = entry_result.unwrap();
+            let name = str::from_utf8(entry.header().identifier()).unwrap();
+            files.insert(name.to_owned(), index);
+            index += 1;
         }
 
         let sources = sources::get_sources(llvm_target);
+        let mut new = ar::Builder::new(File::create(Path::new(&out_dir).join("libcompiler-rt.a")).unwrap());
         for (sym, _src) in sources.map.iter() {
+            let &i = {
+                let sym_ = if sym.starts_with("__") { &sym[2..] } else { &sym };
+                match files.get(&format!("{}.c.o", sym_)) {
+                    Some(i) => i,
+                    None => match files.get(&format!("{}.S.o", sym_)) {
+                        Some(i) => i,
+                        None => panic!("could not find expected symbol {} in {:?}", sym, &fullpath),
+                    },
+                }
+            };
+            let mut entry = orig.jump_to_entry(i).unwrap();
+            // TODO: ar really should have an append_entry to avoid the clone
+            new.append(&entry.header().clone(), &mut entry).unwrap();
             println!("cargo:rustc-cfg={}=\"optimized-c\"", sym);
         }
+
+        println!("cargo:rustc-link-search=native={}", out_dir);
+        println!("cargo:rustc-link-lib=static={}", "compiler-rt");
     }
 }
