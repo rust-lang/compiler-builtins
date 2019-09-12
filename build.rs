@@ -393,9 +393,9 @@ mod sources {
 mod c_vendor {
     extern crate cc;
 
+    use sources;
     use std::env;
     use std::path::PathBuf;
-    use sources;
 
     /// Compile intrinsics from the compiler-rt C source code
     pub fn compile(llvm_target: &[&str]) {
@@ -464,9 +464,9 @@ mod c_system {
     use std::collections::HashMap;
     use std::env;
     use std::fs::File;
+    use std::path::{Path, PathBuf};
     use std::process::{Command, Output};
     use std::str;
-    use std::path::{Path, PathBuf};
 
     use sources;
 
@@ -492,16 +492,20 @@ mod c_system {
         let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
         let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
         let r = match target_arch.as_str() {
-            "arm" => if target.ends_with("eabihf") && target_os != "windows" {
-                "armhf"
-            } else {
-                "arm"
-            },
-            "x86" => if target_os == "android" {
-                "i686"
-            } else {
-                "i386"
-            },
+            "arm" => {
+                if target.ends_with("eabihf") && target_os != "windows" {
+                    "armhf"
+                } else {
+                    "arm"
+                }
+            }
+            "x86" => {
+                if target_os == "android" {
+                    "i686"
+                } else {
+                    "i386"
+                }
+            }
             _ => target_arch.as_str(),
         };
         r.to_string()
@@ -509,7 +513,7 @@ mod c_system {
 
     fn find_library<I>(dirs: I, libname: &str) -> Result<PathBuf, Vec<String>>
     where
-        I: Iterator<Item = PathBuf>
+        I: Iterator<Item = PathBuf>,
     {
         let mut paths = Vec::new();
         for dir in dirs {
@@ -530,7 +534,11 @@ mod c_system {
         let compiler_rt_arch = get_arch_name_for_compiler_rtlib();
         let out_dir = env::var("OUT_DIR").unwrap();
 
-        if ALL_SUPPORTED_ARCHES.split(";").find(|x| *x == compiler_rt_arch) == None {
+        if ALL_SUPPORTED_ARCHES
+            .split(";")
+            .find(|x| *x == compiler_rt_arch)
+            == None
+        {
             return;
         }
 
@@ -559,12 +567,15 @@ mod c_system {
                 Command::new(llvm_config).arg("--libdir"),
             );
             let libdir = str::from_utf8(&output.stdout).unwrap().trim_end();
-            let paths = std::fs::read_dir(Path::new(libdir).join("clang")).unwrap().map(|e| {
-                e.unwrap().path().join("lib").join(subpath)
-            });
+            let paths = std::fs::read_dir(Path::new(libdir).join("clang"))
+                .unwrap()
+                .map(|e| e.unwrap().path().join("lib").join(subpath));
             match find_library(paths, &libname) {
                 Ok(p) => p,
-                Err(paths) => panic!("failed to find llvm-config's compiler-rt: {}", paths.join(":")),
+                Err(paths) => panic!(
+                    "failed to find llvm-config's compiler-rt: {}",
+                    paths.join(":")
+                ),
             }
         } else {
             panic!("neither CLANG nor LLVM_CONFIG could be read");
@@ -581,10 +592,15 @@ mod c_system {
         }
 
         let sources = sources::get_sources(llvm_target);
-        let mut new = ar::Builder::new(File::create(Path::new(&out_dir).join("libcompiler-rt.a")).unwrap());
+        let mut new =
+            ar::Builder::new(File::create(Path::new(&out_dir).join("libcompiler-rt.a")).unwrap());
         for (sym, _src) in sources.map.iter() {
             let &i = {
-                let sym_ = if sym.starts_with("__") { &sym[2..] } else { &sym };
+                let sym_ = if sym.starts_with("__") {
+                    &sym[2..]
+                } else {
+                    &sym
+                };
                 match files.get(&format!("{}.c.o", sym_)) {
                     Some(i) => i,
                     None => match files.get(&format!("{}.S.o", sym_)) {
