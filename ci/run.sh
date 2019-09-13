@@ -18,6 +18,10 @@ cargo build --target $1
 cargo build --target $1 --release
 cargo build --target $1 --features c
 cargo build --target $1 --release --features c
+if [ -n "$CLANG" -o -n "$LLVM_CONFIG" ]; then
+cargo build --target $1 --features c-system
+cargo build --target $1 --release --features c-system
+fi
 
 PREFIX=$(echo $1 | sed -e 's/unknown-//')-
 case $1 in
@@ -77,6 +81,10 @@ RUSTFLAGS="-C debug-assertions=no" $build_intrinsics
 RUSTFLAGS="-C debug-assertions=no" $build_intrinsics --release
 RUSTFLAGS="-C debug-assertions=no" $build_intrinsics --features c
 RUSTFLAGS="-C debug-assertions=no" $build_intrinsics --features c --release
+if [ -n "$CLANG" -o -n "$LLVM_CONFIG" ]; then
+RUSTFLAGS="-C debug-assertions=no" $build_intrinsics --features c-system
+RUSTFLAGS="-C debug-assertions=no" $build_intrinsics --features c-system --release
+fi
 
 # Verify that there are no undefined symbols to `panic` within our
 # implementations
