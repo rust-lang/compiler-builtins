@@ -97,7 +97,8 @@ jobs:
           rust: nightly
         - target: i686-pc-windows-gnu
           os: windows-latest
-          rust: nightly-i686-gnu
+          # FIXME: Use nigthly when https://github.com/rust-lang/rust/issues/70316 is resolved.
+          rust: nightly-2020-03-14-i686-gnu
         - target: x86_64-pc-windows-gnu
           os: windows-latest
           rust: nightly-x86_64-gnu
@@ -106,7 +107,7 @@ jobs:
       with:
         submodules: true
     - name: Install Rust (rustup)
-      run: rustup update ${{ matrix.rust }} --no-self-update && rustup default ${{ matrix.rust }}
+      run: rustup update ${{ matrix.rust }} --no-self-update --force && rustup default ${{ matrix.rust }}
       shell: bash
     - run: rustup target add ${{ matrix.target }}
     - name: Download compiler-rt reference sources
