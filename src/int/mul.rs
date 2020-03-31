@@ -103,6 +103,7 @@ intrinsics! {
         a.mulo(b, oflow)
     }
 
+    #[maybe_use_optimized_c_shim]
     #[unadjusted_on_win64]
     pub extern "C" fn __muloti4(a: i128, b: i128, oflow: &mut i32) -> i128 {
         a.mulo(b, oflow)

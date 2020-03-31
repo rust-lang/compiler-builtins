@@ -126,6 +126,7 @@ mod c {
         let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
         let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
         let target_vendor = env::var("CARGO_CFG_TARGET_VENDOR").unwrap();
+        let target_pointer_width = env::var("CARGO_CFG_TARGET_POINTER_WIDTH").unwrap();
         let mut consider_float_intrinsics = true;
         let cfg = &mut cc::Build::new();
 
@@ -222,9 +223,8 @@ mod c {
             sources.extend(&[("__ffsdi2", "ffsdi2.c")]);
         }
 
-        // On iOS and 32-bit OSX these are all just empty intrinsics, no need to
-        // include them.
-        if target_os != "ios" && (target_vendor != "apple" || target_arch != "x86") {
+        // On targets without __int128 these are all just empty.
+        if target_pointer_width == "64" && target_env != "msvc" {
             sources.extend(&[
                 ("__absvti2", "absvti2.c"),
                 ("__addvti3", "addvti3.c"),
@@ -232,6 +232,7 @@ mod c {
                 ("__cmpti2", "cmpti2.c"),
                 ("__ctzti2", "ctzti2.c"),
                 ("__ffsti2", "ffsti2.c"),
+                ("__muloti4", "muloti4.c"),
                 ("__mulvti3", "mulvti3.c"),
                 ("__negti2", "negti2.c"),
                 ("__parityti2", "parityti2.c"),
