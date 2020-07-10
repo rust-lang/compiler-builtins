@@ -18,9 +18,14 @@ use super::c_int;
 
 #[cfg_attr(all(feature = "mem", not(feature = "mangled-names")), no_mangle)]
 pub unsafe extern "C" fn memcpy(dest: *mut u8, src: *const u8, count: usize) -> *mut u8 {
+    let qword_count = count >> 3;
+    let byte_count = count & 0b111;
     asm!(
+        "rep movsq [rdi], [rsi]",
+        "mov ecx, {byte_count:e}",
         "rep movsb [rdi], [rsi]",
-        inout("rcx") count => _,
+        byte_count = in(reg) byte_count,
+        inout("rcx") qword_count => _,
         inout("rdi") dest => _,
         inout("rsi") src => _,
         options(nostack, preserves_flags)
@@ -37,25 +42,37 @@ pub unsafe extern "C" fn memmove(dest: *mut u8, src: *const u8, count: usize) ->
         return self::memcpy(dest, src, count);
     }
     // copy backwards
+    let qword_count = count >> 3;
+    let byte_count = count & 0b111;
     asm!(
         "std",
+        "rep movsq [rdi], [rsi]",
+        "mov ecx, {byte_count:e}",
+        "add rdi, 7",
+        "add rsi, 7",
         "rep movsb [rdi], [rsi]",
         "cld",
-        inout("rcx") count => _,
-        inout("rdi") dest.add(count).sub(1) => _,
-        inout("rsi") src.add(count).sub(1) => _,
-        options(nostack, preserves_flags)
+        byte_count = in(reg) byte_count,
+        inout("rcx") qword_count => _,
+        inout("rdi") dest.offset(count as isize).wrapping_sub(8) => _,
+        inout("rsi") src.offset(count as isize).wrapping_sub(8) => _,
+        options(nostack)
     );
     dest
 }
 
 #[cfg_attr(all(feature = "mem", not(feature = "mangled-names")), no_mangle)]
 pub unsafe extern "C" fn memset(dest: *mut u8, c: c_int, count: usize) -> *mut u8 {
+    let qword_count = count >> 3;
+    let byte_count = count & 0b111;
     asm!(
+        "rep stosq [rdi], rax",
+        "mov ecx, {byte_count:e}",
         "rep stosb [rdi], al",
-        inout("rcx") count => _,
+        byte_count = in(reg) byte_count,
+        inout("rcx") qword_count => _,
         inout("rdi") dest => _,
-        in("al") c as u8,
+        in("rax") (c as u8 as u64) * 0x0101010101010101,
         options(nostack, preserves_flags)
     );
     dest
