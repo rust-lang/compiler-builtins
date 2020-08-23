@@ -414,6 +414,11 @@ mod c {
                 ("__floatunsitf", "floatunsitf.c"),
                 ("__trunctfdf2", "trunctfdf2.c"),
                 ("__trunctfsf2", "trunctfsf2.c"),
+                ("__addtf3", "addtf3.c"),
+                ("__multf3", "multf3.c"),
+                ("__subtf3", "subtf3.c"),
+                ("__divtf3", "divtf3.c"),
+                ("__powitf2", "powitf2.c"),
             ]);
 
             if target_os != "windows" {
