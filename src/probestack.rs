@@ -43,7 +43,7 @@
 
 #![cfg(not(feature = "mangled-names"))]
 // Windows already has builtins to do this.
-#![cfg(not(windows))]
+#![cfg(not(target_os = "windows"))]
 // We only define stack probing for these architectures today.
 #![cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 
