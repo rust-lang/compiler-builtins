@@ -11,10 +11,25 @@
 //  - FSRM - Fast Short REP MOV (Ice Lake and later)
 //  - Fast Zero-Length MOVSB (On no current hardware)
 //  - Fast Short STOSB (On no current hardware)
-// However, to avoid run-time feature detection, we don't use these byte-based
-// instructions for most of the copying, preferring the qword variants.
+//
+// To simplify things, we switch to using the byte-based variants if the "ermsb"
+// feature is present at compile-time. We don't bother detecting other features.
+// Note that ERMSB does not enhance the backwards (DF=1) "rep movsb".
 
 #[inline(always)]
+#[cfg(target_feature = "ermsb")]
+pub unsafe fn copy_forward(dest: *mut u8, src: *const u8, count: usize) {
+    asm!(
+        "rep movsb [rdi], [rsi]",
+        inout("rcx") count => _,
+        inout("rdi") dest => _,
+        inout("rsi") src => _,
+        options(nostack, preserves_flags)
+    );
+}
+
+#[inline(always)]
+#[cfg(not(target_feature = "ermsb"))]
 pub unsafe fn copy_forward(dest: *mut u8, src: *const u8, count: usize) {
     let qword_count = count >> 3;
     let byte_count = count & 0b111;
@@ -51,6 +66,19 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, count: usize) {
 }
 
 #[inline(always)]
+#[cfg(target_feature = "ermsb")]
+pub unsafe fn set_bytes(dest: *mut u8, c: u8, count: usize) {
+    asm!(
+        "rep stosb [rdi], al",
+        inout("rcx") count => _,
+        inout("rdi") dest => _,
+        inout("al") c => _,
+        options(nostack, preserves_flags)
+    )
+}
+
+#[inline(always)]
+#[cfg(not(target_feature = "ermsb"))]
 pub unsafe fn set_bytes(dest: *mut u8, c: u8, count: usize) {
     let qword_count = count >> 3;
     let byte_count = count & 0b111;
