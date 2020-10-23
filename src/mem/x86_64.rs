@@ -1,5 +1,3 @@
-use super::c_int;
-
 // On most modern Intel and AMD processors, "rep movsq" and "rep stosq" have
 // been enhanced to perform better than an simple qword loop, making them ideal
 // for implementing memcpy/memset. Note that "rep cmps" has received no such
@@ -16,8 +14,8 @@ use super::c_int;
 // However, to avoid run-time feature detection, we don't use these byte-based
 // instructions for most of the copying, preferring the qword variants.
 
-#[cfg_attr(all(feature = "mem", not(feature = "mangled-names")), no_mangle)]
-pub unsafe extern "C" fn memcpy(dest: *mut u8, src: *const u8, count: usize) -> *mut u8 {
+#[inline(always)]
+pub unsafe fn copy_forward(dest: *mut u8, src: *const u8, count: usize) {
     let qword_count = count >> 3;
     let byte_count = count & 0b111;
     asm!(
@@ -30,18 +28,10 @@ pub unsafe extern "C" fn memcpy(dest: *mut u8, src: *const u8, count: usize) -> 
         inout("rsi") src => _,
         options(nostack, preserves_flags)
     );
-    dest
 }
 
-#[cfg_attr(all(feature = "mem", not(feature = "mangled-names")), no_mangle)]
-pub unsafe extern "C" fn memmove(dest: *mut u8, src: *const u8, count: usize) -> *mut u8 {
-    let delta = (dest as usize).wrapping_sub(src as usize);
-    if delta >= count {
-        // We can copy forwards because either dest is far enough ahead of src,
-        // or src is ahead of dest (and delta overflowed).
-        return self::memcpy(dest, src, count);
-    }
-    // copy backwards
+#[inline(always)]
+pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, count: usize) {
     let qword_count = count >> 3;
     let byte_count = count & 0b111;
     asm!(
@@ -58,11 +48,10 @@ pub unsafe extern "C" fn memmove(dest: *mut u8, src: *const u8, count: usize) ->
         inout("rsi") src.offset(count as isize).wrapping_sub(8) => _,
         options(nostack)
     );
-    dest
 }
 
-#[cfg_attr(all(feature = "mem", not(feature = "mangled-names")), no_mangle)]
-pub unsafe extern "C" fn memset(dest: *mut u8, c: c_int, count: usize) -> *mut u8 {
+#[inline(always)]
+pub unsafe fn set_bytes(dest: *mut u8, c: u8, count: usize) {
     let qword_count = count >> 3;
     let byte_count = count & 0b111;
     asm!(
@@ -72,8 +61,7 @@ pub unsafe extern "C" fn memset(dest: *mut u8, c: c_int, count: usize) -> *mut u
         byte_count = in(reg) byte_count,
         inout("rcx") qword_count => _,
         inout("rdi") dest => _,
-        in("rax") (c as u8 as u64) * 0x0101010101010101,
+        in("rax") (c as u64) * 0x0101010101010101,
         options(nostack, preserves_flags)
     );
-    dest
 }
