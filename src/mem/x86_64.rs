@@ -35,7 +35,7 @@ pub unsafe extern "C" fn memcpy(dest: *mut u8, src: *const u8, count: usize) -> 
 
 #[cfg_attr(all(feature = "mem", not(feature = "mangled-names")), no_mangle)]
 pub unsafe extern "C" fn memmove(dest: *mut u8, src: *const u8, count: usize) -> *mut u8 {
-    let delta = dest as usize - src as usize;
+    let delta = (dest as usize).wrapping_sub(src as usize);
     if delta >= count {
         // We can copy forwards because either dest is far enough ahead of src,
         // or src is ahead of dest (and delta overflowed).
