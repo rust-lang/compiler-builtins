@@ -9,6 +9,7 @@ use compiler_builtins::mem::{memcmp, memcpy, memmove, memset};
 fn memcpy_builtin(b: &mut Bencher, n: usize) {
     let v1 = vec![1u8; n];
     let mut v2 = vec![0u8; n];
+    b.bytes = n as u64;
     b.iter(|| {
         let src: &[u8] = black_box(&v1);
         let dst: &mut [u8] = black_box(&mut v2);
@@ -19,6 +20,7 @@ fn memcpy_builtin(b: &mut Bencher, n: usize) {
 fn memcpy_rust(b: &mut Bencher, n: usize) {
     let v1 = vec![1u8; n];
     let mut v2 = vec![0u8; n];
+    b.bytes = n as u64;
     b.iter(|| {
         let src: &[u8] = black_box(&v1);
         let dst: &mut [u8] = black_box(&mut v2);
@@ -28,6 +30,7 @@ fn memcpy_rust(b: &mut Bencher, n: usize) {
 
 fn memset_builtin(b: &mut Bencher, n: usize) {
     let mut v1 = vec![0u8; n];
+    b.bytes = n as u64;
     b.iter(|| {
         let dst: &mut [u8] = black_box(&mut v1);
         let val: u8 = black_box(27);
@@ -39,6 +42,7 @@ fn memset_builtin(b: &mut Bencher, n: usize) {
 
 fn memset_rust(b: &mut Bencher, n: usize) {
     let mut v1 = vec![0u8; n];
+    b.bytes = n as u64;
     b.iter(|| {
         let dst: &mut [u8] = black_box(&mut v1);
         let val = black_box(27);
@@ -50,6 +54,7 @@ fn memcmp_builtin(b: &mut Bencher, n: usize) {
     let v1 = vec![0u8; n];
     let mut v2 = vec![0u8; n];
     v2[n - 1] = 1;
+    b.bytes = n as u64;
     b.iter(|| {
         let s1: &[u8] = black_box(&v1);
         let s2: &[u8] = black_box(&v2);
@@ -61,6 +66,7 @@ fn memcmp_rust(b: &mut Bencher, n: usize) {
     let v1 = vec![0u8; n];
     let mut v2 = vec![0u8; n];
     v2[n - 1] = 1;
+    b.bytes = n as u64;
     b.iter(|| {
         let s1: &[u8] = black_box(&v1);
         let s2: &[u8] = black_box(&v2);
@@ -70,6 +76,7 @@ fn memcmp_rust(b: &mut Bencher, n: usize) {
 
 fn memmove_builtin(b: &mut Bencher, n: usize) {
     let mut v = vec![0u8; n + n / 2];
+    b.bytes = n as u64;
     b.iter(|| {
         let s: &mut [u8] = black_box(&mut v);
         s.copy_within(0..n, n / 2);
@@ -78,6 +85,7 @@ fn memmove_builtin(b: &mut Bencher, n: usize) {
 
 fn memmove_rust(b: &mut Bencher, n: usize) {
     let mut v = vec![0u8; n + n / 2];
+    b.bytes = n as u64;
     b.iter(|| {
         let dst: *mut u8 = black_box(&mut v[n / 2..]).as_mut_ptr();
         let src: *const u8 = black_box(&v).as_ptr();
