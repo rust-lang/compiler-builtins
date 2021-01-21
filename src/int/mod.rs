@@ -85,7 +85,6 @@ pub trait Int:
     fn wrapping_sub(self, other: Self) -> Self;
     fn wrapping_shl(self, other: u32) -> Self;
     fn wrapping_shr(self, other: u32) -> Self;
-    fn rotate_left(self, other: u32) -> Self;
     fn overflowing_add(self, other: Self) -> (Self, bool);
     fn aborting_div(self, other: Self) -> Self;
     fn aborting_rem(self, other: Self) -> Self;
@@ -207,10 +206,6 @@ macro_rules! int_impl_common {
 
         fn wrapping_shr(self, other: u32) -> Self {
             <Self>::wrapping_shr(self, other)
-        }
-
-        fn rotate_left(self, other: u32) -> Self {
-            <Self>::rotate_left(self, other)
         }
 
         fn overflowing_add(self, other: Self) -> (Self, bool) {

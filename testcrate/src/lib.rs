@@ -20,6 +20,22 @@ use compiler_builtins::int::Int;
 use rand_xoshiro::rand_core::{RngCore, SeedableRng};
 use rand_xoshiro::Xoshiro128StarStar;
 
+pub trait RotateLeft {
+    fn rotate_left(self, other: u32) -> Self;
+}
+
+macro_rules! impl_rotate_left {
+    ($($ty:ty),*) => {$(
+        impl RotateLeft for $ty {
+            fn rotate_left(self, other: u32) -> Self {
+                <Self>::rotate_left(self, other)
+            }
+        }
+    )*}
+}
+
+impl_rotate_left!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128);
+
 /// Sets the number of fuzz iterations run for most tests. In practice, the vast majority of bugs
 /// are caught by the edge case testers. Most of the remaining bugs triggered by more complex
 /// sequences are caught well within 10_000 fuzz iterations. For classes of algorithms like division
@@ -45,7 +61,7 @@ pub const N: u32 = if cfg!(target_arch = "x86_64") && !cfg!(debug_assertions) {
 /// 101111111110100000000101000000
 /// 10000000110100000000100010101
 /// 1010101010101000
-fn fuzz_step<I: Int>(rng: &mut Xoshiro128StarStar, x: &mut I) {
+fn fuzz_step<I: Int + RotateLeft>(rng: &mut Xoshiro128StarStar, x: &mut I) {
     let ones = !I::ZERO;
     let bit_indexing_mask: u32 = I::BITS - 1;
     // It happens that all the RNG we need can come from one call. 7 bits are needed to index a
@@ -101,7 +117,7 @@ macro_rules! edge_cases {
 
 /// Feeds a series of fuzzing inputs to `f`. The fuzzer first uses an algorithm designed to find
 /// edge cases, followed by a more random fuzzer that runs `n` times.
-pub fn fuzz<I: Int, F: FnMut(I)>(n: u32, mut f: F) {
+pub fn fuzz<I: Int + RotateLeft, F: FnMut(I)>(n: u32, mut f: F) {
     // edge case tester. Calls `f` 210 times for u128.
     // zero gets skipped by the loop
     f(I::ZERO);
@@ -119,7 +135,7 @@ pub fn fuzz<I: Int, F: FnMut(I)>(n: u32, mut f: F) {
 }
 
 /// The same as `fuzz`, except `f` has two inputs.
-pub fn fuzz_2<I: Int, F: Fn(I, I)>(n: u32, f: F) {
+pub fn fuzz_2<I: Int + RotateLeft, F: Fn(I, I)>(n: u32, f: F) {
     // Check cases where the first and second inputs are zero. Both call `f` 210 times for `u128`.
     edge_cases!(I, case, {
         f(I::ZERO, case);
@@ -146,7 +162,7 @@ pub fn fuzz_2<I: Int, F: Fn(I, I)>(n: u32, f: F) {
 }
 
 /// Tester for shift functions
-pub fn fuzz_shift<I: Int, F: Fn(I, u32)>(f: F) {
+pub fn fuzz_shift<I: Int + RotateLeft, F: Fn(I, u32)>(f: F) {
     // Shift functions are very simple and do not need anything other than shifting a small
     // set of random patterns for every fuzz length.
     let mut rng = Xoshiro128StarStar::seed_from_u64(0);
@@ -158,7 +174,10 @@ pub fn fuzz_shift<I: Int, F: Fn(I, u32)>(f: F) {
     }
 }
 
-fn fuzz_float_step<F: Float>(rng: &mut Xoshiro128StarStar, f: &mut F) {
+fn fuzz_float_step<F: Float>(rng: &mut Xoshiro128StarStar, f: &mut F)
+where
+    F::Int: RotateLeft,
+{
     let rng32 = rng.next_u32();
     // we need to fuzz the different parts of the float separately, because the masking on larger
     // significands will tend to set the exponent to all ones or all zeros frequently
@@ -226,7 +245,10 @@ macro_rules! float_edge_cases {
     };
 }
 
-pub fn fuzz_float<F: Float, E: Fn(F)>(n: u32, f: E) {
+pub fn fuzz_float<F: Float, E: Fn(F)>(n: u32, f: E)
+where
+    F::Int: RotateLeft,
+{
     float_edge_cases!(F, case, {
         f(case);
     });
@@ -240,7 +262,10 @@ pub fn fuzz_float<F: Float, E: Fn(F)>(n: u32, f: E) {
     }
 }
 
-pub fn fuzz_float_2<F: Float, E: Fn(F, F)>(n: u32, f: E) {
+pub fn fuzz_float_2<F: Float, E: Fn(F, F)>(n: u32, f: E)
+where
+    F::Int: RotateLeft,
+{
     float_edge_cases!(F, case0, {
         float_edge_cases!(F, case1, {
             f(case0, case1);
