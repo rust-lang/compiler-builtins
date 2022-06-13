@@ -74,32 +74,38 @@ mod int_to_float {
 intrinsics! {
     #[arm_aeabi_alias = __aeabi_ui2f]
     pub extern "C" fn __floatunsisf(i: u32) -> f32 {
-        f32::from_bits(int_to_float::u32_to_f32_bits(i))
+        use float::Float;
+        f32::from_repr(int_to_float::u32_to_f32_bits(i))
     }
 
     #[arm_aeabi_alias = __aeabi_ui2d]
     pub extern "C" fn __floatunsidf(i: u32) -> f64 {
-        f64::from_bits(int_to_float::u32_to_f64_bits(i))
+        use float::Float;
+        f64::from_repr(int_to_float::u32_to_f64_bits(i))
     }
 
     #[arm_aeabi_alias = __aeabi_ul2f]
     pub extern "C" fn __floatundisf(i: u64) -> f32 {
-        f32::from_bits(int_to_float::u64_to_f32_bits(i))
+        use float::Float;
+        f32::from_repr(int_to_float::u64_to_f32_bits(i))
     }
 
     #[arm_aeabi_alias = __aeabi_ul2d]
     pub extern "C" fn __floatundidf(i: u64) -> f64 {
-        f64::from_bits(int_to_float::u64_to_f64_bits(i))
+        use float::Float;
+        f64::from_repr(int_to_float::u64_to_f64_bits(i))
     }
 
     #[cfg_attr(not(target_feature = "llvm14-builtins-abi"), unadjusted_on_win64)]
     pub extern "C" fn __floatuntisf(i: u128) -> f32 {
-        f32::from_bits(int_to_float::u128_to_f32_bits(i))
+        use float::Float;
+        f32::from_repr(int_to_float::u128_to_f32_bits(i))
     }
 
     #[cfg_attr(not(target_feature = "llvm14-builtins-abi"), unadjusted_on_win64)]
     pub extern "C" fn __floatuntidf(i: u128) -> f64 {
-        f64::from_bits(int_to_float::u128_to_f64_bits(i))
+        use float::Float;
+        f64::from_repr(int_to_float::u128_to_f64_bits(i))
     }
 }
 
@@ -107,38 +113,44 @@ intrinsics! {
 intrinsics! {
     #[arm_aeabi_alias = __aeabi_i2f]
     pub extern "C" fn __floatsisf(i: i32) -> f32 {
+        use float::Float;
         let sign_bit = ((i >> 31) as u32) << 31;
-        f32::from_bits(int_to_float::u32_to_f32_bits(i.unsigned_abs()) | sign_bit)
+        f32::from_repr(int_to_float::u32_to_f32_bits(i.unsigned_abs()) | sign_bit)
     }
 
     #[arm_aeabi_alias = __aeabi_i2d]
     pub extern "C" fn __floatsidf(i: i32) -> f64 {
+        use float::Float;
         let sign_bit = ((i >> 31) as u64) << 63;
-        f64::from_bits(int_to_float::u32_to_f64_bits(i.unsigned_abs()) | sign_bit)
+        f64::from_repr(int_to_float::u32_to_f64_bits(i.unsigned_abs()) | sign_bit)
     }
 
     #[arm_aeabi_alias = __aeabi_l2f]
     pub extern "C" fn __floatdisf(i: i64) -> f32 {
+        use float::Float;
         let sign_bit = ((i >> 63) as u32) << 31;
-        f32::from_bits(int_to_float::u64_to_f32_bits(i.unsigned_abs()) | sign_bit)
+        f32::from_repr(int_to_float::u64_to_f32_bits(i.unsigned_abs()) | sign_bit)
     }
 
     #[arm_aeabi_alias = __aeabi_l2d]
     pub extern "C" fn __floatdidf(i: i64) -> f64 {
+        use float::Float;
         let sign_bit = ((i >> 63) as u64) << 63;
-        f64::from_bits(int_to_float::u64_to_f64_bits(i.unsigned_abs()) | sign_bit)
+        f64::from_repr(int_to_float::u64_to_f64_bits(i.unsigned_abs()) | sign_bit)
     }
 
     #[cfg_attr(not(target_feature = "llvm14-builtins-abi"), unadjusted_on_win64)]
     pub extern "C" fn __floattisf(i: i128) -> f32 {
+        use float::Float;
         let sign_bit = ((i >> 127) as u32) << 31;
-        f32::from_bits(int_to_float::u128_to_f32_bits(i.unsigned_abs()) | sign_bit)
+        f32::from_repr(int_to_float::u128_to_f32_bits(i.unsigned_abs()) | sign_bit)
     }
 
     #[cfg_attr(not(target_feature = "llvm14-builtins-abi"), unadjusted_on_win64)]
     pub extern "C" fn __floattidf(i: i128) -> f64 {
+        use float::Float;
         let sign_bit = ((i >> 127) as u64) << 63;
-        f64::from_bits(int_to_float::u128_to_f64_bits(i.unsigned_abs()) | sign_bit)
+        f64::from_repr(int_to_float::u128_to_f64_bits(i.unsigned_abs()) | sign_bit)
     }
 }
 
@@ -146,7 +158,8 @@ intrinsics! {
 intrinsics! {
     #[arm_aeabi_alias = __aeabi_f2uiz]
     pub extern "C" fn __fixunssfsi(f: f32) -> u32 {
-        let fbits = f.to_bits();
+        use float::Float;
+        let fbits = f.repr();
         if fbits < 127 << 23 { // >= 0, < 1
             0
         } else if fbits < 159 << 23 { // >= 1, < max
@@ -162,7 +175,8 @@ intrinsics! {
 
     #[arm_aeabi_alias = __aeabi_f2ulz]
     pub extern "C" fn __fixunssfdi(f: f32) -> u64 {
-        let fbits = f.to_bits();
+        use float::Float;
+        let fbits = f.repr();
         if fbits < 127 << 23 { // >= 0, < 1
             0
         } else if fbits < 191 << 23 { // >= 1, < max
@@ -179,7 +193,8 @@ intrinsics! {
     #[cfg_attr(target_feature = "llvm14-builtins-abi", win64_128bit_abi_hack)]
     #[cfg_attr(not(target_feature = "llvm14-builtins-abi"), unadjusted_on_win64)]
     pub extern "C" fn __fixunssfti(f: f32) -> u128 {
-        let fbits = f.to_bits();
+        use float::Float;
+        let fbits = f.repr();
         if fbits < 127 << 23 { // >= 0, < 1
             0
         } else if fbits < 255 << 23 { // >= 1, < inf
@@ -195,7 +210,8 @@ intrinsics! {
 
     #[arm_aeabi_alias = __aeabi_d2uiz]
     pub extern "C" fn __fixunsdfsi(f: f64) -> u32 {
-        let fbits = f.to_bits();
+        use float::Float;
+        let fbits = f.repr();
         if fbits < 1023 << 52 { // >= 0, < 1
             0
         } else if fbits < 1055 << 52 { // >= 1, < max
@@ -211,7 +227,8 @@ intrinsics! {
 
     #[arm_aeabi_alias = __aeabi_d2ulz]
     pub extern "C" fn __fixunsdfdi(f: f64) -> u64 {
-        let fbits = f.to_bits();
+        use float::Float;
+        let fbits = f.repr();
         if fbits < 1023 << 52 { // >= 0, < 1
             0
         } else if fbits < 1087 << 52 { // >= 1, < max
@@ -228,7 +245,8 @@ intrinsics! {
     #[cfg_attr(target_feature = "llvm14-builtins-abi", win64_128bit_abi_hack)]
     #[cfg_attr(not(target_feature = "llvm14-builtins-abi"), unadjusted_on_win64)]
     pub extern "C" fn __fixunsdfti(f: f64) -> u128 {
-        let fbits = f.to_bits();
+        use float::Float;
+        let fbits = f.repr();
         if fbits < 1023 << 52 { // >= 0, < 1
             0
         } else if fbits < 1151 << 52 { // >= 1, < max
@@ -247,7 +265,8 @@ intrinsics! {
 intrinsics! {
     #[arm_aeabi_alias = __aeabi_f2iz]
     pub extern "C" fn __fixsfsi(f: f32) -> i32 {
-        let fbits = f.to_bits() & !0 >> 1; // Remove sign bit.
+        use float::Float;
+        let fbits = f.repr() & !0 >> 1; // Remove sign bit.
         if fbits < 127 << 23 { // >= 0, < 1
             0
         } else if fbits < 158 << 23 { // >= 1, < max
@@ -264,7 +283,8 @@ intrinsics! {
 
     #[arm_aeabi_alias = __aeabi_f2lz]
     pub extern "C" fn __fixsfdi(f: f32) -> i64 {
-        let fbits = f.to_bits() & !0 >> 1; // Remove sign bit.
+        use float::Float;
+        let fbits = f.repr() & !0 >> 1; // Remove sign bit.
         if fbits < 127 << 23 { // >= 0, < 1
             0
         } else if fbits < 190 << 23 { // >= 1, < max
@@ -282,7 +302,8 @@ intrinsics! {
     #[cfg_attr(target_feature = "llvm14-builtins-abi", win64_128bit_abi_hack)]
     #[cfg_attr(not(target_feature = "llvm14-builtins-abi"), unadjusted_on_win64)]
     pub extern "C" fn __fixsfti(f: f32) -> i128 {
-        let fbits = f.to_bits() & !0 >> 1; // Remove sign bit.
+        use float::Float;
+        let fbits = f.repr() & !0 >> 1; // Remove sign bit.
         if fbits < 127 << 23 { // >= 0, < 1
             0
         } else if fbits < 254 << 23 { // >= 1, < max
@@ -299,7 +320,8 @@ intrinsics! {
 
     #[arm_aeabi_alias = __aeabi_d2iz]
     pub extern "C" fn __fixdfsi(f: f64) -> i32 {
-        let fbits = f.to_bits() & !0 >> 1; // Remove sign bit.
+        use float::Float;
+        let fbits = f.repr() & !0 >> 1; // Remove sign bit.
         if fbits < 1023 << 52 { // >= 0, < 1
             0
         } else if fbits < 1054 << 52 { // >= 1, < max
@@ -316,7 +338,8 @@ intrinsics! {
 
     #[arm_aeabi_alias = __aeabi_d2lz]
     pub extern "C" fn __fixdfdi(f: f64) -> i64 {
-        let fbits = f.to_bits() & !0 >> 1; // Remove sign bit.
+        use float::Float;
+        let fbits = f.repr() & !0 >> 1; // Remove sign bit.
         if fbits < 1023 << 52 { // >= 0, < 1
             0
         } else if fbits < 1086 << 52 { // >= 1, < max
@@ -334,7 +357,8 @@ intrinsics! {
     #[cfg_attr(target_feature = "llvm14-builtins-abi", win64_128bit_abi_hack)]
     #[cfg_attr(not(target_feature = "llvm14-builtins-abi"), unadjusted_on_win64)]
     pub extern "C" fn __fixdfti(f: f64) -> i128 {
-        let fbits = f.to_bits() & !0 >> 1; // Remove sign bit.
+        use float::Float;
+        let fbits = f.repr() & !0 >> 1; // Remove sign bit.
         if fbits < 1023 << 52 { // >= 0, < 1
             0
         } else if fbits < 1150 << 52 { // >= 1, < max

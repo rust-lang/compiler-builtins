@@ -120,11 +120,15 @@ macro_rules! float_impl {
             const IMPLICIT_BIT: Self::Int = 1 << Self::SIGNIFICAND_BITS;
             const EXPONENT_MASK: Self::Int = !(Self::SIGN_MASK | Self::SIGNIFICAND_MASK);
 
+            #[inline]
             fn repr(self) -> Self::Int {
-                self.to_bits()
+                #[allow(clippy::transmute_float_to_int)]
+                unsafe {
+                    core::mem::transmute::<Self, Self::Int>(self)
+                }
             }
             fn signed_repr(self) -> Self::SignedInt {
-                self.to_bits() as Self::SignedInt
+                self.repr() as Self::SignedInt
             }
             fn eq_repr(self, rhs: Self) -> bool {
                 if self.is_nan() && rhs.is_nan() {
@@ -137,16 +141,20 @@ macro_rules! float_impl {
                 self.signed_repr() < Self::SignedInt::ZERO
             }
             fn exp(self) -> Self::ExpInt {
-                ((self.to_bits() & Self::EXPONENT_MASK) >> Self::SIGNIFICAND_BITS) as Self::ExpInt
+                ((self.repr() & Self::EXPONENT_MASK) >> Self::SIGNIFICAND_BITS) as Self::ExpInt
             }
             fn frac(self) -> Self::Int {
-                self.to_bits() & Self::SIGNIFICAND_MASK
+                self.repr() & Self::SIGNIFICAND_MASK
             }
             fn imp_frac(self) -> Self::Int {
                 self.frac() | Self::IMPLICIT_BIT
             }
+            #[inline]
             fn from_repr(a: Self::Int) -> Self {
-                Self::from_bits(a)
+                #[allow(clippy::transmute_int_to_float)]
+                unsafe {
+                    core::mem::transmute::<Self::Int, Self>(a)
+                }
             }
             fn from_parts(sign: bool, exponent: Self::Int, significand: Self::Int) -> Self {
                 Self::from_repr(
