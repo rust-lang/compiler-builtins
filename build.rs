@@ -201,7 +201,6 @@ mod c {
             ("__cmpdi2", "cmpdi2.c"),
             ("__ctzdi2", "ctzdi2.c"),
             ("__ctzsi2", "ctzsi2.c"),
-            ("__int_util", "int_util.c"),
             ("__mulvdi3", "mulvdi3.c"),
             ("__mulvsi3", "mulvsi3.c"),
             ("__negdi2", "negdi2.c"),
@@ -215,6 +214,15 @@ mod c {
             ("__subvsi3", "subvsi3.c"),
             ("__ucmpdi2", "ucmpdi2.c"),
         ]);
+
+        // UEFI is treated as a windows target when compiling with
+        // clang, and int_util.c includes stdlib.h for windows targets
+        // even though we are compiling with `-ffreestanding`. That
+        // header may not be present might be incompatible, so skip this
+        // file on UEFI targets.
+        if target_os != "uefi" {
+            sources.extend(&[("__int_util", "int_util.c")]);
+        }
 
         if consider_float_intrinsics {
             sources.extend(&[
