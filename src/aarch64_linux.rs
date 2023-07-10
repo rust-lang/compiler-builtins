@@ -266,8 +266,13 @@ macro_rules! or {
     };
 }
 
-// See `generate_aarch64_outlined_atomics` in build.rs.
-include!(concat!(env!("OUT_DIR"), "/outlined_atomics.rs"));
+// Work around https://github.com/rust-lang/rust/issues/113533
+#[macro_use]
+mod macros {
+    // See `generate_aarch64_outlined_atomics` in build.rs.
+    include!(concat!(env!("OUT_DIR"), "/outlined_atomics.rs"));
+}
+
 foreach_cas!(compare_and_swap);
 foreach_cas16!(compare_and_swap_i128);
 foreach_swp!(swap);
