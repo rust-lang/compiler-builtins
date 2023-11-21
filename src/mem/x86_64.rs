@@ -17,8 +17,9 @@
 // Note that ERMSB does not enhance the backwards (DF=1) "rep movsb".
 
 use core::arch::asm;
-use core::intrinsics;
 use core::mem;
+
+use crate::intrinsics;
 
 #[inline(always)]
 #[cfg(target_feature = "ermsb")]

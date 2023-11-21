@@ -65,7 +65,7 @@ pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, mut n: usize) 
         // cfg needed because not all targets will have atomic loads that can be lowered
         // (e.g. BPF, MSP430), or provided by an external library (e.g. RV32I)
         #[cfg(target_has_atomic_load_store = "ptr")]
-        let mut prev_word = core::intrinsics::atomic_load_unordered(src_aligned);
+        let mut prev_word = crate::intrinsics::atomic_load_unordered(src_aligned);
         #[cfg(not(target_has_atomic_load_store = "ptr"))]
         let mut prev_word = core::ptr::read_volatile(src_aligned);
 

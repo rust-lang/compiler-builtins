@@ -75,7 +75,7 @@ fn zero_div_fn() -> ! {
     // Calling the intrinsic directly, to avoid the `assert_unsafe_precondition` that cannot be used
     // here because it involves non-`inline` functions
     // (https://github.com/rust-lang/compiler-builtins/issues/491).
-    unsafe { core::intrinsics::unreachable() }
+    unsafe { crate::intrinsics::unreachable() }
 }
 
 const USE_LZ: bool = {

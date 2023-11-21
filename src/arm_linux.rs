@@ -1,5 +1,6 @@
-use core::intrinsics;
 use core::mem;
+
+use crate::intrinsics;
 
 // Kernel-provided user-mode helper functions:
 // https://www.kernel.org/doc/Documentation/arm/kernel_user_helpers.txt

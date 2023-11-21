@@ -5,7 +5,8 @@
 #![feature(cfg_target_has_atomic)]
 #![feature(compiler_builtins)]
 #![feature(core_ffi_c)]
-#![feature(core_intrinsics)]
+#![feature(intrinsics)]
+#![feature(rustc_attrs)]
 #![feature(inline_const)]
 #![feature(lang_items)]
 #![feature(linkage)]
@@ -80,3 +81,50 @@ pub mod x86;
 pub mod x86_64;
 
 pub mod probestack;
+
+// `core` is changing the feature name for the `intrinsics` module.
+// To permit that transition, we avoid using that feature for now.
+mod intrinsics {
+    extern "rust-intrinsic" {
+        #[rustc_nounwind]
+        pub fn atomic_load_unordered<T: Copy>(src: *const T) -> T;
+
+        #[rustc_nounwind]
+        pub fn atomic_store_unordered<T: Copy>(dst: *mut T, val: T);
+
+        /// Informs the optimizer that this point in the code is not reachable,
+        /// enabling further optimizations.
+        ///
+        /// N.B., this is very different from the `unreachable!()` macro: Unlike the
+        /// macro, which panics when it is executed, it is *undefined behavior* to
+        /// reach code marked with this function.
+        ///
+        /// The stabilized version of this intrinsic is [`core::hint::unreachable_unchecked`].
+        #[rustc_nounwind]
+        pub fn unreachable() -> !;
+
+        /// Performs an exact division, resulting in undefined behavior where
+        /// `x % y != 0` or `y == 0` or `x == T::MIN && y == -1`
+        ///
+        /// This intrinsic does not have a stable counterpart.
+        #[rustc_nounwind]
+        pub fn exact_div<T: Copy>(x: T, y: T) -> T;
+
+        /// Performs an unchecked division, resulting in undefined behavior
+        /// where `y == 0` or `x == T::MIN && y == -1`
+        ///
+        /// Safe wrappers for this intrinsic are available on the integer
+        /// primitives via the `checked_div` method. For example,
+        /// [`u32::checked_div`]
+        #[rustc_nounwind]
+        pub fn unchecked_div<T: Copy>(x: T, y: T) -> T;
+        /// Returns the remainder of an unchecked division, resulting in
+        /// undefined behavior when `y == 0` or `x == T::MIN && y == -1`
+        ///
+        /// Safe wrappers for this intrinsic are available on the integer
+        /// primitives via the `checked_rem` method. For example,
+        /// [`u32::checked_rem`]
+        #[rustc_nounwind]
+        pub fn unchecked_rem<T: Copy>(x: T, y: T) -> T;
+    }
+}
