@@ -7,6 +7,7 @@ macro_rules! no_mangle {
     ($(fn $fun:ident($($iid:ident : $ity:ty),+) -> $oty:ty;)+) => {
         intrinsics! {
             $(
+                #[cfg_attr(all(not(windows), not(target_vendor="apple")), weak)]
                 pub extern "C" fn $fun($($iid: $ity),+) -> $oty {
                     self::libm::$fun($($iid),+)
                 }
@@ -15,17 +16,6 @@ macro_rules! no_mangle {
     }
 }
 
-#[cfg(any(
-    all(
-        target_family = "wasm",
-        target_os = "unknown",
-        not(target_env = "wasi")
-    ),
-    target_os = "xous",
-    target_os = "uefi",
-    all(target_arch = "xtensa", target_os = "none"),
-    all(target_vendor = "fortanix", target_env = "sgx")
-))]
 no_mangle! {
     fn acos(x: f64) -> f64;
     fn asin(x: f64) -> f64;
@@ -85,51 +75,8 @@ no_mangle! {
     fn cbrtf(n: f32) -> f32;
     fn hypotf(x: f32, y: f32) -> f32;
     fn tanf(n: f32) -> f32;
-}
-
-#[cfg(any(
-    all(
-        target_family = "wasm",
-        target_os = "unknown",
-        not(target_env = "wasi")
-    ),
-    target_os = "xous",
-    target_os = "uefi",
-    all(target_arch = "xtensa", target_os = "none"),
-    all(target_vendor = "fortanix", target_env = "sgx"),
-    target_os = "windows"
-))]
-intrinsics! {
-    pub extern "C" fn lgamma_r(x: f64, s: &mut i32) -> f64 {
-        let r = self::libm::lgamma_r(x);
-        *s = r.1;
-        r.0
-    }
-
-    pub extern "C" fn lgammaf_r(x: f32, s: &mut i32) -> f32 {
-        let r = self::libm::lgammaf_r(x);
-        *s = r.1;
-        r.0
-    }
-}
-
-#[cfg(any(
-    target_os = "xous",
-    target_os = "uefi",
-    all(target_arch = "xtensa", target_os = "none"),
-))]
-no_mangle! {
     fn sqrtf(x: f32) -> f32;
     fn sqrt(x: f64) -> f64;
-}
-
-#[cfg(any(
-    all(target_vendor = "fortanix", target_env = "sgx"),
-    all(target_arch = "xtensa", target_os = "none"),
-    target_os = "xous",
-    target_os = "uefi"
-))]
-no_mangle! {
     fn ceil(x: f64) -> f64;
     fn ceilf(x: f32) -> f32;
     fn floor(x: f64) -> f64;
@@ -138,12 +85,28 @@ no_mangle! {
     fn truncf(x: f32) -> f32;
 }
 
+intrinsics! {
+    #[cfg_attr(all(not(windows), not(target_vendor="apple")), weak)]
+    pub extern "C" fn lgamma_r(x: f64, s: &mut i32) -> f64 {
+        let r = self::libm::lgamma_r(x);
+        *s = r.1;
+        r.0
+    }
+
+    #[cfg_attr(all(not(windows), not(target_vendor="apple")), weak)]
+    pub extern "C" fn lgammaf_r(x: f32, s: &mut i32) -> f32 {
+        let r = self::libm::lgammaf_r(x);
+        *s = r.1;
+        r.0
+    }
+}
+
 // only for the thumb*-none-eabi*, riscv32*-none-elf, x86_64-unknown-none and mips*-unknown-none targets that lack the floating point instruction set
 #[cfg(any(
-    all(target_arch = "arm", target_os = "none"),
-    all(target_arch = "riscv32", not(target_feature = "f"), target_os = "none"),
-    all(target_arch = "x86_64", target_os = "none"),
-    all(target_arch = "mips", target_os = "none"),
+    target_arch = "arm",
+    all(target_arch = "riscv32", not(target_feature = "f")),
+    target_arch = "x86_64",
+    target_arch = "mips",
 ))]
 no_mangle! {
     fn fmin(x: f64, y: f64) -> f64;
