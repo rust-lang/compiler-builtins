@@ -16,6 +16,7 @@ macro_rules! no_mangle {
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 no_mangle! {
     fn acos(x: f64) -> f64;
     fn asin(x: f64) -> f64;
@@ -31,10 +32,6 @@ no_mangle! {
     fn log10f(x: f32) -> f32;
     fn log(x: f64) -> f64;
     fn logf(x: f32) -> f32;
-    fn fmin(x: f64, y: f64) -> f64;
-    fn fminf(x: f32, y: f32) -> f32;
-    fn fmax(x: f64, y: f64) -> f64;
-    fn fmaxf(x: f32, y: f32) -> f32;
     fn round(x: f64) -> f64;
     fn roundf(x: f32) -> f32;
     fn rint(x: f64) -> f64;
@@ -42,8 +39,6 @@ no_mangle! {
     fn sin(x: f64) -> f64;
     fn pow(x: f64, y: f64) -> f64;
     fn powf(x: f32, y: f32) -> f32;
-    fn fmod(x: f64, y: f64) -> f64;
-    fn fmodf(x: f32, y: f32) -> f32;
     fn acosf(n: f32) -> f32;
     fn atan2f(a: f32, b: f32) -> f32;
     fn atanf(n: f32) -> f32;
@@ -75,8 +70,10 @@ no_mangle! {
     fn cbrtf(n: f32) -> f32;
     fn hypotf(x: f32, y: f32) -> f32;
     fn tanf(n: f32) -> f32;
+
     fn sqrtf(x: f32) -> f32;
     fn sqrt(x: f64) -> f64;
+
     fn ceil(x: f64) -> f64;
     fn ceilf(x: f32) -> f32;
     fn floor(x: f64) -> f64;
