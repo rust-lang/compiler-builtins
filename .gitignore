@@ -1,3 +1,5 @@
+/defined_symbols.txt
+/undefined_symbols.txt
 /code.tar.gz
 /compiler-rt
 *.rs.bk

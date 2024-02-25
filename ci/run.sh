@@ -101,7 +101,9 @@ CARGO_PROFILE_RELEASE_LTO=true \
 # Ensure no references to any symbols from core
 for rlib in $(echo $path); do
     set +ex
-    $NM -u $rlib 2>&1 | grep core
+    $NM --quiet -U $rlib | grep 'T _ZN4core' | awk '{print $3}' | sort | uniq > defined_symbols.txt
+    $NM --quiet -u $rlib | grep 'U _ZN4core' | awk '{print $2}' | sort | uniq > undefined_symbols.txt
+    grep -v -F -x -f defined_symbols.txt undefined_symbols.txt
 
     if test $? = 0; then
         exit 1
