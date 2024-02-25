@@ -14,9 +14,13 @@ macro_rules! impl_delegate {
         $uX:ident, // unsigned integer with half the bit width of $uD.
         $uD:ident, // unsigned integer type for the inputs and outputs of `$fn`
         $iD:ident // signed integer type with the same bitwidth as `$uD`
+        $(, $fun_attr:meta)* // attributes for the function
     ) => {
         /// Computes the quotient and remainder of `duo` divided by `div` and returns them as a
         /// tuple.
+        $(
+            #[$fun_attr]
+        )*
         pub fn $fn(duo: $uD, div: $uD) -> ($uD, $uD) {
             // The two possibility algorithm, undersubtracting long division algorithm, or any kind
             // of reciprocal based algorithm will not be fastest, because they involve large

@@ -151,50 +151,62 @@ macro_rules! int_impl_common {
             }
         };
 
+        #[rustc_nounwind]
         fn from_bool(b: bool) -> Self {
             b as $ty
         }
 
+        #[rustc_nounwind]
         fn logical_shr(self, other: u32) -> Self {
             Self::from_unsigned(self.unsigned().wrapping_shr(other))
         }
 
+        #[rustc_nounwind]
         fn is_zero(self) -> bool {
             self == Self::ZERO
         }
 
+        #[rustc_nounwind]
         fn wrapping_neg(self) -> Self {
             <Self>::wrapping_neg(self)
         }
 
+        #[rustc_nounwind]
         fn wrapping_add(self, other: Self) -> Self {
             <Self>::wrapping_add(self, other)
         }
 
+        #[rustc_nounwind]
         fn wrapping_mul(self, other: Self) -> Self {
             <Self>::wrapping_mul(self, other)
         }
 
+        #[rustc_nounwind]
         fn wrapping_sub(self, other: Self) -> Self {
             <Self>::wrapping_sub(self, other)
         }
 
+        #[rustc_nounwind]
         fn wrapping_shl(self, other: u32) -> Self {
             <Self>::wrapping_shl(self, other)
         }
 
+        #[rustc_nounwind]
         fn wrapping_shr(self, other: u32) -> Self {
             <Self>::wrapping_shr(self, other)
         }
 
+        #[rustc_nounwind]
         fn rotate_left(self, other: u32) -> Self {
             <Self>::rotate_left(self, other)
         }
 
+        #[rustc_nounwind]
         fn overflowing_add(self, other: Self) -> (Self, bool) {
             <Self>::overflowing_add(self, other)
         }
 
+        #[rustc_nounwind]
         fn leading_zeros(self) -> u32 {
             <Self>::leading_zeros(self)
         }

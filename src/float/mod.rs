@@ -120,12 +120,15 @@ macro_rules! float_impl {
             const IMPLICIT_BIT: Self::Int = 1 << Self::SIGNIFICAND_BITS;
             const EXPONENT_MASK: Self::Int = !(Self::SIGN_MASK | Self::SIGNIFICAND_MASK);
 
+            #[rustc_nounwind]
             fn repr(self) -> Self::Int {
                 self.to_bits()
             }
+            #[rustc_nounwind]
             fn signed_repr(self) -> Self::SignedInt {
                 self.to_bits() as Self::SignedInt
             }
+            #[rustc_nounwind]
             fn eq_repr(self, rhs: Self) -> bool {
                 if self.is_nan() && rhs.is_nan() {
                     true
@@ -133,21 +136,27 @@ macro_rules! float_impl {
                     self.repr() == rhs.repr()
                 }
             }
+            #[rustc_nounwind]
             fn sign(self) -> bool {
                 self.signed_repr() < Self::SignedInt::ZERO
             }
+            #[rustc_nounwind]
             fn exp(self) -> Self::ExpInt {
                 ((self.to_bits() & Self::EXPONENT_MASK) >> Self::SIGNIFICAND_BITS) as Self::ExpInt
             }
+            #[rustc_nounwind]
             fn frac(self) -> Self::Int {
                 self.to_bits() & Self::SIGNIFICAND_MASK
             }
+            #[rustc_nounwind]
             fn imp_frac(self) -> Self::Int {
                 self.frac() | Self::IMPLICIT_BIT
             }
+            #[rustc_nounwind]
             fn from_repr(a: Self::Int) -> Self {
                 Self::from_bits(a)
             }
+            #[rustc_nounwind]
             fn from_parts(sign: bool, exponent: Self::Int, significand: Self::Int) -> Self {
                 Self::from_repr(
                     ((sign as Self::Int) << (Self::BITS - 1))
@@ -155,6 +164,7 @@ macro_rules! float_impl {
                         | (significand & Self::SIGNIFICAND_MASK),
                 )
             }
+            #[rustc_nounwind]
             fn normalize(significand: Self::Int) -> (i32, Self::Int) {
                 let shift = significand
                     .leading_zeros()
@@ -164,6 +174,7 @@ macro_rules! float_impl {
                     significand << shift as Self::Int,
                 )
             }
+            #[rustc_nounwind]
             fn is_subnormal(self) -> bool {
                 (self.repr() & Self::EXPONENT_MASK) == Self::Int::ZERO
             }

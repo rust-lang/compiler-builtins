@@ -110,7 +110,8 @@ impl_normalization_shift!(
     32,
     u32,
     i32,
-    allow(dead_code)
+    allow(dead_code),
+    rustc_nounwind
 );
 impl_normalization_shift!(
     u64_normalization_shift,
@@ -118,7 +119,8 @@ impl_normalization_shift!(
     64,
     u64,
     i64,
-    allow(dead_code)
+    allow(dead_code),
+    rustc_nounwind
 );
 
 /// Divides `duo` by `div` and returns a tuple of the quotient and the remainder.
@@ -149,7 +151,8 @@ impl_trifecta!(
     32,
     u32,
     u64,
-    u128
+    u128,
+    rustc_nounwind
 );
 
 // If the pointer width less than 64, then the target architecture almost certainly does not have
@@ -168,7 +171,8 @@ impl_delegate!(
     u32,
     u64,
     u128,
-    i128
+    i128,
+    rustc_nounwind
 );
 
 /// Divides `duo` by `div` and returns a tuple of the quotient and the remainder.
@@ -209,7 +213,8 @@ impl_asymmetric!(
     32,
     u32,
     u64,
-    u128
+    u128,
+    rustc_nounwind
 );
 
 /// Divides `duo` by `div` and returns a tuple of the quotient and the remainder.
@@ -241,7 +246,8 @@ impl_delegate!(
     u16,
     u32,
     u64,
-    i64
+    i64,
+    rustc_nounwind
 );
 
 // When not on x86 and the pointer width is 64, use `binary_long`.
@@ -255,7 +261,8 @@ impl_binary_long!(
     u64_normalization_shift,
     64,
     u64,
-    i64
+    i64,
+    rustc_nounwind
 );
 
 /// Divides `duo` by `div` and returns a tuple of the quotient and the remainder.
@@ -296,7 +303,8 @@ impl_asymmetric!(
     16,
     u16,
     u32,
-    u64
+    u64,
+    rustc_nounwind
 );
 
 // 32 bits is the smallest division used by `compiler-builtins`, so we end with binary long division
@@ -307,5 +315,6 @@ impl_binary_long!(
     32,
     u32,
     i32,
-    allow(dead_code)
+    allow(dead_code),
+    rustc_nounwind
 );

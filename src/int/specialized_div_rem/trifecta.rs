@@ -12,9 +12,13 @@ macro_rules! impl_trifecta {
         $uH:ident, // unsigned integer with half the bit width of $uX
         $uX:ident, // unsigned integer with half the bit width of $uD
         $uD:ident // unsigned integer type for the inputs and outputs of `$unsigned_name`
+        $(, $fun_attr:meta)* // attributes for the function
     ) => {
         /// Computes the quotient and remainder of `duo` divided by `div` and returns them as a
         /// tuple.
+        $(
+            #[$fun_attr]
+        )*
         pub fn $fn(duo: $uD, div: $uD) -> ($uD, $uD) {
             // This is called the trifecta algorithm because it uses three main algorithms: short
             // division for small divisors, the two possibility algorithm for large divisors, and an

@@ -304,6 +304,7 @@ pub unsafe fn c_string_length(mut s: *const core::ffi::c_char) -> usize {
 }
 
 /// Determine optimal parameters for a `rep` instruction.
+#[rustc_nounwind]
 fn rep_param(dest: *mut u8, mut count: usize) -> (usize, usize, usize) {
     // Unaligned writes are still slow on modern processors, so align the destination address.
     let pre_byte_count = ((8 - (dest as usize & 0b111)) & 0b111).min(count);

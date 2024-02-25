@@ -14,9 +14,13 @@ macro_rules! impl_asymmetric {
         $uH:ident, // unsigned integer with half the bit width of $uX
         $uX:ident, // unsigned integer with half the bit width of $uD
         $uD:ident // unsigned integer type for the inputs and outputs of `$fn`
+        $(, $fun_attr:meta)* // attributes for the function
     ) => {
         /// Computes the quotient and remainder of `duo` divided by `div` and returns them as a
         /// tuple.
+        $(
+            #[$fun_attr]
+        )*
         pub fn $fn(duo: $uD, div: $uD) -> ($uD, $uD) {
             let n: u32 = $n_h * 2;
 

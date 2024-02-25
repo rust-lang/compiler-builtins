@@ -5,6 +5,7 @@
 ///
 /// The algorithm is explained here: <https://blog.m-ou.se/floats/>
 mod int_to_float {
+    #[rustc_nounwind]
     pub fn u32_to_f32_bits(i: u32) -> u32 {
         if i == 0 {
             return 0;
@@ -17,6 +18,7 @@ mod int_to_float {
         (e << 23) + m // + not |, so the mantissa can overflow into the exponent.
     }
 
+    #[rustc_nounwind]
     pub fn u32_to_f64_bits(i: u32) -> u64 {
         if i == 0 {
             return 0;
@@ -27,6 +29,7 @@ mod int_to_float {
         (e << 52) + m // Bit 53 of m will overflow into e.
     }
 
+    #[rustc_nounwind]
     pub fn u64_to_f32_bits(i: u64) -> u32 {
         let n = i.leading_zeros();
         let y = i.wrapping_shl(n);
@@ -37,6 +40,7 @@ mod int_to_float {
         (e << 23) + m // + not |, so the mantissa can overflow into the exponent.
     }
 
+    #[rustc_nounwind]
     pub fn u64_to_f64_bits(i: u64) -> u64 {
         if i == 0 {
             return 0;
@@ -49,6 +53,7 @@ mod int_to_float {
         (e << 52) + m // + not |, so the mantissa can overflow into the exponent.
     }
 
+    #[rustc_nounwind]
     pub fn u128_to_f32_bits(i: u128) -> u32 {
         let n = i.leading_zeros();
         let y = i.wrapping_shl(n);
@@ -59,6 +64,7 @@ mod int_to_float {
         (e << 23) + m // + not |, so the mantissa can overflow into the exponent.
     }
 
+    #[rustc_nounwind]
     pub fn u128_to_f64_bits(i: u128) -> u64 {
         let n = i.leading_zeros();
         let y = i.wrapping_shl(n);

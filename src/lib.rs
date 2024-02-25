@@ -12,6 +12,7 @@
 #![feature(linkage)]
 #![feature(naked_functions)]
 #![feature(repr_simd)]
+#![feature(rustc_attrs)]
 #![no_builtins]
 #![no_std]
 #![allow(unused_features)]
