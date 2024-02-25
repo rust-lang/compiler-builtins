@@ -80,10 +80,13 @@ rm -f $path
 
 # Verify that we haven't drop any intrinsic/symbol
 build_intrinsics="$cargo build --target $1 -v --example intrinsics"
-RUSTFLAGS="-C debug-assertions=no" $build_intrinsics
-RUSTFLAGS="-C debug-assertions=no" $build_intrinsics --release
-RUSTFLAGS="-C debug-assertions=no" $build_intrinsics --features c
-RUSTFLAGS="-C debug-assertions=no" $build_intrinsics --features c --release
+# Match the behavior with 
+# https://github.com/rust-lang/rust/blob/e49442bf9815a67e68f9d9f2f80560ec1d754b31/Cargo.toml#L66-L86.
+export RUSTFLAGS="-C debug-assertions=no -C overflow-checks=no -C codegen-units=10000"
+$build_intrinsics
+$build_intrinsics --release
+$build_intrinsics --features c
+$build_intrinsics --features c --release
 
 # Verify that there are no undefined symbols to `panic` within our
 # implementations
@@ -97,6 +100,7 @@ if [ -z "$DEBUG_LTO_BUILD_DOESNT_WORK" ]; then
 fi
 CARGO_PROFILE_RELEASE_LTO=true \
   $cargo rustc --features "$INTRINSICS_FEATURES" --target $1 --example intrinsics --release
+unset RUSTFLAGS
 
 # Ensure no references to any symbols from core
 for rlib in $(echo $path); do
