@@ -42,9 +42,9 @@ if [ "$NM" = "" ]; then
 fi
 
 if [ -d /target ]; then
-    path=/target/${1}/debug/deps/libcompiler_builtins-*.rlib
+    path=/target/${1}/release/deps/libcompiler_builtins-*.rlib
 else
-    path=target/${1}/debug/deps/libcompiler_builtins-*.rlib
+    path=target/${1}/release/deps/libcompiler_builtins-*.rlib
 fi
 
 # Look out for duplicated symbols when we include the compiler-rt (C) implementation
@@ -93,15 +93,15 @@ if [ -z "$DEBUG_LTO_BUILD_DOESNT_WORK" ]; then
   RUSTFLAGS="-C debug-assertions=no" \
     CARGO_INCREMENTAL=0 \
     CARGO_PROFILE_DEV_LTO=true \
-    $cargo rustc --features "$INTRINSICS_FEATURES" --target $1 --example intrinsics
+    $cargo rustc --features "$INTRINSICS_FEATURES" --target $1 --example intrinsics --release
 fi
 CARGO_PROFILE_RELEASE_LTO=true \
   $cargo rustc --features "$INTRINSICS_FEATURES" --target $1 --example intrinsics --release
 
-# Ensure no references to a panicking function
+# Ensure no references to any symbols from core
 for rlib in $(echo $path); do
     set +ex
-    $NM -u $rlib 2>&1 | grep panicking
+    $NM -u $rlib 2>&1 | grep core
 
     if test $? = 0; then
         exit 1
