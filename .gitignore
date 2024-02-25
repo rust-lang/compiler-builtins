@@ -1,3 +1,5 @@
+/code.tar.gz
+/compiler-rt
 *.rs.bk
 Cargo.lock
 target
