@@ -45,6 +45,8 @@ esac
 NM=$(find $(rustc --print sysroot) \( -name llvm-nm -o -name llvm-nm.exe \) )
 if [ "$NM" = "" ]; then
   NM=${PREFIX}nm
+elif [ -n "$2" ]; then
+  NM="rustup run $2 $NM"
 fi
 
 # Look out for duplicated symbols when we include the compiler-rt (C) implementation
