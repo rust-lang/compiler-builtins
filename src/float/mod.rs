@@ -59,7 +59,7 @@ pub(crate) trait Float:
     /// A mask for the significand
     const SIGNIFICAND_MASK: Self::Int;
 
-    // The implicit bit of the float format
+    /// The implicit bit of the float format
     const IMPLICIT_BIT: Self::Int;
 
     /// A mask for the exponent

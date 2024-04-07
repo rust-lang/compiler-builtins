@@ -2,6 +2,7 @@
 #![cfg_attr(not(feature = "no-asm"), feature(asm))]
 #![feature(abi_unadjusted)]
 #![feature(asm_experimental_arch)]
+#![feature(c_unwind)]
 #![cfg_attr(not(feature = "no-asm"), feature(global_asm))]
 #![feature(cfg_target_has_atomic)]
 #![feature(compiler_builtins)]

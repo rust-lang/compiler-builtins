@@ -914,6 +914,15 @@ intrinsics! {
         div64(a, b)
     }
 
+    // TODO: how should `HInt` be handled?
+    pub extern "C" fn __divtf3(a: f128, b: f128) -> f128 {
+        if cfg!(target_pointer_width = "64") {
+            div32(a, b)
+        } else {
+            div64(a, b)
+        }
+    }
+
     #[cfg(target_arch = "arm")]
     pub extern "C" fn __divsf3vfp(a: f32, b: f32) -> f32 {
         a / b

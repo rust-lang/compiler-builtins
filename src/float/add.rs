@@ -203,6 +203,10 @@ intrinsics! {
         add(a, b)
     }
 
+    pub extern "C" fn __addtf3(a: f128, b: f128) -> f128 {
+        add(a, b)
+    }
+
     #[cfg(target_arch = "arm")]
     pub extern "C" fn __addsf3vfp(a: f32, b: f32) -> f32 {
         a + b

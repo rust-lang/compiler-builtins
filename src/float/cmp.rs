@@ -170,6 +170,41 @@ intrinsics! {
     pub extern "C" fn __gtdf2(a: f64, b: f64) -> i32 {
         cmp(a, b).to_ge_abi()
     }
+
+    #[avr_skip]
+    pub extern "C" fn __letf2(a: f128, b: f128) -> i32 {
+        cmp(a, b).to_le_abi()
+    }
+
+    #[avr_skip]
+    pub extern "C" fn __getf2(a: f128, b: f128) -> i32 {
+        cmp(a, b).to_ge_abi()
+    }
+
+    #[avr_skip]
+    pub extern "C" fn __unordtf2(a: f128, b: f128) -> i32 {
+        unord(a, b) as i32
+    }
+
+    #[avr_skip]
+    pub extern "C" fn __eqtf2(a: f128, b: f128) -> i32 {
+        cmp(a, b).to_le_abi()
+    }
+
+    #[avr_skip]
+    pub extern "C" fn __lttf2(a: f128, b: f128) -> i32 {
+        cmp(a, b).to_le_abi()
+    }
+
+    #[avr_skip]
+    pub extern "C" fn __netf2(a: f128, b: f128) -> i32 {
+        cmp(a, b).to_le_abi()
+    }
+
+    #[avr_skip]
+    pub extern "C" fn __gttf2(a: f128, b: f128) -> i32 {
+        cmp(a, b).to_ge_abi()
+    }
 }
 
 #[cfg(target_arch = "arm")]

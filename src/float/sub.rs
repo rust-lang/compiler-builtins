@@ -1,5 +1,6 @@
 use crate::float::add::__adddf3;
 use crate::float::add::__addsf3;
+use crate::float::add::__addtf3;
 use crate::float::Float;
 
 intrinsics! {
@@ -13,6 +14,10 @@ intrinsics! {
     #[arm_aeabi_alias = __aeabi_dsub]
     pub extern "C" fn __subdf3(a: f64, b: f64) -> f64 {
         __adddf3(a, f64::from_repr(b.repr() ^ f64::SIGN_MASK))
+    }
+
+    pub extern "C" fn __subtf3(a: f128, b: f128) -> f128 {
+        __addtf3(a, f128::from_repr(b.repr() ^ f128::SIGN_MASK))
     }
 
     #[cfg(target_arch = "arm")]

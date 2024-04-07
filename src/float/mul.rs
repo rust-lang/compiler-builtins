@@ -199,6 +199,10 @@ intrinsics! {
         mul(a, b)
     }
 
+    pub extern "C" fn __multf3(a: f128, b: f128) -> f128 {
+        mul(a, b)
+    }
+
     #[cfg(target_arch = "arm")]
     pub extern "C" fn __mulsf3vfp(a: f32, b: f32) -> f32 {
         a * b
