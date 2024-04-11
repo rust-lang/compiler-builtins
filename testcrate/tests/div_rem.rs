@@ -1,8 +1,12 @@
 #![allow(unused_macros)]
+#![feature(f128)]
+#![feature(f16)]
 
 use compiler_builtins::int::sdiv::{__divmoddi4, __divmodsi4, __divmodti4};
 use compiler_builtins::int::udiv::{__udivmoddi4, __udivmodsi4, __udivmodti4, u128_divide_sparc};
 use testcrate::*;
+
+compiler_builtins::set_val_callback!();
 
 // Division algorithms have by far the nastiest and largest number of edge cases, and experience shows
 // that sometimes 100_000 iterations of the random fuzzer is needed.
@@ -107,12 +111,15 @@ macro_rules! float {
     ($($i:ty, $fn:ident);*;) => {
         $(
             fuzz_float_2(N, |x: $i, y: $i| {
+                dbg!(x, y);
                 let quo0 = x / y;
+                dbg!(quo0);
                 let quo1: $i = $fn(x, y);
+                dbg!(quo1);
                 #[cfg(not(target_arch = "arm"))]
                 if !Float::eq_repr(quo0, quo1) {
                     panic!(
-                        "{}({}, {}): std: {}, builtins: {}",
+                        "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
                         stringify!($fn), x, y, quo0, quo1
                     );
                 }
@@ -122,7 +129,7 @@ macro_rules! float {
                 if !(Float::is_subnormal(quo0) || Float::is_subnormal(quo1)) {
                     if !Float::eq_repr(quo0, quo1) {
                         panic!(
-                            "{}({}, {}): std: {}, builtins: {}",
+                            "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
                             stringify!($fn), x, y, quo0, quo1
                         );
                     }
@@ -144,6 +151,24 @@ fn float_div() {
         f32, __divsf3;
         f64, __divdf3;
     );
+}
+
+#[cfg(not(feature = "no-sys-f128"))]
+#[test]
+fn float_div_f128() {
+    use compiler_builtins::float::{div::__divtf3, Float};
+
+    float!(
+        f128, __divtf3;
+    );
+}
+
+#[test]
+fn div_failures() {
+    use compiler_builtins::float::{div::__divtf3, Float};
+    let a = f128::from_bits(0x1);
+    let b = f128::from_bits(0x1);
+    dbg!(__divtf3(a, b));
 }
 
 #[cfg(target_arch = "arm")]

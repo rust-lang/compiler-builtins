@@ -1,4 +1,6 @@
 #![allow(unused_macros)]
+#![feature(f128)]
+#![feature(f16)]
 
 use testcrate::*;
 
@@ -16,7 +18,10 @@ macro_rules! cmp {
             };
             let cmp1 = $fn($x, $y);
             if cmp0 != cmp1 {
-                panic!("{}({}, {}): std: {}, builtins: {}", stringify!($fn_builtins), $x, $y, cmp0, cmp1);
+                panic!(
+                    "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
+                    stringify!($fn_builtins), $x, $y, cmp0, cmp1
+                );
             }
         )*
     };
@@ -51,6 +56,26 @@ fn float_comparisons() {
             -1, __gedf2;
             -1, __gtdf2;
             1, __nedf2;
+        );
+    });
+}
+
+#[cfg(not(feature = "no-sys-f128"))]
+#[test]
+fn float_comparisons_f128() {
+    use compiler_builtins::float::cmp::{
+        __eqtf2, __getf2, __gttf2, __letf2, __lttf2, __netf2, __unordtf2,
+    };
+
+    fuzz_float_2(N, |x: f128, y: f128| {
+        assert_eq!(__unordtf2(x, y) != 0, x.is_nan() || y.is_nan());
+        cmp!(x, y,
+            1, __lttf2;
+            1, __letf2;
+            1, __eqtf2;
+            -1, __getf2;
+            -1, __gttf2;
+            1, __netf2;
         );
     });
 }

@@ -1,4 +1,6 @@
 #![allow(unused_macros)]
+#![feature(f128)]
+#![feature(f16)]
 
 use testcrate::*;
 
@@ -91,7 +93,7 @@ macro_rules! float_mul {
                 if !(Float::is_subnormal(mul0) || Float::is_subnormal(mul1)) {
                     if !Float::eq_repr(mul0, mul1) {
                         panic!(
-                            "{}({}, {}): std: {}, builtins: {}",
+                            "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
                             stringify!($fn), x, y, mul0, mul1
                         );
                     }
@@ -112,6 +114,16 @@ fn float_mul() {
     float_mul!(
         f32, __mulsf3;
         f64, __muldf3;
+    );
+}
+
+#[test]
+#[cfg(not(feature = "no-sys-f128"))]
+fn float_mul_f128() {
+    use compiler_builtins::float::{mul::__multf3, Float};
+
+    float_mul!(
+        f128, __multf3;
     );
 }
 

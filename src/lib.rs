@@ -44,6 +44,21 @@ extern crate core;
 
 #[macro_use]
 mod macros;
+macro_rules! vdbg {
+    ($val:expr $(,)?) => {
+        // Use of `match` here is intentional because it affects the lifetimes
+        // of temporaries - https://stackoverflow.com/a/48732525/1063961
+        match $val {
+            tmp => {
+                $crate::write_val(
+                    tmp,
+                    concat!("[", file!(), ":", line!(), "] ", stringify!($val), " = "),
+                );
+                tmp
+            }
+        }
+    };
+}
 
 pub mod float;
 pub mod int;
@@ -80,3 +95,45 @@ pub mod x86;
 pub mod x86_64;
 
 pub mod probestack;
+
+// Hacky way to print values since we don't have `std` for the crate
+mod val_print {
+    extern "C" {
+        fn print_callback(val_ptr: *const u8, val_sz: usize, name_ptr: *const u8, name_len: usize);
+    }
+
+    pub fn write_val<T: Copy>(val: T, name: &str) {
+        unsafe {
+            print_callback(
+                core::ptr::addr_of!(val).cast(),
+                core::mem::size_of::<T>(),
+                name.as_ptr(),
+                name.len(),
+            )
+        };
+    }
+}
+
+pub use val_print::write_val;
+
+#[macro_export]
+macro_rules! set_val_callback {
+    () => {
+        #[no_mangle]
+        unsafe extern "C" fn print_callback(
+            val_ptr: *const u8,
+            val_sz: usize,
+            name_ptr: *const u8,
+            name_len: usize,
+        ) {
+            let val = unsafe { core::slice::from_raw_parts(val_ptr, val_sz) };
+            let name_slice = unsafe { core::slice::from_raw_parts(name_ptr, name_len) };
+            let name = core::str::from_utf8(name_slice).unwrap();
+            print!("{}: 0x", name);
+            for byte in val.iter().rev() {
+                print!("{:02x}", byte);
+            }
+            println!();
+        }
+    };
+}
