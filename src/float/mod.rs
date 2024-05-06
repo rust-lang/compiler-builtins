@@ -13,7 +13,7 @@ pub mod sub;
 pub mod trunc;
 
 /// Wrapper to extract the integer type half of the float's size
-pub(crate) type HalfRep<F: Float> = <F::Int as DInt>::H;
+pub(crate) type HalfRep<F> = <<F as Float>::Int as DInt>::H;
 
 public_test_dep! {
 /// Trait for some basic operations on floats

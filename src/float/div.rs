@@ -7,6 +7,62 @@ use crate::int::{CastInto, DInt, HInt, Int, MinInt};
 
 use super::HalfRep;
 
+/// Configuration for division on the 64-bit implementation
+trait DivIterations64: Float
+where
+    u16: CastInto<Self::Int>,
+{
+    const NUMBER_OF_HALF_ITERATIONS: usize;
+    const NUMBER_OF_FULL_ITERATIONS: usize;
+    const USE_NATIVE_FULL_ITERATIONS: bool = false;
+
+    fn reciprocal_precision() -> Self::Int {
+        let precision: u16 = const {
+            if Self::BITS == 32
+                && Self::NUMBER_OF_HALF_ITERATIONS == 2
+                && Self::NUMBER_OF_FULL_ITERATIONS == 1
+            {
+                74
+            } else if Self::BITS == 32
+                && Self::NUMBER_OF_HALF_ITERATIONS == 0
+                && Self::NUMBER_OF_FULL_ITERATIONS == 3
+            {
+                10
+            } else if Self::BITS == 64
+                && Self::NUMBER_OF_HALF_ITERATIONS == 3
+                && Self::NUMBER_OF_FULL_ITERATIONS == 1
+            {
+                220
+            } else if Self::BITS == 128
+                && Self::NUMBER_OF_HALF_ITERATIONS == 4
+                && Self::NUMBER_OF_FULL_ITERATIONS == 1
+            {
+                13922
+            } else {
+                panic!("invalid iterations for the specified bits");
+            }
+        };
+
+        precision.cast()
+    }
+}
+
+impl DivIterations64 for f32 {
+    const NUMBER_OF_HALF_ITERATIONS: usize = 0;
+    const NUMBER_OF_FULL_ITERATIONS: usize = 3;
+}
+
+impl DivIterations64 for f64 {
+    const NUMBER_OF_HALF_ITERATIONS: usize = 3;
+    const NUMBER_OF_FULL_ITERATIONS: usize = 1;
+}
+
+#[cfg(not(feature = "no-f16-f128"))]
+impl DivIterations64 for f128 {
+    const NUMBER_OF_HALF_ITERATIONS: usize = 4;
+    const NUMBER_OF_FULL_ITERATIONS: usize = 1;
+}
+
 fn div32<F: Float>(a: F, b: F) -> F
 where
     u32: CastInto<F::Int>,
@@ -461,24 +517,22 @@ where
 
 fn div64<F: Float>(a: F, b: F) -> F
 where
-    u32: CastInto<F::Int>,
+    F: DivIterations64,
     F::Int: CastInto<u32>,
-    i32: CastInto<F::Int>,
     F::Int: CastInto<i32>,
-    u64: CastInto<F::Int>,
-    u64: CastInto<HalfRep<F>>,
     F::Int: CastInto<HalfRep<F>>,
     F::Int: From<HalfRep<F>>,
     F::Int: From<u8>,
     F::Int: CastInto<u64>,
-    i64: CastInto<F::Int>,
     F::Int: CastInto<i64>,
     F::Int: HInt + DInt,
+    u16: CastInto<F::Int>,
+    i32: CastInto<F::Int>,
+    i64: CastInto<F::Int>,
+    u32: CastInto<F::Int>,
+    u64: CastInto<F::Int>,
+    u64: CastInto<HalfRep<F>>,
 {
-    const NUMBER_OF_HALF_ITERATIONS: usize = 3;
-    const NUMBER_OF_FULL_ITERATIONS: usize = 1;
-    const USE_NATIVE_FULL_ITERATIONS: bool = false;
-
     let one = F::Int::ONE;
     let zero = F::Int::ZERO;
     let hw = F::BITS / 2;
@@ -625,7 +679,7 @@ where
     // rounding, so error estimations have to be computed taking the selected
     // mode into account!
 
-    let mut x_uq0 = if NUMBER_OF_HALF_ITERATIONS > 0 {
+    let mut x_uq0 = if F::NUMBER_OF_HALF_ITERATIONS > 0 {
         // Starting with (n-1) half-width iterations
         let b_uq1_hw: HalfRep<F> = CastInto::<HalfRep<F>>::cast(
             CastInto::<u64>::cast(b_significand) >> (significand_bits + 1 - hw),
@@ -666,7 +720,7 @@ where
             // On (1/b, 1], g(x) > 0 <=> f(x) < x
             //
             // For half-width iterations, b_hw is used instead of b.
-            for _ in 0..NUMBER_OF_HALF_ITERATIONS {
+            for _ in 0..F::NUMBER_OF_HALF_ITERATIONS {
                 // corr_UQ1_hw can be **larger** than 2 - b_hw*x by at most 1*Ulp
                 // of corr_UQ1_hw.
                 // "0.0 - (...)" is equivalent to "2.0 - (...)" in UQ1.(HW-1).
@@ -778,8 +832,8 @@ where
         x_uq0
     };
 
-    let mut x_uq0 = if USE_NATIVE_FULL_ITERATIONS {
-        for _ in 0..NUMBER_OF_FULL_ITERATIONS {
+    let mut x_uq0 = if F::USE_NATIVE_FULL_ITERATIONS {
+        for _ in 0..F::NUMBER_OF_FULL_ITERATIONS {
             let corr_uq1: u64 = 0.wrapping_sub(
                 (CastInto::<u64>::cast(x_uq0) * (CastInto::<u64>::cast(b_uq1))) >> F::BITS,
             );
@@ -816,20 +870,7 @@ where
 
     // Add 2 to U_N due to final decrement.
 
-    let reciprocal_precision: F::Int = if F::BITS == 32
-        && NUMBER_OF_HALF_ITERATIONS == 2
-        && NUMBER_OF_FULL_ITERATIONS == 1
-    {
-        74.cast()
-    } else if F::BITS == 32 && NUMBER_OF_HALF_ITERATIONS == 0 && NUMBER_OF_FULL_ITERATIONS == 3 {
-        10.cast()
-    } else if F::BITS == 64 && NUMBER_OF_HALF_ITERATIONS == 3 && NUMBER_OF_FULL_ITERATIONS == 1 {
-        220.cast()
-    } else if F::BITS == 128 && NUMBER_OF_HALF_ITERATIONS == 4 && NUMBER_OF_FULL_ITERATIONS == 1 {
-        13922.cast()
-    } else {
-        panic!("invalid iterations for the specified bits");
-    };
+    let reciprocal_precision: F::Int = F::reciprocal_precision();
 
     // Suppose 1/b - P * 2^-W < x < 1/b + P * 2^-W
     let x_uq0 = x_uq0 - reciprocal_precision;
@@ -898,7 +939,7 @@ where
     // r = a - b * q
     let abs_result = if written_exponent > 0 {
         let mut ret = quotient & significand_mask;
-        ret |= ((written_exponent as u64) << significand_bits).cast();
+        ret |= written_exponent.cast() << significand_bits;
         residual <<= 1;
         ret
     } else {
