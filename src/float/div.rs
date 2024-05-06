@@ -985,6 +985,7 @@ intrinsics! {
         div64(a, b)
     }
 
+    #[cfg(not(feature = "no-f16-f128"))]
     pub extern "C" fn __divtf3(a: f128, b: f128) -> f128 {
         div64(a, b)
     }

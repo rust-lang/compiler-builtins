@@ -199,6 +199,7 @@ intrinsics! {
         mul(a, b)
     }
 
+    #[cfg(not(feature = "no-f16-f128"))]
     pub extern "C" fn __multf3(a: f128, b: f128) -> f128 {
         mul(a, b)
     }

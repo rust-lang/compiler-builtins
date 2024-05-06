@@ -16,6 +16,7 @@ intrinsics! {
         __adddf3(a, f64::from_repr(b.repr() ^ f64::SIGN_MASK))
     }
 
+    #[cfg(not(feature = "no-f16-f128"))]
     pub extern "C" fn __subtf3(a: f128, b: f128) -> f128 {
         __addtf3(a, f128::from_repr(b.repr() ^ f128::SIGN_MASK))
     }

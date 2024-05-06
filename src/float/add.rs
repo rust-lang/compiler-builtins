@@ -203,6 +203,7 @@ intrinsics! {
         add(a, b)
     }
 
+    #[cfg(not(feature = "no-f16-f128"))]
     pub extern "C" fn __addtf3(a: f128, b: f128) -> f128 {
         add(a, b)
     }
