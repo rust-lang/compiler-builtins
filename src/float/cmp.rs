@@ -170,7 +170,10 @@ intrinsics! {
     pub extern "C" fn __gtdf2(a: f64, b: f64) -> i32 {
         cmp(a, b).to_ge_abi()
     }
+}
 
+#[cfg(not(feature = "no-f16-f128"))]
+intrinsics! {
     #[avr_skip]
     pub extern "C" fn __letf2(a: f128, b: f128) -> i32 {
         cmp(a, b).to_le_abi()
