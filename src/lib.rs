@@ -13,7 +13,6 @@
 #![feature(linkage)]
 #![feature(naked_functions)]
 #![feature(repr_simd)]
-#![feature(c_unwind)]
 #![cfg_attr(not(feature = "no-f16-f128"), feature(f16))]
 #![cfg_attr(not(feature = "no-f16-f128"), feature(f128))]
 #![no_builtins]
