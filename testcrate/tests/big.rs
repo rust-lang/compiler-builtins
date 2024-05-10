@@ -1,4 +1,4 @@
-use compiler_builtins::int::{i256, u256, HInt, Int, MinInt};
+use compiler_builtins::int::{i256, u256, HInt, MinInt};
 
 const LOHI_SPLIT: u128 = 0xaaaaaaaaaaaaaaaaffffffffffffffff;
 

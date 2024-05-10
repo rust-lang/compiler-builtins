@@ -2,6 +2,7 @@
 #![feature(f128)]
 #![feature(f16)]
 
+use core::ops::Mul;
 use testcrate::*;
 
 macro_rules! mul {
@@ -84,10 +85,10 @@ fn overflowing_mul() {
 }
 
 macro_rules! float_mul {
-    ($($f:ty, $fn:ident);*;) => {
+    ($($f:ty, $fn:ident, $apfloat_ty:ident, $sys_available:meta);*;) => {
         $(
             fuzz_float_2(N, |x: $f, y: $f| {
-                let mul0 = x * y;
+                let mul0 = apfloat_fallback!($f, $apfloat_ty, x, y, Mul::mul, $sys_available);
                 let mul1: $f = $fn(x, y);
                 // multiplication of subnormals is not currently handled
                 if !(Float::is_subnormal(mul0) || Float::is_subnormal(mul1)) {
@@ -112,19 +113,18 @@ fn float_mul() {
     };
 
     float_mul!(
-        f32, __mulsf3;
-        f64, __muldf3;
+        f32, __mulsf3, Single, all();
+        f64, __muldf3, Double, all();
     );
-}
 
-#[test]
-#[cfg(not(feature = "no-sys-f128"))]
-fn float_mul_f128() {
-    use compiler_builtins::float::{mul::__multf3, Float};
+    #[cfg(not(feature = "no-f16-f128"))]
+    {
+        use compiler_builtins::float::mul::__multf3;
 
-    float_mul!(
-        f128, __multf3;
-    );
+        float_mul!(
+            f128, __multf3, Quad, not(feature = "no-sys-f128");
+        );
+    }
 }
 
 #[cfg(target_arch = "arm")]
@@ -136,7 +136,7 @@ fn float_mul_arm() {
     };
 
     float_mul!(
-        f32, __mulsf3vfp;
-        f64, __muldf3vfp;
+        f32, __mulsf3vfp, Single, all();
+        f64, __muldf3vfp, Double, all();
     );
 }

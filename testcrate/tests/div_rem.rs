@@ -2,10 +2,10 @@
 #![feature(f128)]
 #![feature(f16)]
 
+use core::ops::Div;
+
 use compiler_builtins::int::sdiv::{__divmoddi4, __divmodsi4, __divmodti4};
 use compiler_builtins::int::udiv::{__udivmoddi4, __udivmodsi4, __udivmodti4, u128_divide_sparc};
-use rustc_apfloat::ieee::{Double, Single};
-use rustc_apfloat::{Float as _, FloatConvert as _};
 
 use testcrate::*;
 
@@ -111,10 +111,10 @@ fn divide_sparc() {
 }
 
 macro_rules! float {
-    ($($f:ty, $fn:ident, $apfloat_ty:ty, $sys_available:meta);*;) => {
+    ($($f:ty, $fn:ident, $apfloat_ty:ident, $sys_available:meta);*;) => {
         $(
             fuzz_float_2(N, |x: $f, y: $f| {
-                let quo0: $f = apfloat_fallback!($f, $apfloat_ty, x, /, y, $sys_available);
+                let quo0: $f = apfloat_fallback!($f, $apfloat_ty, x, y, Div::div, $sys_available);
                 let quo1: $f = $fn(x, y);
                 #[cfg(not(target_arch = "arm"))]
                 if !Float::eq_repr(quo0, quo1) {
@@ -163,7 +163,6 @@ fn float_div() {
     #[cfg(not(feature = "no-f16-f128"))]
     {
         use compiler_builtins::float::div::__divtf3;
-        use rustc_apfloat::ieee::Quad;
 
         float!(
             f128, __divtf3, Quad, not(feature = "no-sys-f128");
@@ -189,7 +188,7 @@ fn float_div_arm() {
     };
 
     float!(
-        f32, __divsf3vfp;
-        f64, __divdf3vfp;
+        f32, __divsf3vfp, Single, all();
+        f64, __divdf3vfp, Double, all();
     );
 }

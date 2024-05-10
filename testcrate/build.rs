@@ -9,7 +9,6 @@ fn main() {
         || target.contains("apple-darwin")
         || target.contains("windows-msvc")
     {
-        println!("cargo:warning=skipping `f128` tests; system does not have relevant symbols");
         println!("cargo:rustc-cfg=feature=\"no-sys-f128\"");
     }
 }

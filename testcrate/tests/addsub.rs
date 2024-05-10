@@ -2,6 +2,7 @@
 #![feature(f128)]
 #![feature(f16)]
 
+use core::ops::{Add, Sub};
 use testcrate::*;
 
 macro_rules! sum {
@@ -73,11 +74,11 @@ fn addsub() {
 }
 
 macro_rules! float_sum {
-    ($($f:ty, $fn_add:ident, $fn_sub:ident, $apfloat_ty:ty, $sys_available:meta);*;) => {
+    ($($f:ty, $fn_add:ident, $fn_sub:ident, $apfloat_ty:ident, $sys_available:meta);*;) => {
         $(
             fuzz_float_2(N, |x: $f, y: $f| {
-                let add0 = apfloat_fallback!($f, $apfloat_ty, x, +, y, $sys_available);
-                let sub0 = apfloat_fallback!($f, $apfloat_ty, x, -, y, $sys_available);
+                let add0 = apfloat_fallback!($f, $apfloat_ty, x, y, Add::add, $sys_available);
+                let sub0 = apfloat_fallback!($f, $apfloat_ty, x, y, Sub::sub, $sys_available);
                 let add1: $f = $fn_add(x, y);
                 let sub1: $f = $fn_sub(x, y);
                 if !Float::eq_repr(add0, add1) {
@@ -114,8 +115,6 @@ fn float_addsub() {
     #[cfg(not(feature = "no-f16-f128"))]
     {
         use compiler_builtins::float::{add::__addtf3, sub::__subtf3, Float};
-        use rustc_apfloat::ieee::Quad;
-        use rustc_apfloat::{Float as _, FloatConvert as _};
 
         float_sum!(
             f128, __addtf3, __subtf3, Quad, not(feature = "no-sys-f128");
@@ -133,7 +132,7 @@ fn float_addsub_arm() {
     };
 
     float_sum!(
-        f32, __addsf3vfp, __subsf3vfp;
-        f64, __adddf3vfp, __subdf3vfp;
+        f32, __addsf3vfp, __subsf3vfp, Single, all();
+        f64, __adddf3vfp, __subdf3vfp, Double, all();
     );
 }
