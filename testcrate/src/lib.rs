@@ -263,3 +263,35 @@ pub fn fuzz_float_2<F: Float, E: Fn(F, F)>(n: u32, f: E) {
         f(x, y)
     }
 }
+
+#[macro_export]
+macro_rules! to_apfloat {
+    ($apfloat_ty:ty, $val:expr) => {
+        <$apfloat_ty>::from_bits($val.to_bits().into())
+    };
+}
+
+#[macro_export]
+macro_rules! from_apfloat {
+    ($float_ty:ty, $val:expr) => {
+        <$float_ty>::from_bits($val.to_bits().try_into().unwrap())
+    };
+}
+
+/// Expect a status from a `StatusAnd`. Defaults to OK
+#[macro_export]
+macro_rules! apfloat_expect {
+    // Discard the status
+    ($val:expr, Ignore) => {
+        $val.value
+    };
+
+    ($val:expr) => {
+        apfloat_expect!($val, rustc_apfloat::Status::OK)
+    };
+
+    ($val:expr, $expected_status:expr) => {{
+        assert_eq!($val.status, $expected_status, "from value {}", $val.value);
+        $val.value
+    }};
+}
