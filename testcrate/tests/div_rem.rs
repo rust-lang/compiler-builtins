@@ -4,6 +4,9 @@
 
 use compiler_builtins::int::sdiv::{__divmoddi4, __divmodsi4, __divmodti4};
 use compiler_builtins::int::udiv::{__udivmoddi4, __udivmodsi4, __udivmodti4, u128_divide_sparc};
+use rustc_apfloat::ieee::{Double, Single};
+use rustc_apfloat::{Float as _, FloatConvert as _};
+
 use testcrate::*;
 
 compiler_builtins::set_val_callback!();
@@ -108,46 +111,39 @@ fn divide_sparc() {
 }
 
 macro_rules! float {
-    ($($f:ty, $fn:ident);*;) => {
-        $( float!(@inner $f, $fn, |x, y| x / y); )*
-    };
-
-    ($($f:ty, $fn:ident, $apfloat_ty:ty);*;) => {
+    ($($f:ty, $fn:ident, $apfloat_ty:ty, $sys_available:meta);*;) => {
         $(
-            float!(
-                @inner $f,
-                $fn,
-                |x: $f, y: $f| from_apfloat!(
-                    $f,
-                    apfloat_expect!(to_apfloat!($apfloat_ty, x) / to_apfloat!($apfloat_ty, y), Ignore)
-                ),
-            );
-        )*
-    };
-
-    (@inner $f:ty, $fn:ident, $div_expr:expr $(,)?) => {
-        fuzz_float_2(N, |x: $f, y: $f| {
-            let quo0 = $div_expr(x, y);
-            let quo1: $f = $fn(x, y);
-            #[cfg(not(target_arch = "arm"))]
-            if !Float::eq_repr(quo0, quo1) {
-                panic!(
-                    "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
-                    stringify!($fn), x, y, quo0, quo1
-                );
-            }
-
-            // ARM SIMD instructions always flush subnormals to zero
-            #[cfg(target_arch = "arm")]
-            if !(Float::is_subnormal(quo0) || Float::is_subnormal(quo1)) {
+            fuzz_float_2(N, |x: $f, y: $f| {
+                let quo0: $f = apfloat_fallback!($f, $apfloat_ty, x, /, y, $sys_available);
+                let quo1: $f = $fn(x, y);
+                #[cfg(not(target_arch = "arm"))]
                 if !Float::eq_repr(quo0, quo1) {
                     panic!(
                         "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
-                        stringify!($fn), x, y, quo0, quo1
+                        stringify!($fn),
+                        x,
+                        y,
+                        quo0,
+                        quo1
                     );
                 }
-            }
-        });
+
+                // ARM SIMD instructions always flush subnormals to zero
+                #[cfg(target_arch = "arm")]
+                if !(Float::is_subnormal(quo0) || Float::is_subnormal(quo1)) {
+                    if !Float::eq_repr(quo0, quo1) {
+                        panic!(
+                            "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
+                            stringify!($fn),
+                            x,
+                            y,
+                            quo0,
+                            quo1
+                        );
+                    }
+                }
+            });
+        )*
     };
 }
 
@@ -160,25 +156,18 @@ fn float_div() {
     };
 
     float!(
-        f32, __divsf3;
-        f64, __divdf3;
+        f32, __divsf3, Single, all();
+        f64, __divdf3, Double, all();
     );
 
     #[cfg(not(feature = "no-f16-f128"))]
     {
         use compiler_builtins::float::div::__divtf3;
         use rustc_apfloat::ieee::Quad;
-        use rustc_apfloat::{Float as _, FloatConvert as _};
 
-        if cfg!(feature = "no-sys-f128") {
-            float!(
-                f128, __divtf3, Quad;
-            );
-        } else {
-            float!(
-                f128, __divtf3;
-            );
-        }
+        float!(
+            f128, __divtf3, Quad, not(feature = "no-sys-f128");
+        );
     }
 }
 

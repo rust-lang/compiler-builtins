@@ -264,34 +264,23 @@ pub fn fuzz_float_2<F: Float, E: Fn(F, F)>(n: u32, f: E) {
     }
 }
 
+/// Use the builtin if avialable, fallback to apfloat if not
 #[macro_export]
-macro_rules! to_apfloat {
-    ($apfloat_ty:ty, $val:expr) => {
-        <$apfloat_ty>::from_bits($val.to_bits().into())
-    };
-}
+macro_rules! apfloat_fallback {
+    ($float_ty:ty, $apfloat_ty:ty, $x:expr, $op:tt, $y:expr, $sys_available:meta) => {{
+        #[cfg($sys_available)]
+        let ret = $x $op $y;
 
-#[macro_export]
-macro_rules! from_apfloat {
-    ($float_ty:ty, $val:expr) => {
-        <$float_ty>::from_bits($val.to_bits().try_into().unwrap())
-    };
-}
+        #[cfg(not($sys_available))]
+        let ret = {
+            let x_ap = <$apfloat_ty>::from_bits($x.to_bits().into());
+            let y_ap = <$apfloat_ty>::from_bits($y.to_bits().into());
+            // ignore the status in `rustc_apfloat::StatusAnd`
+            let res = (x_ap $op y_ap).value;
 
-/// Expect a status from a `StatusAnd`. Defaults to OK
-#[macro_export]
-macro_rules! apfloat_expect {
-    // Discard the status
-    ($val:expr, Ignore) => {
-        $val.value
-    };
+            <$float_ty>::from_bits(res.to_bits().try_into().unwrap())
+        };
 
-    ($val:expr) => {
-        apfloat_expect!($val, rustc_apfloat::Status::OK)
-    };
-
-    ($val:expr, $expected_status:expr) => {{
-        assert_eq!($val.status, $expected_status, "from value {}", $val.value);
-        $val.value
-    }};
+        ret
+    }}
 }
