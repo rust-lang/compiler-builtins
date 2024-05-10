@@ -1,6 +1,5 @@
 use crate::float::add::__adddf3;
 use crate::float::add::__addsf3;
-use crate::float::add::__addtf3;
 use crate::float::Float;
 
 intrinsics! {
@@ -18,6 +17,7 @@ intrinsics! {
 
     #[cfg(not(feature = "no-f16-f128"))]
     pub extern "C" fn __subtf3(a: f128, b: f128) -> f128 {
+        use crate::float::add::__addtf3;
         __addtf3(a, f128::from_repr(b.repr() ^ f128::SIGN_MASK))
     }
 

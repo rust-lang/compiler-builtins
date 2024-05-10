@@ -153,7 +153,7 @@ fn float_div() {
     );
 }
 
-#[cfg(not(feature = "no-sys-f128"))]
+#[cfg(not(any(feature = "no-sys-f128", feature = "no-f16-f128")))]
 #[test]
 fn float_div_f128() {
     use compiler_builtins::float::{div::__divtf3, Float};
@@ -163,6 +163,7 @@ fn float_div_f128() {
     );
 }
 
+#[cfg(not(any(feature = "no-sys-f128", feature = "no-f16-f128")))]
 #[test]
 fn div_failures() {
     use compiler_builtins::float::{div::__divtf3, Float};
