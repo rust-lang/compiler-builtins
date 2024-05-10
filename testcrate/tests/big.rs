@@ -38,8 +38,7 @@ fn widen_mul_u128() {
     let tests = [
         (u128::MAX / 2, 2_u128, u256([u64::MAX - 1, u64::MAX, 0, 0])),
         (u128::MAX, 2_u128, u256([u64::MAX - 1, u64::MAX, 1, 0])),
-        // TODO: https://github.com/rust-lang/compiler-builtins/pull/587#issuecomment-2060543566
-        // (u128::MAX, u128::MAX, u256([1, 0, u64::MAX - 1, u64::MAX])),
+        (u128::MAX, u128::MAX, u256([1, 0, u64::MAX - 1, u64::MAX])),
         (u128::MIN, u128::MIN, u256::ZERO),
         (1234, 0, u256::ZERO),
         (0, 1234, u256::ZERO),
@@ -65,6 +64,7 @@ fn widen_mul_u128() {
     assert!(errors.is_empty());
 }
 
+// unneeded?
 // #[test]
 // fn widen_mul_i128() {
 //     let tests = [
@@ -98,7 +98,11 @@ fn widen_mul_u128() {
 //     }
 
 //     for (i, a, b, exp, res) in &errors {
-//         eprintln!("FAILURE ({i}): {a:#034x} * {b:#034x} = {} got {}", hexi(*exp), hexi(*res));
+//         eprintln!(
+//             "FAILURE ({i}): {a:#034x} * {b:#034x} = {} got {}",
+//             hexi(*exp),
+//             hexi(*res)
+//         );
 //     }
 //     assert!(errors.is_empty());
 // }

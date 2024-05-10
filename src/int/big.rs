@@ -266,14 +266,15 @@ impl HInt for u128 {
             + (sum2 & u128::from(WORD_FULL_MASK))
             + ((sum3 << 32) & u128::from(WORD_HI_MASK));
 
-        let lo = r0.wrapping_add(r1 << 64);
+        let (lo, carry) = r0.overflowing_add(r1 << 64);
         let hi = (r1 >> 64)
             + (sum1 >> 96)
             + (sum2 >> 64)
             + (sum3 >> 32)
             + sum4
             + (sum5 << 32)
-            + (sum6 << 64);
+            + (sum6 << 64)
+            + u128::from(carry);
 
         u256([
             (lo & U128_LO_MASK) as u64,
