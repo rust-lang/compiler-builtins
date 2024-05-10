@@ -114,7 +114,7 @@ macro_rules! float {
     ($($f:ty, $fn:ident, $apfloat_ty:ident, $sys_available:meta);*;) => {
         $(
             fuzz_float_2(N, |x: $f, y: $f| {
-                let quo0: $f = apfloat_fallback!($f, $apfloat_ty, x, y, Div::div, $sys_available);
+                let quo0: $f = apfloat_fallback!($f, $apfloat_ty, $sys_available, Div::div, x, y);
                 let quo1: $f = $fn(x, y);
                 #[cfg(not(target_arch = "arm"))]
                 if !Float::eq_repr(quo0, quo1) {

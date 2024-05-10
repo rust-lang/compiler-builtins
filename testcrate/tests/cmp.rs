@@ -11,34 +11,40 @@ macro_rules! cmp {
         $($unordered_val:expr, $fn:ident);*;
     ) => {
         $(
-            let cmp0 = if apfloat_fallback!($f, $apfloat_ty, $x,
-                    |x: FloatTy| x.is_nan(),
-                    $sys_available, ret_float = false
-                ) || apfloat_fallback!($f, $apfloat_ty, $y,
-                    |y: FloatTy| y.is_nan(),
-                    $sys_available, ret_float = false
+            println!("a");
+            let cmp0 = if apfloat_fallback!(
+                    $f, $apfloat_ty, $sys_available,
+                    |x: FloatTy| x.is_nan() => no_convert,
+                    $x
+                ) || apfloat_fallback!(
+                    $f, $apfloat_ty, $sys_available,
+                    |y: FloatTy| y.is_nan() => no_convert,
+                    $y
                 )
             {
                 $unordered_val
-            } else if apfloat_fallback!($f, $apfloat_ty, $x, $y,
-                |x, y| x < y,
-                $sys_available, ret_float = false
+            } else if apfloat_fallback!(
+                $f, $apfloat_ty, $sys_available,
+                |x, y| x < y => no_convert,
+                $x, $y
             ) {
                 -1
-            } else if apfloat_fallback!($f, $apfloat_ty, $x, $y,
-                |x, y| x == y,
-                $sys_available, ret_float = false
+            } else if apfloat_fallback!(
+                $f, $apfloat_ty, $sys_available,
+                |x, y| x == y => no_convert,
+                $x, $y
             ) {
                 0
             } else {
                 1
             };
+            println!("b");
 
             let cmp1 = $fn($x, $y);
             if cmp0 != cmp1 {
                 panic!(
                     "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
-                    stringify!($fn_builtins), $x, $y, cmp0, cmp1
+                    stringify!($fn), $x, $y, cmp0, cmp1
                 );
             }
         )*
@@ -84,23 +90,18 @@ fn float_comparisons() {
         };
 
         fuzz_float_2(N, |x: f128, y: f128| {
-            // let x_isnan = apfloat_fallback!(
-            //     f128,
-            //     Quad,
-            //     x,
-            //     |x: FloatTy| x.is_nan(),
-            //     not(feature = "no-sys-f128"),
-            //     ret_float = false
-            // );
-            // let y_isnan = apfloat_fallback!(
-            //     f128,
-            //     Quad,
-            //     y,
-            //     |y: FloatTy| y.is_nan(),
-            //     not(feature = "no-sys-f128"),
-            //     ret_float = false
-            // );
-            // assert_eq!(__unordtf2(x, y) != 0, x_isnan || y_isnan);
+            let x_is_nan = apfloat_fallback!(
+                f128, Quad, not(feature = "no-sys-f128"),
+                |x: FloatTy| x.is_nan() => no_convert,
+                x
+            );
+            let y_is_nan = apfloat_fallback!(
+                f128, Quad, not(feature = "no-sys-f128"),
+                |x: FloatTy| x.is_nan() => no_convert,
+                y
+            );
+
+            assert_eq!(__unordtf2(x, y) != 0, x_is_nan || y_is_nan);
 
             cmp!(f128, x, y, Quad, not(feature = "no-sys-f128"),
                 1, __lttf2;

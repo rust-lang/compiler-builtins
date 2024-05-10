@@ -267,22 +267,18 @@ pub fn fuzz_float_2<F: Float, E: Fn(F, F)>(n: u32, f: E) {
 /// Use the builtin operation if avialable, fallback to apfloat if not
 #[macro_export]
 macro_rules! apfloat_fallback {
-    // binary
     (
         $float_ty:ty,
         $apfloat_ty:ident,
-        $x:expr,
-        $y:expr,
-        $op:expr,
-        $sys_available:meta
-        // $(, ret_float=false)?
-        $(, $($convert_args:tt)*)?
+        $sys_available:meta,
+        $op:expr $(=> $convert:ident)?,
+        $($arg:expr),+
         $(,)?
     ) => {{
         #[cfg($sys_available)]
         let ret = {
             type FloatTy = $float_ty;
-            $op($x, $y)
+            $op( $($arg),+ )
         };
 
         #[cfg(not($sys_available))]
@@ -290,51 +286,22 @@ macro_rules! apfloat_fallback {
             use rustc_apfloat::Float;
             type FloatTy = rustc_apfloat::ieee::$apfloat_ty;
 
-            let x_ap = FloatTy::from_bits($x.to_bits().into());
-            let y_ap = FloatTy::from_bits($y.to_bits().into());
+            let op_res = $op( $(FloatTy::from_bits($arg.to_bits().into())),+ );
 
-            apfloat_fallback!(@convert $float_ty, $op(x_ap, y_ap), $($($convert_args)*)?)
+            apfloat_fallback!(@convert $float_ty, op_res $(,$convert)?)
         };
 
         ret
     }};
 
-    // unary
-    (
-        $float_ty:ty,
-        $apfloat_ty:ident,
-        $x:expr,
-        $op:expr,
-        $sys_available:meta
-        $(, $($convert_args:tt)*)?
-        $(,)?
-    ) => {{
-        #[cfg($sys_available)]
-        let ret = {
-            type FloatTy = $float_ty;
-            $op($x)
-        };
-
-        #[cfg(not($sys_available))]
-        let ret = {
-            use rustc_apfloat::Float;
-            type FloatTy = rustc_apfloat::ieee::$apfloat_ty;
-
-            let x_ap = FloatTy::from_bits($x.to_bits().into());
-            apfloat_fallback!(@convert $float_ty, $op(x_ap), $($($convert_args)*)?)
-        };
-
-        ret
-    }};
-
-
-    // Other operations do not need unwrapping
-    (@convert $float_ty:ty, $val:expr, ret_float=false) => {
+    // Operations that do not need converting back to a float
+    (@convert $float_ty:ty, $val:expr, no_convert) => {
         $val
     };
 
-    // Some apfloat operations return a `StatusAnd` that we need to extract the value from
-    (@convert $float_ty:ty, $val:expr,) => {{
+    // Some apfloat operations return a `StatusAnd` that we need to extract the value from. This
+    // is the default.
+    (@convert $float_ty:ty, $val:expr) => {{
         // ignore the status, just get the value
         let unwrapped = $val.value;
 

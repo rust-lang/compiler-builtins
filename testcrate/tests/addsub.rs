@@ -77,8 +77,8 @@ macro_rules! float_sum {
     ($($f:ty, $fn_add:ident, $fn_sub:ident, $apfloat_ty:ident, $sys_available:meta);*;) => {
         $(
             fuzz_float_2(N, |x: $f, y: $f| {
-                let add0 = apfloat_fallback!($f, $apfloat_ty, x, y, Add::add, $sys_available);
-                let sub0 = apfloat_fallback!($f, $apfloat_ty, x, y, Sub::sub, $sys_available);
+                let add0 = apfloat_fallback!($f, $apfloat_ty, $sys_available, Add::add, x, y);
+                let sub0 = apfloat_fallback!($f, $apfloat_ty, $sys_available, Sub::sub, x, y);
                 let add1: $f = $fn_add(x, y);
                 let sub1: $f = $fn_sub(x, y);
                 if !Float::eq_repr(add0, add1) {
