@@ -143,9 +143,15 @@ fn float_addsub() {
         use rustc_apfloat::ieee::Quad;
         use rustc_apfloat::{Float as _, FloatConvert as _};
 
-        float_sum!(
-            f128, __addtf3, __subtf3, Quad;
-        );
+        if cfg!(feature = "no-sys-f128") {
+            float_sum!(
+                f128, __addtf3, __subtf3, Quad;
+            );
+        } else {
+            float_sum!(
+                f128, __addtf3, __subtf3;
+            );
+        }
     }
 }
 

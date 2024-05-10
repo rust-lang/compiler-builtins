@@ -108,34 +108,46 @@ fn divide_sparc() {
 }
 
 macro_rules! float {
-    ($($i:ty, $fn:ident);*;) => {
+    ($($f:ty, $fn:ident);*;) => {
+        $( float!(@inner $f, $fn, |x, y| x / y); )*
+    };
+
+    ($($f:ty, $fn:ident, $apfloat_ty:ty);*;) => {
         $(
-            fuzz_float_2(N, |x: $i, y: $i| {
-                dbg!(x, y);
-                let quo0 = x / y;
-                dbg!(quo0);
-                let quo1: $i = $fn(x, y);
-                dbg!(quo1);
-                #[cfg(not(target_arch = "arm"))]
+            float!(
+                @inner $f,
+                $fn,
+                |x: $f, y: $f| from_apfloat!(
+                    $f,
+                    apfloat_expect!(to_apfloat!($apfloat_ty, x) / to_apfloat!($apfloat_ty, y), Ignore)
+                ),
+            );
+        )*
+    };
+
+    (@inner $f:ty, $fn:ident, $div_expr:expr $(,)?) => {
+        fuzz_float_2(N, |x: $f, y: $f| {
+            let quo0 = $div_expr(x, y);
+            let quo1: $f = $fn(x, y);
+            #[cfg(not(target_arch = "arm"))]
+            if !Float::eq_repr(quo0, quo1) {
+                panic!(
+                    "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
+                    stringify!($fn), x, y, quo0, quo1
+                );
+            }
+
+            // ARM SIMD instructions always flush subnormals to zero
+            #[cfg(target_arch = "arm")]
+            if !(Float::is_subnormal(quo0) || Float::is_subnormal(quo1)) {
                 if !Float::eq_repr(quo0, quo1) {
                     panic!(
                         "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
                         stringify!($fn), x, y, quo0, quo1
                     );
                 }
-
-                // ARM SIMD instructions always flush subnormals to zero
-                #[cfg(target_arch = "arm")]
-                if !(Float::is_subnormal(quo0) || Float::is_subnormal(quo1)) {
-                    if !Float::eq_repr(quo0, quo1) {
-                        panic!(
-                            "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
-                            stringify!($fn), x, y, quo0, quo1
-                        );
-                    }
-                }
-            });
-        )*
+            }
+        });
     };
 }
 
@@ -151,16 +163,23 @@ fn float_div() {
         f32, __divsf3;
         f64, __divdf3;
     );
-}
 
-#[cfg(not(any(feature = "no-sys-f128", feature = "no-f16-f128")))]
-#[test]
-fn float_div_f128() {
-    use compiler_builtins::float::{div::__divtf3, Float};
+    #[cfg(not(feature = "no-f16-f128"))]
+    {
+        use compiler_builtins::float::div::__divtf3;
+        use rustc_apfloat::ieee::Quad;
+        use rustc_apfloat::{Float as _, FloatConvert as _};
 
-    float!(
-        f128, __divtf3;
-    );
+        if cfg!(feature = "no-sys-f128") {
+            float!(
+                f128, __divtf3, Quad;
+            );
+        } else {
+            float!(
+                f128, __divtf3;
+            );
+        }
+    }
 }
 
 #[cfg(not(any(feature = "no-sys-f128", feature = "no-f16-f128")))]
