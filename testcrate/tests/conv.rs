@@ -118,6 +118,10 @@ fn float_to_int() {
         __fixdfdi, __fixdfsi, __fixdfti, __fixsfdi, __fixsfsi, __fixsfti, __fixunsdfdi,
         __fixunsdfsi, __fixunsdfti, __fixunssfdi, __fixunssfsi, __fixunssfti,
     };
+    println!("bias {}", f32::EXPONENT_BIAS);
+    println!("bits {}", f32::SIGNIFICAND_BITS);
+    println!("bias {}", f64::EXPONENT_BIAS);
+    println!("bits {}", f64::SIGNIFICAND_BITS);
 
     fuzz_float(N, |x: f32| {
         f_to_i!(x,

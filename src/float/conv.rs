@@ -1,3 +1,7 @@
+use crate::int::{CastFrom, CastInto, Int, MinInt};
+
+use super::Float;
+
 /// Conversions from integers to floats.
 ///
 /// These are hand-optimized bit twiddling code,
@@ -142,102 +146,73 @@ intrinsics! {
     }
 }
 
+fn float_to_unsigned_int<F, U>(f: F) -> U
+where
+    F: Float,
+    U: Int,
+    u32: CastInto<F::Int>,
+    u32: CastFrom<F::Int>,
+    F::Int: CastInto<U>,
+    F::Int: CastFrom<u32>,
+{
+    let uint_max_exp: u32 = F::EXPONENT_BIAS + U::BITS;
+    let fbits = f.repr();
+
+    if fbits < F::ONE.repr() {
+        // >= 0.0, < 1.0 (< 0.0 are > 1.0 in int repr)
+        U::ZERO
+    } else if fbits < F::Int::cast_from(uint_max_exp) << F::SIGNIFICAND_BITS {
+        // >= 1, < U::max
+        let mantissa = if U::BITS >= F::Int::BITS {
+            U::cast_from(fbits) << (U::BITS - F::SIGNIFICAND_BITS - 1)
+        } else {
+            U::cast_from(fbits >> 21)
+        };
+
+        // Set the implicit 1-bit.
+        let m: U = U::ONE << (U::BITS - 1) | mantissa;
+        // Shift based on the exponent and bias.
+        let s: u32 = (uint_max_exp - 1) - u32::cast_from(fbits >> F::SIGNIFICAND_BITS);
+
+        m >> s
+    } else if fbits <= F::EXPONENT_MASK {
+        // >= max (incl. inf)
+        U::MAX
+    } else {
+        U::ZERO
+    }
+}
+
 // Conversions from floats to unsigned integers.
 intrinsics! {
     #[arm_aeabi_alias = __aeabi_f2uiz]
     pub extern "C" fn __fixunssfsi(f: f32) -> u32 {
-        let fbits = f.to_bits();
-        if fbits < 127 << 23 { // >= 0, < 1
-            0
-        } else if fbits < 159 << 23 { // >= 1, < max
-            let m = 1 << 31 | fbits << 8; // Mantissa and the implicit 1-bit.
-            let s = 158 - (fbits >> 23); // Shift based on the exponent and bias.
-            m >> s
-        } else if fbits <= 255 << 23 { // >= max (incl. inf)
-            u32::MAX
-        } else { // Negative or NaN
-            0
-        }
+        float_to_unsigned_int(f)
     }
 
     #[arm_aeabi_alias = __aeabi_f2ulz]
     pub extern "C" fn __fixunssfdi(f: f32) -> u64 {
-        let fbits = f.to_bits();
-        if fbits < 127 << 23 { // >= 0, < 1
-            0
-        } else if fbits < 191 << 23 { // >= 1, < max
-            let m = 1 << 63 | (fbits as u64) << 40; // Mantissa and the implicit 1-bit.
-            let s = 190 - (fbits >> 23); // Shift based on the exponent and bias.
-            m >> s
-        } else if fbits <= 255 << 23 { // >= max (incl. inf)
-            u64::MAX
-        } else { // Negative or NaN
-            0
-        }
+        float_to_unsigned_int(f)
     }
 
     #[win64_128bit_abi_hack]
     pub extern "C" fn __fixunssfti(f: f32) -> u128 {
-        let fbits = f.to_bits();
-        if fbits < 127 << 23 { // >= 0, < 1
-            0
-        } else if fbits < 255 << 23 { // >= 1, < inf
-            let m = 1 << 127 | (fbits as u128) << 104; // Mantissa and the implicit 1-bit.
-            let s = 254 - (fbits >> 23); // Shift based on the exponent and bias.
-            m >> s
-        } else if fbits == 255 << 23 { // == inf
-            u128::MAX
-        } else { // Negative or NaN
-            0
-        }
+        float_to_unsigned_int(f)
     }
 
     #[arm_aeabi_alias = __aeabi_d2uiz]
     pub extern "C" fn __fixunsdfsi(f: f64) -> u32 {
-        let fbits = f.to_bits();
-        if fbits < 1023 << 52 { // >= 0, < 1
-            0
-        } else if fbits < 1055 << 52 { // >= 1, < max
-            let m = 1 << 31 | (fbits >> 21) as u32; // Mantissa and the implicit 1-bit.
-            let s = 1054 - (fbits >> 52); // Shift based on the exponent and bias.
-            m >> s
-        } else if fbits <= 2047 << 52 { // >= max (incl. inf)
-            u32::MAX
-        } else { // Negative or NaN
-            0
-        }
+        float_to_unsigned_int(f)
     }
 
     #[arm_aeabi_alias = __aeabi_d2ulz]
     pub extern "C" fn __fixunsdfdi(f: f64) -> u64 {
-        let fbits = f.to_bits();
-        if fbits < 1023 << 52 { // >= 0, < 1
-            0
-        } else if fbits < 1087 << 52 { // >= 1, < max
-            let m = 1 << 63 | fbits << 11; // Mantissa and the implicit 1-bit.
-            let s = 1086 - (fbits >> 52); // Shift based on the exponent and bias.
-            m >> s
-        } else if fbits <= 2047 << 52 { // >= max (incl. inf)
-            u64::MAX
-        } else { // Negative or NaN
-            0
-        }
+        float_to_unsigned_int(f)
     }
 
     #[win64_128bit_abi_hack]
     pub extern "C" fn __fixunsdfti(f: f64) -> u128 {
-        let fbits = f.to_bits();
-        if fbits < 1023 << 52 { // >= 0, < 1
-            0
-        } else if fbits < 1151 << 52 { // >= 1, < max
-            let m = 1 << 127 | (fbits as u128) << 75; // Mantissa and the implicit 1-bit.
-            let s = 1150 - (fbits >> 52); // Shift based on the exponent and bias.
-            m >> s
-        } else if fbits <= 2047 << 52 { // >= max (incl. inf)
-            u128::MAX
-        } else { // Negative or NaN
-            0
-        }
+        float_to_unsigned_int(f)
     }
 }
 
