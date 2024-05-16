@@ -1,5 +1,6 @@
 // makes configuration easier
 #![allow(unused_macros)]
+#![feature(f128)]
 
 use testcrate::*;
 
@@ -122,12 +123,15 @@ macro_rules! pow {
                                 b < $tolerance
                             } else {
                                 let quo = b / a;
-                                (quo < (1. + $tolerance)) && (quo > (1. - $tolerance))
+                                // FIXME(f16_f128): we do this to block const eval which currently
+                                // ICEs on f128. Change this once it works correctly.
+                                (quo < (1. + black_box($tolerance)))
+                                    && (quo > (1. - black_box($tolerance)))
                             }
                         };
                         if !good {
                             panic!(
-                                "{}({}, {}): std: {}, builtins: {}",
+                                "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
                                 stringify!($fn), x, n, tmp0, tmp1
                             );
                         }
@@ -142,8 +146,32 @@ macro_rules! pow {
 mod float_pow {
     use super::*;
 
+    fn black_box<T>(val: T) -> T {
+        val
+    }
+
     pow! {
         f32, 1e-4, __powisf2;
         f64, 1e-12, __powidf2;
+    }
+}
+
+#[cfg(not(all(target_arch = "x86", not(target_feature = "sse"))))]
+#[cfg(not(any(feature = "no-f16-f128", feature = "no-sys-f128")))]
+mod float_pow_f128 {
+    use super::*;
+    use core::hint::black_box;
+
+    // Windows can't link the required arithmetic functions. See
+    // <https://github.com/rust-lang/compiler-builtins/pull/614#issuecomment-2118636613>
+    #[cfg(not(target_family = "windows"))]
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    pow! {
+        f128, 1e-36, __powitf2;
+    }
+
+    #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
+    pow! {
+        f128, 1e-36, __powikf2;
     }
 }
