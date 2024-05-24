@@ -26,7 +26,7 @@ where
     let lo_mask = u32::MAX >> hw;
 
     let significand_bits = F::SIGNIFICAND_BITS;
-    let max_exponent = F::EXPONENT_MAX;
+    let max_exponent: F::Int = F::EXPONENT_MAX.cast();
 
     let exponent_bias = F::EXPONENT_BIAS;
 
@@ -47,8 +47,8 @@ where
     let a_rep = a.repr();
     let b_rep = b.repr();
 
-    let a_exponent = (a_rep >> significand_bits) & max_exponent.cast();
-    let b_exponent = (b_rep >> significand_bits) & max_exponent.cast();
+    let a_exponent = (a_rep >> significand_bits) & max_exponent;
+    let b_exponent = (b_rep >> significand_bits) & max_exponent;
     let quotient_sign = (a_rep ^ b_rep) & sign_bit;
 
     let mut a_significand = a_rep & significand_mask;
@@ -56,8 +56,8 @@ where
     let mut scale = 0;
 
     // Detect if a or b is zero, denormal, infinity, or NaN.
-    if a_exponent.wrapping_sub(one) >= (max_exponent - 1).cast()
-        || b_exponent.wrapping_sub(one) >= (max_exponent - 1).cast()
+    if a_exponent.wrapping_sub(one) >= (max_exponent - F::Int::ONE)
+        || b_exponent.wrapping_sub(one) >= (max_exponent - F::Int::ONE)
     {
         let a_abs = a_rep & abs_mask;
         let b_abs = b_rep & abs_mask;
@@ -412,7 +412,7 @@ where
     // For f128: 4096 * 3 < 13922 < 4096 * 5 (three NextAfter() are required)
 
     // If we have overflowed the exponent, return infinity
-    if written_exponent >= max_exponent as i32 {
+    if written_exponent >= F::EXPONENT_MAX as i32 {
         return F::from_repr(inf_rep | quotient_sign);
     }
 
@@ -482,8 +482,11 @@ where
     F::Int: CastInto<u64>,
     F::Int: CastInto<i64>,
     F::Int: HInt + DInt,
+    F::Int: CastFrom<u128>,
+    F::Int: CastInto<u128>,
     F::SignedInt: CastFrom<u32>,
     F::SignedInt: CastInto<u32>,
+    F::SignedInt: CastFrom<F::Int>,
     F::Int: CastFrom<u32>,
     u16: CastInto<F::Int>,
     i32: CastInto<F::Int>,
@@ -491,6 +494,7 @@ where
     u32: CastInto<F::Int>,
     u64: CastInto<F::Int>,
     u64: CastInto<HalfRep<F>>,
+    u128: CastInto<F::Int>,
 {
     let one = F::Int::ONE;
     let zero = F::Int::ZERO;
@@ -498,7 +502,7 @@ where
     let lo_mask = F::Int::MAX >> hw;
 
     let significand_bits = F::SIGNIFICAND_BITS;
-    let max_exponent = F::EXPONENT_MAX;
+    let max_exponent: F::Int = F::EXPONENT_MAX.cast();
 
     let exponent_bias = F::EXPONENT_BIAS;
 
@@ -514,8 +518,8 @@ where
     let a_rep = a.repr();
     let b_rep = b.repr();
 
-    let a_exponent = (a_rep >> significand_bits) & max_exponent.cast();
-    let b_exponent = (b_rep >> significand_bits) & max_exponent.cast();
+    let a_exponent = (a_rep >> significand_bits) & max_exponent;
+    let b_exponent = (b_rep >> significand_bits) & max_exponent;
     let quotient_sign = (a_rep ^ b_rep) & sign_bit;
 
     let mut a_significand = a_rep & significand_mask;
@@ -523,8 +527,8 @@ where
     let mut scale = 0;
 
     // Detect if a or b is zero, denormal, infinity, or NaN.
-    if a_exponent.wrapping_sub(one) >= (max_exponent - 1).cast()
-        || b_exponent.wrapping_sub(one) >= (max_exponent - 1).cast()
+    if a_exponent.wrapping_sub(one) >= (max_exponent - one)
+        || b_exponent.wrapping_sub(one) >= (max_exponent - one)
     {
         let a_abs = a_rep & abs_mask;
         let b_abs = b_rep & abs_mask;
@@ -788,12 +792,8 @@ where
 
     let mut x_uq0 = if F::USE_NATIVE_FULL_ITERATIONS {
         for _ in 0..F::NUMBER_OF_FULL_ITERATIONS {
-            let corr_uq1: u64 = 0.wrapping_sub(
-                (CastInto::<u64>::cast(x_uq0) * (CastInto::<u64>::cast(b_uq1))) >> F::BITS,
-            );
-            x_uq0 = ((((CastInto::<u64>::cast(x_uq0) as u128) * (corr_uq1 as u128))
-                >> (F::BITS - 1)) as u64)
-                .cast();
+            let corr_uq1: F::Int = zero.wrapping_sub(x_uq0 * b_uq1) >> F::BITS;
+            x_uq0 = ((u128::cast_from(x_uq0) * u128::cast_from(corr_uq1)) >> (F::BITS - 1)).cast();
         }
         x_uq0
     } else {
