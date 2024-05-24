@@ -3,7 +3,7 @@
 #![allow(clippy::needless_return)]
 
 use crate::float::Float;
-use crate::int::{CastInto, DInt, HInt, Int, MinInt};
+use crate::int::{CastFrom, CastInto, DInt, HInt, Int, MinInt};
 
 use super::HalfRep;
 
@@ -454,9 +454,27 @@ where
     F::from_repr(abs_result | quotient_sign)
 }
 
+trait DivExt {
+    const NUMBER_OF_HALF_ITERATIONS: usize;
+    const NUMBER_OF_FULL_ITERATIONS: usize;
+    const USE_NATIVE_FULL_ITERATIONS: bool = false;
+}
+
+impl DivExt for f32 {
+    const NUMBER_OF_HALF_ITERATIONS: usize = 0;
+    const NUMBER_OF_FULL_ITERATIONS: usize = 3;
+}
+
+impl DivExt for f64 {
+    const NUMBER_OF_HALF_ITERATIONS: usize = 3;
+    const NUMBER_OF_FULL_ITERATIONS: usize = 1;
+}
+
 fn div64<F: Float>(a: F, b: F) -> F
 where
+    F: DivExt,
     F::Int: CastInto<u32>,
+    F::Int: CastFrom<u32>,
     F::Int: CastInto<i32>,
     F::Int: CastInto<HalfRep<F>>,
     F::Int: From<HalfRep<F>>,
@@ -464,6 +482,9 @@ where
     F::Int: CastInto<u64>,
     F::Int: CastInto<i64>,
     F::Int: HInt + DInt,
+    F::SignedInt: CastFrom<u32>,
+    F::SignedInt: CastInto<u32>,
+    F::Int: CastFrom<u32>,
     u16: CastInto<F::Int>,
     i32: CastInto<F::Int>,
     i64: CastInto<F::Int>,
@@ -471,10 +492,6 @@ where
     u64: CastInto<F::Int>,
     u64: CastInto<HalfRep<F>>,
 {
-    const NUMBER_OF_HALF_ITERATIONS: usize = 3;
-    const NUMBER_OF_FULL_ITERATIONS: usize = 1;
-    const USE_NATIVE_FULL_ITERATIONS: bool = false;
-
     let one = F::Int::ONE;
     let zero = F::Int::ZERO;
     let hw = F::BITS / 2;
@@ -487,17 +504,12 @@ where
 
     let implicit_bit = F::IMPLICIT_BIT;
     let significand_mask = F::SIGNIFICAND_MASK;
-    let sign_bit = F::SIGN_MASK as F::Int;
+    let sign_bit = F::SIGN_MASK;
     let abs_mask = sign_bit - one;
     let exponent_mask = F::EXPONENT_MASK;
     let inf_rep = exponent_mask;
     let quiet_bit = implicit_bit >> 1;
     let qnan_rep = exponent_mask | quiet_bit;
-
-    #[inline(always)]
-    fn negate_u64(a: u64) -> u64 {
-        (<i64>::wrapping_neg(a as i64)) as u64
-    }
 
     let a_rep = a.repr();
     let b_rep = b.repr();
@@ -578,12 +590,12 @@ where
     a_significand |= implicit_bit;
     b_significand |= implicit_bit;
 
-    let written_exponent: i64 = CastInto::<u64>::cast(
+    let written_exponent: F::SignedInt = F::SignedInt::from_unsigned(
         a_exponent
             .wrapping_sub(b_exponent)
-            .wrapping_add(scale.cast()),
-    )
-    .wrapping_add(exponent_bias as u64) as i64;
+            .wrapping_add(scale.cast())
+            .wrapping_add(exponent_bias.cast()),
+    );
     let b_uq1 = b_significand << (F::BITS - significand_bits - 1);
 
     // Align the significand of b as a UQ1.(n-1) fixed-point number in the range
@@ -621,7 +633,7 @@ where
     // rounding, so error estimations have to be computed taking the selected
     // mode into account!
 
-    let mut x_uq0 = if NUMBER_OF_HALF_ITERATIONS > 0 {
+    let mut x_uq0 = if F::NUMBER_OF_HALF_ITERATIONS > 0 {
         // Starting with (n-1) half-width iterations
         let b_uq1_hw: HalfRep<F> = CastInto::<HalfRep<F>>::cast(
             CastInto::<u64>::cast(b_significand) >> (significand_bits + 1 - hw),
@@ -662,7 +674,7 @@ where
             // On (1/b, 1], g(x) > 0 <=> f(x) < x
             //
             // For half-width iterations, b_hw is used instead of b.
-            for _ in 0..NUMBER_OF_HALF_ITERATIONS {
+            for _ in 0..F::NUMBER_OF_HALF_ITERATIONS {
                 // corr_UQ1_hw can be **larger** than 2 - b_hw*x by at most 1*Ulp
                 // of corr_UQ1_hw.
                 // "0.0 - (...)" is equivalent to "2.0 - (...)" in UQ1.(HW-1).
@@ -774,8 +786,8 @@ where
         x_uq0
     };
 
-    let mut x_uq0 = if USE_NATIVE_FULL_ITERATIONS {
-        for _ in 0..NUMBER_OF_FULL_ITERATIONS {
+    let mut x_uq0 = if F::USE_NATIVE_FULL_ITERATIONS {
+        for _ in 0..F::NUMBER_OF_FULL_ITERATIONS {
             let corr_uq1: u64 = 0.wrapping_sub(
                 (CastInto::<u64>::cast(x_uq0) * (CastInto::<u64>::cast(b_uq1))) >> F::BITS,
             );
@@ -832,7 +844,10 @@ where
                 .cast(),
         );
         a_significand <<= 1;
-        (residual_lo, written_exponent.wrapping_sub(1))
+        (
+            residual_lo,
+            written_exponent.wrapping_sub(F::SignedInt::ONE),
+        )
     } else {
         // Highest bit is 1 (the UQ1.(SB+1) value is in [1, 2)), convert it
         // to UQ1.SB by right shifting by 1. Least significant bit is omitted.
@@ -872,24 +887,23 @@ where
     // For f128: 4096 * 3 < 13922 < 4096 * 5 (three NextAfter() are required)
 
     // If we have overflowed the exponent, return infinity
-    if written_exponent >= max_exponent as i64 {
+    if written_exponent >= F::SignedInt::cast_from(max_exponent) {
         return F::from_repr(inf_rep | quotient_sign);
     }
 
     // Now, quotient <= the correctly-rounded result
     // and may need taking NextAfter() up to 3 times (see error estimates above)
     // r = a - b * q
-    let abs_result = if written_exponent > 0 {
+    let abs_result = if written_exponent > F::SignedInt::ZERO {
         let mut ret = quotient & significand_mask;
-        ret |= written_exponent.cast() << significand_bits;
+        ret |= written_exponent.unsigned() << significand_bits;
         residual <<= 1;
         ret
     } else {
-        if (significand_bits as i64 + written_exponent) < 0 {
+        if (F::SignedInt::cast_from(significand_bits) + written_exponent) < F::SignedInt::ZERO {
             return F::from_repr(quotient_sign);
         }
-        let ret =
-            quotient.wrapping_shr((negate_u64(CastInto::<u64>::cast(written_exponent)) + 1) as u32);
+        let ret = quotient.wrapping_shr(u32::cast_from(written_exponent.wrapping_neg()) + 1);
         residual = (CastInto::<u64>::cast(
             a_significand.wrapping_shl(
                 significand_bits.wrapping_add(CastInto::<u32>::cast(written_exponent)),
