@@ -31,10 +31,10 @@ pub(crate) trait Float:
     + ops::Rem<Output = Self>
 {
     /// A uint of the same width as the float
-    type Int: Int;
+    type Int: Int<OtherSign = Self::SignedInt, UnsignedInt = Self::Int>;
 
     /// A int of the same width as the float
-    type SignedInt: Int;
+    type SignedInt: Int + MinInt<OtherSign = Self::Int, UnsignedInt = Self::Int>;
 
     /// An int capable of containing the exponent bits plus a sign bit. This is signed.
     type ExpInt: Int;
@@ -51,7 +51,7 @@ pub(crate) trait Float:
     /// The bitwidth of the exponent
     const EXPONENT_BITS: u32 = Self::BITS - Self::SIGNIFICAND_BITS - 1;
 
-    /// The maximum value of the exponent
+    /// The saturated value of the exponent (infinite representation)
     const EXPONENT_MAX: u32 = (1 << Self::EXPONENT_BITS) - 1;
 
     /// The exponent bias value
@@ -83,7 +83,7 @@ pub(crate) trait Float:
     /// Returns true if the sign is negative
     fn is_sign_negative(self) -> bool;
 
-    /// Returns the exponent with bias
+    /// Returns the exponent, not adjusting for bias.
     fn exp(self) -> Self::ExpInt;
 
     /// Returns the significand with no implicit bit (or the "fractional" part)
