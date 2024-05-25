@@ -17,12 +17,13 @@ where
     /// Iterations that are done at the full float's width. Must be at least one.
     const FULL_ITERATIONS: usize;
 
+    const USE_NATIVE_FULL_ITERATIONS: bool = false;
+
     /// C is (3/4 + 1/sqrt(2)) - 1 truncated to W0 fractional bits as UQ0.HW
     /// with W0 being either 16 or 32 and W0 <= HW.
     /// That is, C is the aforementioned 3/4 + 1/sqrt(2) constant (from which
     /// b/2 is subtracted to obtain x0) wrapped to [0, 1) range.
     const C_HW: HalfRep<Self>;
-    const USE_NATIVE_FULL_ITERATIONS: bool = false;
 
     /// u_n for different precisions (with N-1 half-width iterations):
     /// W0 is the precision of C
@@ -43,7 +44,17 @@ where
     /// Final (U_N) | same as u_3 | < 72         | < 218        | < 13920
     ///
     /// Add 2 to U_N due to final decrement.
-    const RECIPROCAL_PRECISION: u16 =
+    const RECIPROCAL_PRECISION: u16 = {
+        // Do some related configuration validation
+        if !Self::USE_NATIVE_FULL_ITERATIONS {
+            if Self::FULL_ITERATIONS != 1 {
+                panic!("Only a single emulated full iteration is supported");
+            }
+            if !(Self::HALF_ITERATIONS > 0) {
+                panic!("Invalid number of half iterations");
+            }
+        }
+
         if Self::BITS == 32 && Self::HALF_ITERATIONS == 2 && Self::FULL_ITERATIONS == 1 {
             74u16
         } else if Self::BITS == 32 && Self::HALF_ITERATIONS == 0 && Self::FULL_ITERATIONS == 3 {
@@ -54,18 +65,20 @@ where
             13922
         } else {
             panic!("Invalid number of iterations")
-        };
+        }
+    };
 }
 
 impl DivConfig for f32 {
     const HALF_ITERATIONS: usize = 0;
     const FULL_ITERATIONS: usize = 3;
+    const USE_NATIVE_FULL_ITERATIONS: bool = true;
+
     /// Use 16-bit initial estimation in case we are using half-width iterations
     /// for float32 division. This is expected to be useful for some 16-bit
     /// targets. Not used by default as it requires performing more work during
     /// rounding and would hardly help on regular 32- or 64-bit targets.
     const C_HW: HalfRep<Self> = 0x7504;
-    const USE_NATIVE_FULL_ITERATIONS: bool = true;
 }
 
 impl DivConfig for f64 {
@@ -81,6 +94,64 @@ impl DivConfig for f128 {
     const FULL_ITERATIONS: usize = 1;
 
     const C_HW: HalfRep<Self> = 0x7504F333 << (HalfRep::<Self>::BITS - 32);
+}
+
+extern "C" {
+    fn printf(p: *const i8, ...);
+}
+
+use core::ffi::CStr;
+
+/// We can't `prinln!` within compiler-builtins, use this instead
+trait DbgPrint: Copy {
+    const SPEC: &'static CStr;
+
+    fn print(&self) {
+        unsafe { printf(Self::SPEC.as_ptr(), *self) }
+    }
+
+    fn println(&self) {
+        self.print();
+        unsafe { printf(c"\n".as_ptr()) };
+    }
+}
+
+impl DbgPrint for &core::ffi::CStr {
+    const SPEC: &'static CStr = c"%s";
+}
+
+impl DbgPrint for u32 {
+    const SPEC: &'static CStr = c"%#010x";
+}
+
+impl DbgPrint for i32 {
+    const SPEC: &'static CStr = c"%#010x";
+}
+
+impl DbgPrint for u64 {
+    const SPEC: &'static CStr = c"%#018lx";
+}
+
+impl DbgPrint for i64 {
+    const SPEC: &'static CStr = c"%#018lx";
+}
+
+impl DbgPrint for u128 {
+    const SPEC: &'static CStr = c"";
+
+    fn print(&self) {
+        let [lo, hi]: [u64; 2] = unsafe { core::mem::transmute(*self) };
+        hi.print();
+        unsafe { printf(c"%016lx".as_ptr(), lo) };
+    }
+}
+
+impl DbgPrint for i128 {
+    const SPEC: &'static CStr = c"";
+
+    fn print(&self) {
+        self.unsigned().print();
+    }
 }
 
 fn div<F: Float>(a: F, b: F) -> F
@@ -102,6 +173,7 @@ where
     F::SignedInt: CastFrom<F::Int>,
     F::Int: CastFrom<u32>,
     F::Int: From<u32>,
+    F::Int: DbgPrint,
     // <F::Int as HInt>::D: core::ops::Shr<u32, Output = <F::Int as HInt>::D>,
     u16: CastInto<F::Int>,
     i32: CastInto<F::Int>,
@@ -111,18 +183,6 @@ where
     u64: CastInto<HalfRep<F>>,
     u128: CastInto<F::Int>,
 {
-    // Validate the type configuration
-    const {
-        if !F::USE_NATIVE_FULL_ITERATIONS {
-            if F::FULL_ITERATIONS != 1 {
-                panic!("Only a single emulated full iteration is supported");
-            }
-            if !(F::HALF_ITERATIONS > 0) {
-                panic!("Invalid number of half iterations");
-            }
-        }
-    };
-
     let one = F::Int::ONE;
     let zero = F::Int::ZERO;
     let hw = F::BITS / 2;
@@ -144,6 +204,11 @@ where
 
     let a_rep = a.repr();
     let b_rep = b.repr();
+
+    c"\nstart ".print();
+    a_rep.print();
+    c" div ".print();
+    b_rep.println();
 
     // TODO: use u32/i32 to store exponents since they fit up to `f256`. This should make
     // f128 div faster
@@ -232,6 +297,8 @@ where
     );
     let b_uq1 = b_significand << (F::BITS - significand_bits - 1);
 
+    c"step1".println();
+
     // Align the significand of b as a UQ1.(n-1) fixed-point number in the range
     // [1.0, 2.0) and get a UQ0.n approximate reciprocal using a small minimax
     // polynomial approximation: x0 = 3/4 + 1/sqrt(2) - b/2.
@@ -277,6 +344,8 @@ where
         // b/2 is subtracted to obtain x0) wrapped to [0, 1) range.
 
         let c_hw = F::C_HW;
+
+        c"step2".println();
 
         // b >= 1, thus an upper bound for 3/4 + 1/sqrt(2) - b/2 is about 0.9572,
         // so x0 fits to UQ0.HW without wrapping.
@@ -403,6 +472,8 @@ where
         //                 + (2^-HW + 2^-W))
         // abs(E_{N-1}) <= (u_{N-1} + 3.01) * 2^-HW
 
+        c"step3".println();
+
         // Then like for the half-width iterations:
         // With 0 <= eps1, eps2 < 2^-W
         // E_N  = 4 * E_{N-1} * eps1 - (E_{N-1}^2 * b + 4 * eps2) + 4 * eps1 / b
@@ -413,6 +484,8 @@ where
         // C is (3/4 + 1/sqrt(2)) - 1 truncated to 64 fractional bits as UQ0.n
         let c: F::Int = F::Int::from(0x7504F333u32) << (F::BITS - 32);
         let x_uq0: F::Int = c.wrapping_sub(b_uq1);
+
+        c"step4".println();
         // E_0 <= 3/4 - 1/sqrt(2) + 2 * 2^-64
         x_uq0
     };
@@ -422,6 +495,8 @@ where
         //     let corr_uq1: F::Int = <F::Int as HInt>::D::ZERO - (x_uq0.widen_mul(b_uq1)) >> F::BITS;
         //     x_uq0 = (x_uq0.widen_mul(corr_uq1) >> (F::BITS - 1)).lo();
         // }
+
+        c"step5".println();
         for _ in 0..F::FULL_ITERATIONS {
             let corr_uq1: u32 = 0.wrapping_sub(
                 ((CastInto::<u32>::cast(x_uq0) as u64) * (CastInto::<u32>::cast(b_uq1) as u64))
@@ -453,6 +528,8 @@ where
             .wrapping_sub(quotient_uq1.wrapping_mul(b_significand));
         written_exponent -= F::SignedInt::ONE;
         a_significand <<= 1;
+
+        c"step6".println();
         residual_lo
     } else {
         // Highest bit is 1 (the UQ1.(SB+1) value is in [1, 2)), convert it
@@ -460,6 +537,7 @@ where
         quotient_uq1 >>= 1;
         let residual_lo = (a_significand << significand_bits)
             .wrapping_sub(quotient_uq1.wrapping_mul(b_significand));
+        c"step7".println();
         residual_lo
     };
 
@@ -492,6 +570,7 @@ where
 
     // If we have overflowed the exponent, return infinity
     if written_exponent >= F::SignedInt::cast_from(max_exponent) {
+        c"step8".println();
         return F::from_repr(inf_rep | quotient_sign);
     }
 
@@ -502,9 +581,12 @@ where
         let mut ret = quotient & significand_mask;
         ret |= written_exponent.unsigned() << significand_bits;
         residual_lo <<= 1;
+        c"step9".println();
         ret
     } else {
+        c"step10".println();
         if (F::SignedInt::cast_from(significand_bits) + written_exponent) < F::SignedInt::ZERO {
+            c"step11".println();
             return F::from_repr(quotient_sign);
         }
 
@@ -515,17 +597,20 @@ where
         ret
     };
 
+    c"step12".println();
     residual_lo += abs_result & one; // tie to even
                                      // conditionally turns the below LT comparison into LTE
     abs_result += u8::from(residual_lo > b_significand).into();
 
     if F::BITS == 128 || (F::BITS == 32 && F::HALF_ITERATIONS > 0) {
+        c"step13".println();
         // Do not round Infinity to NaN
         abs_result +=
             u8::from(abs_result < inf_rep && residual_lo > (2 + 1).cast() * b_significand).into();
     }
 
     if F::BITS == 128 {
+        c"step14".println();
         abs_result +=
             u8::from(abs_result < inf_rep && residual_lo > (4 + 1).cast() * b_significand).into();
     }
