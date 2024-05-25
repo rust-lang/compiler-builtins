@@ -75,6 +75,14 @@ impl DivConfig for f64 {
     const C_HW: HalfRep<Self> = 0x7504F333 << (HalfRep::<Self>::BITS - 32);
 }
 
+#[cfg(not(feature = "no-f16-f128"))]
+impl DivConfig for f128 {
+    const HALF_ITERATIONS: usize = 4;
+    const FULL_ITERATIONS: usize = 1;
+
+    const C_HW: HalfRep<Self> = 0x7504F333 << (HalfRep::<Self>::BITS - 32);
+}
+
 fn div<F: Float>(a: F, b: F) -> F
 where
     F: DivConfig,
@@ -94,7 +102,7 @@ where
     F::SignedInt: CastFrom<F::Int>,
     F::Int: CastFrom<u32>,
     F::Int: From<u32>,
-    <F::Int as HInt>::D: core::ops::Shr<u32, Output = <F::Int as HInt>::D>,
+    // <F::Int as HInt>::D: core::ops::Shr<u32, Output = <F::Int as HInt>::D>,
     u16: CastInto<F::Int>,
     i32: CastInto<F::Int>,
     i64: CastInto<F::Int>,
@@ -438,7 +446,7 @@ where
 
     // quotient_UQ1 is in [0.5, 2.0) as UQ1.(SB+1),
     // adjust it to be in [1.0, 2.0) as UQ1.SB.
-    let mut residual = if quotient_uq1 < (implicit_bit << 1) {
+    let mut residual_lo = if quotient_uq1 < (implicit_bit << 1) {
         // Highest bit is 0, so just reinterpret quotient_UQ1 as UQ1.SB,
         // effectively doubling its value as well as its error estimation.
         let residual_lo = (a_significand << (significand_bits + 1))
@@ -490,10 +498,10 @@ where
     // Now, quotient <= the correctly-rounded result
     // and may need taking NextAfter() up to 3 times (see error estimates above)
     // r = a - b * q
-    let abs_result = if written_exponent > F::SignedInt::ZERO {
+    let mut abs_result = if written_exponent > F::SignedInt::ZERO {
         let mut ret = quotient & significand_mask;
         ret |= written_exponent.unsigned() << significand_bits;
-        residual <<= 1;
+        residual_lo <<= 1;
         ret
     } else {
         if (F::SignedInt::cast_from(significand_bits) + written_exponent) < F::SignedInt::ZERO {
@@ -501,18 +509,26 @@ where
         }
 
         let ret = quotient.wrapping_shr(u32::cast_from(written_exponent.wrapping_neg()) + 1);
-        residual = a_significand
+        residual_lo = a_significand
             .wrapping_shl(significand_bits.wrapping_add(CastInto::<u32>::cast(written_exponent)))
             .wrapping_sub(ret.wrapping_mul(b_significand) << 1);
         ret
     };
 
-    // Round
-    let abs_result = {
-        residual += abs_result & one; // tie to even
-                                      // conditionally turns the below LT comparison into LTE
-        abs_result + u8::from(residual > b_significand).into()
-    };
+    residual_lo += abs_result & one; // tie to even
+                                     // conditionally turns the below LT comparison into LTE
+    abs_result += u8::from(residual_lo > b_significand).into();
+
+    if F::BITS == 128 || (F::BITS == 32 && F::HALF_ITERATIONS > 0) {
+        // Do not round Infinity to NaN
+        abs_result +=
+            u8::from(abs_result < inf_rep && residual_lo > (2 + 1).cast() * b_significand).into();
+    }
+
+    if F::BITS == 128 {
+        abs_result +=
+            u8::from(abs_result < inf_rep && residual_lo > (4 + 1).cast() * b_significand).into();
+    }
 
     F::from_repr(abs_result | quotient_sign)
 }
@@ -527,6 +543,13 @@ intrinsics! {
     #[avr_skip]
     #[arm_aeabi_alias = __aeabi_ddiv]
     pub extern "C" fn __divdf3(a: f64, b: f64) -> f64 {
+        div(a, b)
+    }
+
+    #[avr_skip]
+    #[ppc_alias = __divkf3]
+    #[cfg(not(feature = "no-f16-f128"))]
+    pub extern "C" fn __divtf3(a: f128, b: f128) -> f128 {
         div(a, b)
     }
 
