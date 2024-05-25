@@ -8,7 +8,7 @@ use crate::int::{CastFrom, CastInto, DInt, HInt, Int, MinInt};
 use super::HalfRep;
 
 /// Type-specific configuration used for float division
-trait DivConfig: Float
+trait FloatDivision: Float
 where
     Self::Int: DInt,
 {
@@ -69,7 +69,7 @@ where
     };
 }
 
-impl DivConfig for f32 {
+impl FloatDivision for f32 {
     const HALF_ITERATIONS: usize = 0;
     const FULL_ITERATIONS: usize = 3;
     const USE_NATIVE_FULL_ITERATIONS: bool = true;
@@ -81,7 +81,7 @@ impl DivConfig for f32 {
     const C_HW: HalfRep<Self> = 0x7504;
 }
 
-impl DivConfig for f64 {
+impl FloatDivision for f64 {
     const HALF_ITERATIONS: usize = 3;
     const FULL_ITERATIONS: usize = 1;
     /// HW is at least 32. Shifting into the highest bits if needed.
@@ -89,7 +89,7 @@ impl DivConfig for f64 {
 }
 
 #[cfg(not(feature = "no-f16-f128"))]
-impl DivConfig for f128 {
+impl FloatDivision for f128 {
     const HALF_ITERATIONS: usize = 4;
     const FULL_ITERATIONS: usize = 1;
 
@@ -97,7 +97,7 @@ impl DivConfig for f128 {
 }
 
 extern "C" {
-    fn printf(p: *const i8, ...);
+    fn printf(p: *const core::ffi::c_char, ...);
 }
 
 use core::ffi::CStr;
@@ -154,9 +154,9 @@ impl DbgPrint for i128 {
     }
 }
 
-fn div<F: Float>(a: F, b: F) -> F
+fn div<F>(a: F, b: F) -> F
 where
-    F: DivConfig,
+    F: FloatDivision,
     F::Int: CastInto<u32>,
     F::Int: CastFrom<u32>,
     F::Int: CastInto<i32>,
