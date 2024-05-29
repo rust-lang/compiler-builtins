@@ -117,7 +117,7 @@ intrinsics! {
 
     #[avr_skip]
     pub extern "C" fn __unordsf2vfp(a: f32, b: f32) -> i32 {
-        unord(a, b)
+        unord(a, b) as i32
     }
 
     #[avr_skip]
