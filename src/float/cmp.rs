@@ -116,6 +116,11 @@ intrinsics! {
     }
 
     #[avr_skip]
+    pub extern "C" fn __unordsf2vfp(a: f32, b: f32) -> i32 {
+        unord(a, b)
+    }
+
+    #[avr_skip]
     pub extern "C" fn __eqsf2(a: f32, b: f32) -> i32 {
         cmp(a, b).to_le_abi()
     }
@@ -148,6 +153,11 @@ intrinsics! {
     #[avr_skip]
     #[arm_aeabi_alias = __aeabi_dcmpun]
     pub extern "C" fn __unorddf2(a: f64, b: f64) -> i32 {
+        unord(a, b) as i32
+    }
+
+    #[avr_skip]
+    pub extern "C" fn __unorddf2vfp(a: f64, b: f64) -> i32 {
         unord(a, b) as i32
     }
 

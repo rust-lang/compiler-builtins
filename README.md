@@ -150,8 +150,8 @@ rely on CI.
 - [ ] arm/udivmodsi4.S (generic version is done)
 - [ ] arm/udivsi3.S (generic version is done)
 - [ ] arm/umodsi3.S (generic version is done)
-- [ ] arm/unorddf2vfp.S
-- [ ] arm/unordsf2vfp.S
+- [x] arm/unorddf2vfp.S (generic version is done)
+- [x] arm/unordsf2vfp.S (generic version is done)
 - [x] ashldi3.c
 - [x] ashrdi3.c
 - [x] comparedf2.c
