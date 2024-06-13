@@ -91,6 +91,23 @@ mod int_to_float {
         repr::<f64>(e, m)
     }
 
+    #[cfg(not(feature = "no-f16-f128"))]
+    pub fn u32_to_f128_bits(i: u32) -> u128 {
+        if i == 0 {
+            return 0;
+        }
+        let n = i.leading_zeros();
+
+        // High 64 significant bits, with bit 113 still in tact.
+        let m = (i as u64) << (f128::SIGNIFICAND_BITS - u32::BITS + 1 - 64 + n);
+        let e = (u32::BITS + f128::EXPONENT_BIAS - 2 - n) as u64;
+        // High 64 bits of f128 representation.
+        let h = (e << (f128::SIGNIFICAND_BITS - 64)) + m;
+
+        // Result was calculated as a u64 to avoid 128-bit operations (lower bits are always 0).
+        (h as u128) << 64
+    }
+
     pub fn u64_to_f32_bits(i: u64) -> u32 {
         let n = i.leading_zeros();
         let i_m = i.wrapping_shl(n); // Mantissa, shifted so the first bit is nonzero
@@ -112,6 +129,17 @@ mod int_to_float {
         let m = m_adj::<f64>(m_base, adj);
         let e = exp::<u64, f64>(n);
         repr::<f64>(e, m)
+    }
+
+    #[cfg(not(feature = "no-f16-f128"))]
+    pub fn u64_to_f128_bits(i: u64) -> u128 {
+        if i == 0 {
+            return 0;
+        }
+        let n = i.leading_zeros();
+        let m = m_f_gt_i::<_, f128>(i, n);
+        let e = exp::<u64, f128>(n);
+        repr::<f128>(e, m)
     }
 
     pub fn u128_to_f32_bits(i: u128) -> u32 {
@@ -143,6 +171,18 @@ mod int_to_float {
         let m = m_adj::<f64>(m_base, adj);
         let e = if i == 0 { 0 } else { exp::<u128, f64>(n) };
         repr::<f64>(e, m)
+    }
+
+    #[cfg(not(feature = "no-f16-f128"))]
+    pub fn u128_to_f128_bits(i: u128) -> u128 {
+        if i == 0 {
+            return 0;
+        }
+        let n = i.leading_zeros();
+        let (m_base, adj) = m_f_eq_i::<u128, f128>(i, n);
+        let m = m_adj::<f128>(m_base, adj);
+        let e = exp::<u128, f128>(n);
+        repr::<f128>(e, m)
     }
 }
 
@@ -177,6 +217,24 @@ intrinsics! {
     pub extern "C" fn __floatuntidf(i: u128) -> f64 {
         f64::from_bits(int_to_float::u128_to_f64_bits(i))
     }
+
+    #[ppc_alias = __floatunsikf]
+    #[cfg(not(feature = "no-f16-f128"))]
+    pub extern "C" fn __floatunsitf(i: u32) -> f128 {
+        f128::from_bits(int_to_float::u32_to_f128_bits(i))
+    }
+
+    #[ppc_alias = __floatundikf]
+    #[cfg(not(feature = "no-f16-f128"))]
+    pub extern "C" fn __floatunditf(i: u64) -> f128 {
+        f128::from_bits(int_to_float::u64_to_f128_bits(i))
+    }
+
+    #[ppc_alias = __floatuntikf]
+    #[cfg(not(feature = "no-f16-f128"))]
+    pub extern "C" fn __floatuntitf(i: u128) -> f128 {
+        f128::from_bits(int_to_float::u128_to_f128_bits(i))
+    }
 }
 
 // Conversions from signed integers to floats.
@@ -209,6 +267,24 @@ intrinsics! {
     #[cfg_attr(target_os = "uefi", unadjusted_on_win64)]
     pub extern "C" fn __floattidf(i: i128) -> f64 {
         int_to_float::signed(i, int_to_float::u128_to_f64_bits)
+    }
+
+    #[ppc_alias = __floatsikf]
+    #[cfg(not(feature = "no-f16-f128"))]
+    pub extern "C" fn __floatsitf(i: i32) -> f128 {
+        int_to_float::signed(i, int_to_float::u32_to_f128_bits)
+    }
+
+    #[ppc_alias = __floatdikf]
+    #[cfg(not(feature = "no-f16-f128"))]
+    pub extern "C" fn __floatditf(i: i64) -> f128 {
+        int_to_float::signed(i, int_to_float::u64_to_f128_bits)
+    }
+
+    #[ppc_alias = __floattikf]
+    #[cfg(not(feature = "no-f16-f128"))]
+    pub extern "C" fn __floattitf(i: i128) -> f128 {
+        int_to_float::signed(i, int_to_float::u128_to_f128_bits)
     }
 }
 
