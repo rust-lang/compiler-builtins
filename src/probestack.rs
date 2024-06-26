@@ -53,6 +53,8 @@ extern "C" {
     pub fn __rust_probestack();
 }
 
+// foo
+
 // A wrapper for our implementation of __rust_probestack, which allows us to
 // keep the assembly inline while controlling all CFI directives in the assembly
 // emitted for the function.
