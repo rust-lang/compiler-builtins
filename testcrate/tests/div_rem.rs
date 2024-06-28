@@ -1,3 +1,4 @@
+#![feature(f128)]
 #![allow(unused_macros)]
 
 use compiler_builtins::int::sdiv::{__divmoddi4, __divmodsi4, __divmodti4};
@@ -154,6 +155,27 @@ mod float_div {
     float! {
         f32, __divsf3, Single, all();
         f64, __divdf3, Double, all();
+    }
+}
+
+#[cfg(not(feature = "no-f16-f128"))]
+#[cfg(not(all(target_arch = "x86", not(target_feature = "sse"))))]
+#[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+mod float_div_f128 {
+    use super::*;
+
+    float! {
+        f128, __divtf3, Quad, not(feature = "no-sys-f128");
+    }
+}
+
+#[cfg(not(feature = "no-f16-f128"))]
+#[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
+mod float_div_f128_ppc {
+    use super::*;
+
+    float! {
+        f128, __divkf3, Quad, not(feature = "no-sys-f128");
     }
 }
 

@@ -31,10 +31,10 @@ pub(crate) trait Float:
     + ops::Rem<Output = Self>
 {
     /// A uint of the same width as the float
-    type Int: Int;
+    type Int: Int<OtherSign = Self::SignedInt, UnsignedInt=Self::Int>;
 
     /// A int of the same width as the float
-    type SignedInt: Int;
+    type SignedInt: Int + MinInt<OtherSign = Self::Int, UnsignedInt = Self::Int>;
 
     /// An int capable of containing the exponent bits plus a sign bit. This is signed.
     type ExpInt: Int;
