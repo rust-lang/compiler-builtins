@@ -58,11 +58,12 @@ mod float_comparisons {
     #[test]
     fn cmp_f32() {
         use compiler_builtins::float::cmp::{
-            __eqsf2, __gesf2, __gtsf2, __lesf2, __ltsf2, __nesf2, __unordsf2,
+            __eqsf2, __gesf2, __gtsf2, __lesf2, __ltsf2, __nesf2, __unordsf2, __unordsf2vfp,
         };
 
         fuzz_float_2(N, |x: f32, y: f32| {
             assert_eq!(__unordsf2(x, y) != 0, x.is_nan() || y.is_nan());
+            assert_eq!(__unordsf2vfp(x, y) != 0, x.is_nan() || y.is_nan());
             cmp!(f32, x, y, Single, all(),
                 1, __ltsf2;
                 1, __lesf2;
@@ -77,11 +78,12 @@ mod float_comparisons {
     #[test]
     fn cmp_f64() {
         use compiler_builtins::float::cmp::{
-            __eqdf2, __gedf2, __gtdf2, __ledf2, __ltdf2, __nedf2, __unorddf2,
+            __eqdf2, __gedf2, __gtdf2, __ledf2, __ltdf2, __nedf2, __unorddf2, __unorddf2vfp,
         };
 
         fuzz_float_2(N, |x: f64, y: f64| {
             assert_eq!(__unorddf2(x, y) != 0, x.is_nan() || y.is_nan());
+            assert_eq!(__unorddf2vfp(x, y) != 0, x.is_nan() || y.is_nan());
             cmp!(f64, x, y, Double, all(),
                 1, __ltdf2;
                 1, __ledf2;
