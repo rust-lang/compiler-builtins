@@ -9,18 +9,76 @@ use super::Float;
 /// These are hand-optimized bit twiddling code,
 /// which unfortunately isn't the easiest kind of code to read.
 ///
-/// The algorithm is explained here: <https://blog.m-ou.se/floats/>
+/// The algorithm is explained here: <https://blog.m-ou.se/floats/>. It roughly does the following:
+/// - Calculate the exponent based on the base-2 logarithm of `i` (leading zeros)
+/// - Calculate a base mantissa by shifting the integer into mantissa position
+/// - Figure out if rounding needs to occour by classifying truncated bits. Some patterns apply
+///   here, so they may be "squashed" into smaller numbers to spmplifiy the classification.
 mod int_to_float {
+    use super::*;
+
+    /// Calculate the exponent from the number of leading zeros.
+    fn exp<I: Int, F: Float<Int: CastFrom<u32>>>(n: u32) -> F::Int {
+        F::Int::cast_from(I::BITS + F::EXPONENT_BIAS - 2 - n)
+    }
+
+    /// Shift the integer into the float's mantissa bits. Keep the lowest exponent bit intact.
+    fn m_base<I: Int, F: Float<Int: CastFrom<I>>>(i_m: I) -> F::Int {
+        F::Int::cast_from(i_m >> ((I::BITS - F::BITS) + F::EXPONENT_BITS))
+    }
+
+    /// Calculate the mantissa in cases where the float size is greater than integer size
+    fn m_f_gt_i<I: Int, F: Float<Int: CastFrom<I>>>(i: I, n: u32) -> F::Int {
+        F::Int::cast_from(i) << (F::SIGNIFICAND_BITS - I::BITS + 1 + n)
+    }
+
+    /// Calculate the mantissa and a dropped bit adjustment  when `f` and `i` are equal sizes
+    fn m_f_eq_i<I: Int + CastInto<F::Int>, F: Float<Int = I>>(i: I, n: u32) -> (F::Int, F::Int) {
+        let base = (i << n) >> F::EXPONENT_BITS;
+
+        // Only the lowest `F::EXPONENT_BITS` bits will be truncated. Shift them
+        // to the highest position
+        let adj = (i << n) << (F::SIGNIFICAND_BITS + 1);
+
+        (base, adj)
+    }
+
+    /// Adjust a mantissa with dropped bits
+    fn m_adj<F: Float>(m_base: F::Int, dropped_bits: F::Int) -> F::Int {
+        // Branchlessly extract a `1` if rounding up should happen
+        let adj = (dropped_bits - (dropped_bits >> (F::BITS - 1) & !m_base)) >> (F::BITS - 1);
+
+        // Add one when we need to round up. Break ties to even.
+        m_base + adj
+    }
+
+    /// Combine a final float repr from an exponent and mantissa.
+    fn repr<F: Float>(e: F::Int, m: F::Int) -> F::Int {
+        // + rather than | so the mantissa can overflow into the exponent
+        (e << F::SIGNIFICAND_BITS) + m
+    }
+
+    /// Perform a signed operation as unsigned, then add the sign back
+    pub fn signed<I, F, Conv>(i: I, conv: Conv) -> F
+    where
+        F: Float,
+        I: Int,
+        F::Int: CastFrom<I>,
+        Conv: Fn(I::UnsignedInt) -> F::Int,
+    {
+        let sign_bit = F::Int::cast_from(i >> (I::BITS - 1)) << (F::BITS - 1);
+        F::from_repr(conv(i.unsigned_abs()) | sign_bit)
+    }
+
     pub fn u32_to_f32_bits(i: u32) -> u32 {
         if i == 0 {
             return 0;
         }
         let n = i.leading_zeros();
-        let a = (i << n) >> 8; // Significant bits, with bit 24 still in tact.
-        let b = (i << n) << 24; // Insignificant bits, only relevant for rounding.
-        let m = a + ((b - (b >> 31 & !a)) >> 31); // Add one when we need to round up. Break ties to even.
-        let e = 157 - n; // Exponent plus 127, minus one.
-        (e << 23) + m // + not |, so the mantissa can overflow into the exponent.
+        let (m_base, adj) = m_f_eq_i::<u32, f32>(i, n);
+        let m = m_adj::<f32>(m_base, adj);
+        let e = exp::<u32, f32>(n);
+        repr::<f32>(e, m)
     }
 
     pub fn u32_to_f64_bits(i: u32) -> u64 {
@@ -28,19 +86,38 @@ mod int_to_float {
             return 0;
         }
         let n = i.leading_zeros();
-        let m = (i as u64) << (21 + n); // Significant bits, with bit 53 still in tact.
-        let e = 1053 - n as u64; // Exponent plus 1023, minus one.
-        (e << 52) + m // Bit 53 of m will overflow into e.
+        let m = m_f_gt_i::<_, f64>(i, n);
+        let e = exp::<u32, f64>(n);
+        repr::<f64>(e, m)
+    }
+
+    #[cfg(not(feature = "no-f16-f128"))]
+    pub fn u32_to_f128_bits(i: u32) -> u128 {
+        if i == 0 {
+            return 0;
+        }
+        let n = i.leading_zeros();
+
+        // High 64 significant bits, with bit 113 still in tact.
+        let m = (i as u64) << (f128::SIGNIFICAND_BITS - u32::BITS + 1 - 64 + n);
+        let e = (u32::BITS + f128::EXPONENT_BIAS - 2 - n) as u64;
+        // High 64 bits of f128 representation.
+        let h = (e << (f128::SIGNIFICAND_BITS - 64)) + m;
+
+        // Result was calculated as a u64 to avoid 128-bit operations (lower bits are always 0).
+        (h as u128) << 64
     }
 
     pub fn u64_to_f32_bits(i: u64) -> u32 {
         let n = i.leading_zeros();
-        let y = i.wrapping_shl(n);
-        let a = (y >> 40) as u32; // Significant bits, with bit 24 still in tact.
-        let b = (y >> 8 | y & 0xFFFF) as u32; // Insignificant bits, only relevant for rounding.
-        let m = a + ((b - (b >> 31 & !a)) >> 31); // Add one when we need to round up. Break ties to even.
-        let e = if i == 0 { 0 } else { 189 - n }; // Exponent plus 127, minus one, except for zero.
-        (e << 23) + m // + not |, so the mantissa can overflow into the exponent.
+        let i_m = i.wrapping_shl(n); // Mantissa, shifted so the first bit is nonzero
+        let m_base = m_base::<_, f32>(i_m);
+        // The entire lower half of `i` will be truncated (masked portion), plus the
+        // next `EXPONENT_BITS` bits.
+        let adj = (i_m >> f32::EXPONENT_BITS | i_m & 0xFFFF) as u32;
+        let m = m_adj::<f32>(m_base, adj);
+        let e = if i == 0 { 0 } else { exp::<u64, f32>(n) };
+        repr::<f32>(e, m)
     }
 
     pub fn u64_to_f64_bits(i: u64) -> u64 {
@@ -48,31 +125,64 @@ mod int_to_float {
             return 0;
         }
         let n = i.leading_zeros();
-        let a = (i << n) >> 11; // Significant bits, with bit 53 still in tact.
-        let b = (i << n) << 53; // Insignificant bits, only relevant for rounding.
-        let m = a + ((b - (b >> 63 & !a)) >> 63); // Add one when we need to round up. Break ties to even.
-        let e = 1085 - n as u64; // Exponent plus 1023, minus one.
-        (e << 52) + m // + not |, so the mantissa can overflow into the exponent.
+        let (m_base, adj) = m_f_eq_i::<u64, f64>(i, n);
+        let m = m_adj::<f64>(m_base, adj);
+        let e = exp::<u64, f64>(n);
+        repr::<f64>(e, m)
+    }
+
+    #[cfg(not(feature = "no-f16-f128"))]
+    pub fn u64_to_f128_bits(i: u64) -> u128 {
+        if i == 0 {
+            return 0;
+        }
+        let n = i.leading_zeros();
+        let m = m_f_gt_i::<_, f128>(i, n);
+        let e = exp::<u64, f128>(n);
+        repr::<f128>(e, m)
     }
 
     pub fn u128_to_f32_bits(i: u128) -> u32 {
         let n = i.leading_zeros();
-        let y = i.wrapping_shl(n);
-        let a = (y >> 104) as u32; // Significant bits, with bit 24 still in tact.
-        let b = (y >> 72) as u32 | ((y << 32) >> 32 != 0) as u32; // Insignificant bits, only relevant for rounding.
-        let m = a + ((b - (b >> 31 & !a)) >> 31); // Add one when we need to round up. Break ties to even.
-        let e = if i == 0 { 0 } else { 253 - n }; // Exponent plus 127, minus one, except for zero.
-        (e << 23) + m // + not |, so the mantissa can overflow into the exponent.
+        let i_m = i.wrapping_shl(n); // Mantissa, shifted so the first bit is nonzero
+        let m_base = m_base::<_, f32>(i_m);
+
+        // Within the upper `F::BITS`, everything except for the signifcand
+        // gets truncated
+        let d1: u32 = (i_m >> (u128::BITS - f32::BITS - f32::SIGNIFICAND_BITS - 1)).cast();
+
+        // The entire rest of `i_m` gets truncated. Zero the upper `F::BITS` then just
+        // check if it is nonzero.
+        let d2: u32 = (i_m << f32::BITS >> f32::BITS != 0).into();
+        let adj = d1 | d2;
+
+        let m = m_adj::<f32>(m_base, adj);
+        let e = if i == 0 { 0 } else { exp::<u128, f32>(n) };
+        repr::<f32>(e, m)
     }
 
     pub fn u128_to_f64_bits(i: u128) -> u64 {
         let n = i.leading_zeros();
-        let y = i.wrapping_shl(n);
-        let a = (y >> 75) as u64; // Significant bits, with bit 53 still in tact.
-        let b = (y >> 11 | y & 0xFFFF_FFFF) as u64; // Insignificant bits, only relevant for rounding.
-        let m = a + ((b - (b >> 63 & !a)) >> 63); // Add one when we need to round up. Break ties to even.
-        let e = if i == 0 { 0 } else { 1149 - n as u64 }; // Exponent plus 1023, minus one, except for zero.
-        (e << 52) + m // + not |, so the mantissa can overflow into the exponent.
+        let i_m = i.wrapping_shl(n); // Mantissa, shifted so the first bit is nonzero
+        let m_base = m_base::<_, f64>(i_m);
+        // The entire lower half of `i` will be truncated (masked portion), plus the
+        // next `EXPONENT_BITS` bits.
+        let adj = (i_m >> f64::EXPONENT_BITS | i_m & 0xFFFF_FFFF) as u64;
+        let m = m_adj::<f64>(m_base, adj);
+        let e = if i == 0 { 0 } else { exp::<u128, f64>(n) };
+        repr::<f64>(e, m)
+    }
+
+    #[cfg(not(feature = "no-f16-f128"))]
+    pub fn u128_to_f128_bits(i: u128) -> u128 {
+        if i == 0 {
+            return 0;
+        }
+        let n = i.leading_zeros();
+        let (m_base, adj) = m_f_eq_i::<u128, f128>(i, n);
+        let m = m_adj::<f128>(m_base, adj);
+        let e = exp::<u128, f128>(n);
+        repr::<f128>(e, m)
     }
 }
 
@@ -107,44 +217,74 @@ intrinsics! {
     pub extern "C" fn __floatuntidf(i: u128) -> f64 {
         f64::from_bits(int_to_float::u128_to_f64_bits(i))
     }
+
+    #[ppc_alias = __floatunsikf]
+    #[cfg(not(feature = "no-f16-f128"))]
+    pub extern "C" fn __floatunsitf(i: u32) -> f128 {
+        f128::from_bits(int_to_float::u32_to_f128_bits(i))
+    }
+
+    #[ppc_alias = __floatundikf]
+    #[cfg(not(feature = "no-f16-f128"))]
+    pub extern "C" fn __floatunditf(i: u64) -> f128 {
+        f128::from_bits(int_to_float::u64_to_f128_bits(i))
+    }
+
+    #[ppc_alias = __floatuntikf]
+    #[cfg(not(feature = "no-f16-f128"))]
+    pub extern "C" fn __floatuntitf(i: u128) -> f128 {
+        f128::from_bits(int_to_float::u128_to_f128_bits(i))
+    }
 }
 
 // Conversions from signed integers to floats.
 intrinsics! {
     #[arm_aeabi_alias = __aeabi_i2f]
     pub extern "C" fn __floatsisf(i: i32) -> f32 {
-        let sign_bit = ((i >> 31) as u32) << 31;
-        f32::from_bits(int_to_float::u32_to_f32_bits(i.unsigned_abs()) | sign_bit)
+        int_to_float::signed(i, int_to_float::u32_to_f32_bits)
     }
 
     #[arm_aeabi_alias = __aeabi_i2d]
     pub extern "C" fn __floatsidf(i: i32) -> f64 {
-        let sign_bit = ((i >> 31) as u64) << 63;
-        f64::from_bits(int_to_float::u32_to_f64_bits(i.unsigned_abs()) | sign_bit)
+        int_to_float::signed(i, int_to_float::u32_to_f64_bits)
     }
 
     #[arm_aeabi_alias = __aeabi_l2f]
     pub extern "C" fn __floatdisf(i: i64) -> f32 {
-        let sign_bit = ((i >> 63) as u32) << 31;
-        f32::from_bits(int_to_float::u64_to_f32_bits(i.unsigned_abs()) | sign_bit)
+        int_to_float::signed(i, int_to_float::u64_to_f32_bits)
     }
 
     #[arm_aeabi_alias = __aeabi_l2d]
     pub extern "C" fn __floatdidf(i: i64) -> f64 {
-        let sign_bit = ((i >> 63) as u64) << 63;
-        f64::from_bits(int_to_float::u64_to_f64_bits(i.unsigned_abs()) | sign_bit)
+        int_to_float::signed(i, int_to_float::u64_to_f64_bits)
     }
 
     #[cfg_attr(target_os = "uefi", unadjusted_on_win64)]
     pub extern "C" fn __floattisf(i: i128) -> f32 {
-        let sign_bit = ((i >> 127) as u32) << 31;
-        f32::from_bits(int_to_float::u128_to_f32_bits(i.unsigned_abs()) | sign_bit)
+        int_to_float::signed(i, int_to_float::u128_to_f32_bits)
     }
 
     #[cfg_attr(target_os = "uefi", unadjusted_on_win64)]
     pub extern "C" fn __floattidf(i: i128) -> f64 {
-        let sign_bit = ((i >> 127) as u64) << 63;
-        f64::from_bits(int_to_float::u128_to_f64_bits(i.unsigned_abs()) | sign_bit)
+        int_to_float::signed(i, int_to_float::u128_to_f64_bits)
+    }
+
+    #[ppc_alias = __floatsikf]
+    #[cfg(not(feature = "no-f16-f128"))]
+    pub extern "C" fn __floatsitf(i: i32) -> f128 {
+        int_to_float::signed(i, int_to_float::u32_to_f128_bits)
+    }
+
+    #[ppc_alias = __floatdikf]
+    #[cfg(not(feature = "no-f16-f128"))]
+    pub extern "C" fn __floatditf(i: i64) -> f128 {
+        int_to_float::signed(i, int_to_float::u64_to_f128_bits)
+    }
+
+    #[ppc_alias = __floattikf]
+    #[cfg(not(feature = "no-f16-f128"))]
+    pub extern "C" fn __floattitf(i: i128) -> f128 {
+        int_to_float::signed(i, int_to_float::u128_to_f128_bits)
     }
 }
 
