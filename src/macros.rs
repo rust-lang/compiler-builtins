@@ -253,11 +253,11 @@ macro_rules! intrinsics {
             $($body)*
         }
 
-        #[cfg(all(any(windows, target_os = "uefi"), target_arch = "x86_64", not(feature = "mangled-names")))]
-        mod $name {
-            #[no_mangle]
+        #[cfg(all(any(windows, target_os = "uefi"), target_arch = "x86_64"))]
+        pub mod $name {
+            #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
             #[cfg_attr(all(not(windows), not(target_vendor = "apple")), linkage = "weak")]
-            extern $abi fn $name( $($argname: $ty),* )
+            pub extern $abi fn $name( $($argname: $ty),* )
                 -> $crate::macros::win64_128bit_abi_hack::U64x2
             {
                 let e: $($ret)? = super::$name($($argname),*);
@@ -294,20 +294,20 @@ macro_rules! intrinsics {
             $($body)*
         }
 
-        #[cfg(all(target_arch = "arm", not(feature = "mangled-names")))]
-        mod $name {
-            #[no_mangle]
+        #[cfg(target_arch = "arm")]
+        pub mod $name {
+            #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
             #[cfg_attr(all(not(windows), not(target_vendor = "apple")), linkage = "weak")]
-            extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
+            pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 super::$name($($argname),*)
             }
         }
 
-        #[cfg(all(target_arch = "arm", not(feature = "mangled-names")))]
-        mod $alias {
-            #[no_mangle]
+        #[cfg(target_arch = "arm")]
+        pub mod $alias {
+            #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
             #[cfg_attr(all(not(windows), not(target_vendor="apple")), linkage = "weak")]
-            extern "aapcs" fn $alias( $($argname: $ty),* ) $(-> $ret)? {
+            pub extern "aapcs" fn $alias( $($argname: $ty),* ) $(-> $ret)? {
                 super::$name($($argname),*)
             }
         }
@@ -368,12 +368,12 @@ macro_rules! intrinsics {
             $($body)*
         }
 
-        #[cfg(all(feature = "mem", not(feature = "mangled-names")))]
-        mod $name {
+        #[cfg(feature = "mem")]
+        pub mod $name {
             $(#[$($attr)*])*
-            #[no_mangle]
+            #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
             #[cfg_attr(all(not(windows), not(target_vendor = "apple")), linkage = "weak")]
-            unsafe extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
+            pub unsafe extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 super::$name($($argname),*)
             }
         }
@@ -392,7 +392,6 @@ macro_rules! intrinsics {
 
         $($rest:tt)*
     ) => (
-        // `#[naked]` definitions are referenced by other places, so we can't use `cfg` like the others
         pub mod $name {
             #[naked]
             $(#[$($attr)*])*
@@ -460,12 +459,11 @@ macro_rules! intrinsics {
             $($body)*
         }
 
-        #[cfg(not(feature = "mangled-names"))]
-        mod $name {
+        pub mod $name {
             $(#[$($attr)*])*
-            #[no_mangle]
+            #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
             #[cfg_attr(all(not(windows), not(target_vendor = "apple")), linkage = "weak")]
-            extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
+            pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 super::$name($($argname),*)
             }
         }
@@ -487,12 +485,11 @@ macro_rules! intrinsics {
             $($body)*
         }
 
-        #[cfg(not(feature = "mangled-names"))]
-        mod $name {
+        pub mod $name {
             $(#[$($attr)*])*
-            #[no_mangle]
+            #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
             #[cfg_attr(all(not(windows), not(target_vendor = "apple")), linkage = "weak")]
-            unsafe fn $name( $($argname: $ty),* ) $(-> $ret)? {
+            pub unsafe extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 super::$name($($argname),*)
             }
         }
