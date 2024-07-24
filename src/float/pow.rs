@@ -35,4 +35,16 @@ intrinsics! {
     pub extern "C" fn __powidf2(a: f64, b: i32) -> f64 {
         pow(a, b)
     }
+
+    #[avr_skip]
+    #[cfg(not(any(feature = "no-f16-f128", target_arch = "powerpc", target_arch = "powerpc64")))]
+    pub extern "C" fn __powitf2(a: f128, b: i32) -> f128 {
+        pow(a, b)
+    }
+
+    #[avr_skip]
+    #[cfg(all(not(feature = "no-f16-f128"), any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    pub extern "C" fn __powikf2(a: f128, b: i32) -> f128 {
+        pow(a, b)
+    }
 }

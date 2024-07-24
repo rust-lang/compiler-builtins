@@ -256,7 +256,7 @@ These builtins are needed to support `f16` and `f128`, which are in the process 
 - [ ] floatunditf.c
 - [ ] floatunsitf.c
 - [x] multf3.c
-- [ ] powitf2.c
+- [x] powitf2.c
 - [ ] ppc/fixtfdi.c
 - [ ] ppc/fixunstfdi.c
 - [ ] ppc/floatditf.c
