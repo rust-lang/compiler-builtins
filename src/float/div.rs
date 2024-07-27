@@ -1,27 +1,79 @@
 /*
+Floating point division routines.
 
-Solving for `a / b`, which is `res = m_a*2^p_a / m_b*2^p_b`.
+This module documentation gives an overview of the method used. More documentation is inline.
+
+Relevant notation:
+
+- `m_a`: the mantissa of `a`, in base 2
+- `p_a`: the exponent of `a`, in base 2. I.e. `a = m_a * 2^p_a`
+- `uqN` (e.g. `uq1`): this refers to Q notation for fixed-point numbers. UQ1.31 is an unsigned
+  fixed-point number with 1 integral bit, and 31 decimal bits. A `uqN` variable of type `uM`
+  will have N bits of integer and M-N bits of fraction.
+- `hw`: half width, i.e. for `f64` this will be a `u32`.
+
+# Method Overview
+
+Division routines must solve for `a / b`, which is `res = m_a*2^p_a / m_b*2^p_b`. Process:
 
 - Separate the exponent and significand
-  `res = (m_a / m_b) * 2^(p_a - p_b)`
-- Check for early exits
+  `res = (m_a / m_b) * 2^{p_a - p_b}`
+- Check for early exits (infinity, zero, etc).
 - If `a` or `b` are subnormal, normalize by shifting the mantissa and adjusting the exponent.
-- Shift the significand (with implicit bit) fully left so that arithmetic can happen with greater
-  precision.
-- Calculate the reciprocal of `b`, `r`
-- Multiply: `res = m_a * r_b * 2^(p_a - p_b)`
+- Shift the significand (with implicit bit) fully left so that arithmetic can happen with
+  greater precision.
+- Calculate the reciprocal of `b`, `x`
+- Multiply: `res = m_a * x_b * 2^{p_a - p_b}`
+- Reapply rounding
+
+The reciprocal and multiplication steps must happen with more bits of precision than the
+mantissa has; otherwise, precision would be lost rounding at each step. It is sufficient to use
+the float's same-sized integer.
+
+# Reciprocal calculation
+
+Calculating the reciprocal is the most complicated part of this process. It uses the
+[Newton-Raphson method], which picks an initial estimation (of the reciprocal) and performs
+a number of iterations to increase its precision.
+
+In general, Newton's method takes the following form:
+
+```
+`x_n` is a guess or the result of a previous iteration. Increasing `n` converges to the
+desired result.
+
+The result is a zero of `f(x)`.
+
+x_{n+1} = x_n - f(x_n) / f'(x_n)
+```
+
+Applying this to finding the reciprocal:
+
+
+```text
+1 / x = b
+
+Rearrange so we can solve by finding a zero
+0 = (1 / x) - b = f(x)
+
+f'(x) = -x^{-2}
+
+x_{n+1} = 2*x_n - b*x_n^2
+
+
+```
+
+[Newton-Raphson method]: https://en.wikipedia.org/wiki/Newton%27s_method
 
 The most complicated part of this process is calculating the reciprocal.
 
-Note that variables named e.g. `uq0` refer to Q notation. E.g. Q1.31 refers to a fixed-point
-number that has 1 bit of integer and 31 bits of decimal.
 
 */
 
+use super::HalfRep;
 use crate::float::Float;
 use crate::int::{CastFrom, CastInto, DInt, HInt, Int, MinInt};
-
-use super::HalfRep;
+use core::mem::size_of;
 
 /// Type-specific configuration used for float division
 trait FloatDivision: Float
@@ -32,9 +84,9 @@ where
     const HALF_ITERATIONS: usize;
 
     /// Iterations that are done at the full float's width. Must be at least one.
-    const FULL_ITERATIONS: usize;
+    const FULL_ITERATIONS: usize = 1;
 
-    const USE_NATIVE_FULL_ITERATIONS: bool = false;
+    const USE_NATIVE_FULL_ITERATIONS: bool = size_of::<Self>() < size_of::<*const ()>();
 
     /// C is (3/4 + 1/sqrt(2)) - 1 truncated to W0 fractional bits as UQ0.HW
     /// with W0 being either 16 or 32 and W0 <= HW.
@@ -90,10 +142,30 @@ where
     };
 }
 
+/// Calculate the number of iterations required to get needed precision of a float type.
+///
+/// This returns `(h, f)` where `h` is the number of iterations to be donei using integers
+/// at half the float's width, and `f` is the number of iterations done using integers of the
+/// float's full width. Doing some iterations at half width is an optimization when the float
+/// is larger than a word.
+///
+/// ASSUMPTION: the initial estimate should have at least 8 bits of precision. If this is not
+/// true, results will be inaccurate.
+const fn calc_iterations<F: Float>() -> (usize, usize) {
+    // Precision doubles with each iteration
+    let total_iterations = F::BITS.ilog2() as usize - 2;
+
+    if size_of::<F>() < size_of::<*const ()>() {
+        // No need to use half iterations if math at the half
+        (0, total_iterations)
+    } else {
+        (total_iterations - 1, 1)
+    }
+}
+
 impl FloatDivision for f32 {
     const HALF_ITERATIONS: usize = 0;
     const FULL_ITERATIONS: usize = 3;
-    const USE_NATIVE_FULL_ITERATIONS: bool = true;
 
     /// Use 16-bit initial estimation in case we are using half-width iterations
     /// for float32 division. This is expected to be useful for some 16-bit
@@ -104,7 +176,7 @@ impl FloatDivision for f32 {
 
 impl FloatDivision for f64 {
     const HALF_ITERATIONS: usize = 3;
-    const FULL_ITERATIONS: usize = 1;
+
     /// HW is at least 32. Shifting into the highest bits if needed.
     const C_HW: HalfRep<Self> = 0x7504F333 << (HalfRep::<Self>::BITS - 32);
 }
@@ -112,7 +184,6 @@ impl FloatDivision for f64 {
 #[cfg(not(feature = "no-f16-f128"))]
 impl FloatDivision for f128 {
     const HALF_ITERATIONS: usize = 4;
-    const FULL_ITERATIONS: usize = 1;
 
     const C_HW: HalfRep<Self> = 0x7504F333 << (HalfRep::<Self>::BITS - 32);
 }
@@ -169,6 +240,7 @@ where
     let inf_rep = exponent_mask;
     let quiet_bit = implicit_bit >> 1;
     let qnan_rep = exponent_mask | quiet_bit;
+    let (half_iterations, full_iterations) = calc_iterations::<F>();
 
     let a_rep = a.repr();
     let b_rep = b.repr();
@@ -300,7 +372,7 @@ where
     // NB: Using half-width iterations increases computation errors due to
     // rounding, so error estimations have to be computed taking the selected
     // mode into account!
-    let mut x_uq0 = if F::HALF_ITERATIONS > 0 {
+    let mut x_uq0 = if half_iterations > 0 {
         // Starting with (n-1) half-width iterations
         let b_uq1_hw: HalfRep<F> = b_uq1.hi();
 
@@ -339,7 +411,7 @@ where
             // On (1/b, 1], g(x) > 0 <=> f(x) < x
             //
             // For half-width iterations, b_hw is used instead of b.
-            for _ in 0..F::HALF_ITERATIONS {
+            for _ in 0..half_iterations {
                 // corr_UQ1_hw can be **larger** than 2 - b_hw*x by at most 1*Ulp
                 // of corr_UQ1_hw.
                 // "0.0 - (...)" is equivalent to "2.0 - (...)" in UQ1.(HW-1).
@@ -458,12 +530,12 @@ where
         x_uq0
     };
 
-    if F::USE_NATIVE_FULL_ITERATIONS {
+    if full_iterations > 1 {
         // Need to use concrete types since `F::Int::D` might not support math. So, restrict to
         // one type.
         assert!(F::BITS == 32, "native full iterations only supports f32");
 
-        for _ in 0..F::FULL_ITERATIONS {
+        for _ in 0..full_iterations {
             let corr_uq1: u32 = 0.wrapping_sub(
                 ((CastInto::<u32>::cast(x_uq0) as u64) * (CastInto::<u32>::cast(b_uq1) as u64))
                     >> F::BITS,
@@ -472,6 +544,11 @@ where
                 as u32)
                 .cast();
         }
+    } else {
+        assert!(
+            F::BITS != 32,
+            "native full iterations onlydoaijfoisd supports f32"
+        );
     }
 
     // Finally, account for possible overflow, as explained above.
