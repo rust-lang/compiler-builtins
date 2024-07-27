@@ -51,7 +51,7 @@ pub(crate) trait Float:
     /// The bitwidth of the exponent
     const EXPONENT_BITS: u32 = Self::BITS - Self::SIGNIFICAND_BITS - 1;
 
-    /// The saturated value of the exponent (infinite representation)
+    /// The saturated value of the exponent (infinite representation), in the rightmost postiion.
     const EXPONENT_MAX: u32 = (1 << Self::EXPONENT_BITS) - 1;
 
     /// The exponent bias value
@@ -175,7 +175,7 @@ macro_rules! float_impl {
             fn normalize(significand: Self::Int) -> (i32, Self::Int) {
                 let shift = significand
                     .leading_zeros()
-                    .wrapping_sub((Self::Int::ONE << Self::SIGNIFICAND_BITS).leading_zeros());
+                    .wrapping_sub(Self::EXPONENT_BITS);
                 (
                     1i32.wrapping_sub(shift as i32),
                     significand << shift as Self::Int,

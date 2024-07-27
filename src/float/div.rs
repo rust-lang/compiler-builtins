@@ -1,3 +1,23 @@
+/*
+
+Solving for `a / b`, which is `res = m_a*2^p_a / m_b*2^p_b`.
+
+- Separate the exponent and significand
+  `res = (m_a / m_b) * 2^(p_a - p_b)`
+- Check for early exits
+- If `a` or `b` are subnormal, normalize by shifting the mantissa and adjusting the exponent.
+- Shift the significand (with implicit bit) fully left so that arithmetic can happen with greater
+  precision.
+- Calculate the reciprocal of `b`, `r`
+- Multiply: `res = m_a * r_b * 2^(p_a - p_b)`
+
+The most complicated part of this process is calculating the reciprocal.
+
+Note that variables named e.g. `uq0` refer to Q notation. E.g. Q1.31 refers to a fixed-point
+number that has 1 bit of integer and 31 bits of decimal.
+
+*/
+
 use crate::float::Float;
 use crate::int::{CastFrom, CastInto, DInt, HInt, Int, MinInt};
 
@@ -8,8 +28,9 @@ trait FloatDivision: Float
 where
     Self::Int: DInt,
 {
-    /// Iterations that are done at half of the float's width
+    /// Iterations that are done at half of the float's width, done for optimization.
     const HALF_ITERATIONS: usize;
+
     /// Iterations that are done at the full float's width. Must be at least one.
     const FULL_ITERATIONS: usize;
 
@@ -51,6 +72,10 @@ where
             }
         }
 
+        if Self::FULL_ITERATIONS < 1 {
+            panic!("Must have at least one full iteration");
+        }
+
         if Self::BITS == 32 && Self::HALF_ITERATIONS == 2 && Self::FULL_ITERATIONS == 1 {
             74u16
         } else if Self::BITS == 32 && Self::HALF_ITERATIONS == 0 && Self::FULL_ITERATIONS == 3 {
@@ -84,6 +109,18 @@ impl FloatDivision for f64 {
     const C_HW: HalfRep<Self> = 0x7504F333 << (HalfRep::<Self>::BITS - 32);
 }
 
+#[cfg(not(feature = "no-f16-f128"))]
+impl FloatDivision for f128 {
+    const HALF_ITERATIONS: usize = 4;
+    const FULL_ITERATIONS: usize = 1;
+
+    const C_HW: HalfRep<Self> = 0x7504F333 << (HalfRep::<Self>::BITS - 32);
+}
+
+extern crate std;
+#[allow(unused)]
+use std::{dbg, fmt, println};
+
 fn div<F>(a: F, b: F) -> F
 where
     F: FloatDivision,
@@ -108,6 +145,11 @@ where
     u64: CastInto<F::Int>,
     u64: CastInto<HalfRep<F>>,
     u128: CastInto<F::Int>,
+
+    // debugging
+    F::Int: fmt::LowerHex,
+    F::Int: fmt::Display,
+    F::SignedInt: fmt::Display,
 {
     let one = F::Int::ONE;
     let zero = F::Int::ZERO;
@@ -131,8 +173,6 @@ where
     let a_rep = a.repr();
     let b_rep = b.repr();
 
-    // FIXME(tgross35): use u32/i32 and not `Int` to store exponents, since that is enough for up to
-    // `f256`. This should make f128 div faster.
     // Exponent numeric representationm not accounting for bias
     let a_exponent = (a_rep >> significand_bits) & exponent_sat;
     let b_exponent = (b_rep >> significand_bits) & exponent_sat;
@@ -140,7 +180,10 @@ where
 
     let mut a_significand = a_rep & significand_mask;
     let mut b_significand = b_rep & significand_mask;
-    let mut scale = 0;
+
+    // The exponent of our final result in its encoded form
+    let mut res_exponent: i32 =
+        i32::cast_from(a_exponent) - i32::cast_from(b_exponent) + (exponent_bias as i32);
 
     // Detect if a or b is zero, denormal, infinity, or NaN.
     if a_exponent.wrapping_sub(one) >= (exponent_sat - one)
@@ -193,7 +236,7 @@ where
         // adjustment.
         if a_abs < implicit_bit {
             let (exponent, significand) = F::normalize(a_significand);
-            scale += exponent;
+            res_exponent += exponent;
             a_significand = significand;
         }
 
@@ -201,24 +244,26 @@ where
         // adjustment.
         if b_abs < implicit_bit {
             let (exponent, significand) = F::normalize(b_significand);
-            scale -= exponent;
+            res_exponent -= exponent;
             b_significand = significand;
         }
     }
 
-    // Set the implicit significand bit.  If we fell through from the
+    // Set the implicit significand bit. If we fell through from the
     // denormal path it was already set by normalize( ), but setting it twice
     // won't hurt anything.
     a_significand |= implicit_bit;
     b_significand |= implicit_bit;
 
-    let mut written_exponent: F::SignedInt = F::SignedInt::from_unsigned(
-        (a_exponent
-            .wrapping_sub(b_exponent)
-            .wrapping_add(scale.cast()))
-        .wrapping_add(exponent_bias.cast()),
+    println!("a sig: {:#034x}\nb sig: {:#034x}\na exp: {a_exponent}, b exp: {b_exponent}, written: {res_exponent}",
+        a_significand,
+        b_significand,
     );
+
+    // Transform to a fixed-point representation
     let b_uq1 = b_significand << (F::BITS - significand_bits - 1);
+
+    println!("b_uq1: {:#034x}", b_uq1);
 
     // Align the significand of b as a UQ1.(n-1) fixed-point number in the range
     // [1.0, 2.0) and get a UQ0.n approximate reciprocal using a small minimax
@@ -257,7 +302,9 @@ where
     // mode into account!
     let mut x_uq0 = if F::HALF_ITERATIONS > 0 {
         // Starting with (n-1) half-width iterations
-        let b_uq1_hw: HalfRep<F> = (b_significand >> (significand_bits + 1 - hw)).cast();
+        let b_uq1_hw: HalfRep<F> = b_uq1.hi();
+
+        // (b_significand >> (significand_bits + 1 - hw)).cast();
 
         // C is (3/4 + 1/sqrt(2)) - 1 truncated to W0 fractional bits as UQ0.HW
         // with W0 being either 16 or 32 and W0 <= HW.
@@ -446,7 +493,7 @@ where
         // effectively doubling its value as well as its error estimation.
         let residual_lo = (a_significand << (significand_bits + 1))
             .wrapping_sub(quotient_uq1.wrapping_mul(b_significand));
-        written_exponent -= F::SignedInt::ONE;
+        res_exponent -= 1;
         a_significand <<= 1;
         residual_lo
     } else {
@@ -484,29 +531,30 @@ where
     // For f128: 4096 * 3 < 13922 < 4096 * 5 (three NextAfter() are required)
     //
     // If we have overflowed the exponent, return infinity
-    if written_exponent >= F::SignedInt::cast_from(exponent_sat) {
+    if res_exponent >= i32::cast_from(exponent_sat) {
         return F::from_repr(inf_rep | quotient_sign);
     }
 
     // Now, quotient <= the correctly-rounded result
     // and may need taking NextAfter() up to 3 times (see error estimates above)
     // r = a - b * q
-    let mut abs_result = if written_exponent > F::SignedInt::ZERO {
+    let mut abs_result = if res_exponent > 0 {
         let mut ret = quotient & significand_mask;
-        ret |= written_exponent.unsigned() << significand_bits;
+        ret |= F::Int::from(res_exponent as u32) << significand_bits;
         residual_lo <<= 1;
         ret
     } else {
-        if (F::SignedInt::cast_from(significand_bits) + written_exponent) < F::SignedInt::ZERO {
+        if ((significand_bits as i32) + res_exponent) < 0 {
             return F::from_repr(quotient_sign);
         }
 
-        let ret = quotient.wrapping_shr(u32::cast_from(written_exponent.wrapping_neg()) + 1);
+        let ret = quotient.wrapping_shr(u32::cast_from(res_exponent.wrapping_neg()) + 1);
         residual_lo = a_significand
-            .wrapping_shl(significand_bits.wrapping_add(CastInto::<u32>::cast(written_exponent)))
+            .wrapping_shl(significand_bits.wrapping_add(CastInto::<u32>::cast(res_exponent)))
             .wrapping_sub(ret.wrapping_mul(b_significand) << 1);
         ret
     };
+    dbg!(res_exponent);
 
     residual_lo += abs_result & one; // tie to even
                                      // conditionally turns the below LT comparison into LTE
@@ -536,6 +584,13 @@ intrinsics! {
     #[avr_skip]
     #[arm_aeabi_alias = __aeabi_ddiv]
     pub extern "C" fn __divdf3(a: f64, b: f64) -> f64 {
+        div(a, b)
+    }
+
+    #[avr_skip]
+    #[ppc_alias = __divkf3]
+    #[cfg(not(feature = "no-f16-f128"))]
+    pub extern "C" fn __divtf3(a: f128, b: f128) -> f128 {
         div(a, b)
     }
 
