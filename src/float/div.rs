@@ -398,9 +398,11 @@ where
         // b/2 is subtracted to obtain x0) wrapped to [0, 1) range.
         let c_hw = F::C_HW;
 
+        // Check that the top bit is set, i.e. value is within `[1, 2)`.
         debug_assert!(
             b_uq1_hw & HalfRep::<F>::ONE << (HalfRep::<F>::BITS - 1) > HalfRep::<F>::ZERO
         );
+
         // b >= 1, thus an upper bound for 3/4 + 1/sqrt(2) - b/2 is about 0.9572,
         // so x0 fits to UQ0.HW without wrapping.
         let mut x_uq0_hw: HalfRep<F> =
@@ -435,9 +437,8 @@ where
             // no overflow occurred earlier: ((rep_t)x_UQ0_hw * b_UQ1_hw >> HW) is
             // expected to be strictly positive because b_UQ1_hw has its highest bit set
             // and x_UQ0_hw should be rather large (it converges to 1/2 < 1/b_hw <= 1).
-            let corr_uq1_hw: HalfRep<F> = zero
-                .wrapping_sub((F::Int::from(x_uq0_hw).wrapping_mul(F::Int::from(b_uq1_hw))) >> hw)
-                .cast();
+            let corr_uq1_hw: HalfRep<F> =
+                HalfRep::<F>::ZERO.wrapping_sub(x_uq0_hw.widen_mul(b_uq1_hw).hi());
 
             // Now, we should multiply UQ0.HW and UQ1.(HW-1) numbers, naturally
             // obtaining an UQ1.(HW-1) number and proving its highest bit could be
@@ -451,8 +452,7 @@ where
             // The fact corr_UQ1_hw was virtually round up (due to result of
             // multiplication being **first** truncated, then negated - to improve
             // error estimations) can increase x_UQ0_hw by up to 2*Ulp of x_UQ0_hw.
-            x_uq0_hw =
-                (F::Int::from(x_uq0_hw).wrapping_mul(F::Int::from(corr_uq1_hw)) >> (hw - 1)).cast();
+            x_uq0_hw = (x_uq0_hw.widen_mul(corr_uq1_hw) >> (hw - 1)).cast();
 
             // Now, either no overflow occurred or x_UQ0_hw is 0 or 1 in its half_rep_t
             // representation. In the latter case, x_UQ0_hw will be either 0 or 1 after
