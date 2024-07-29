@@ -200,6 +200,7 @@ impl FloatDivision for f128 {
 }
 
 extern crate std;
+use core::ops;
 #[allow(unused)]
 use std::{dbg, fmt, println};
 
@@ -217,6 +218,7 @@ where
     F::Int: CastInto<u64>,
     F::Int: CastInto<i64>,
     F::Int: HInt + DInt,
+    <F::Int as HInt>::D: ops::Shr<u32, Output = <F::Int as HInt>::D>,
     F::SignedInt: CastFrom<u32>,
     F::SignedInt: CastInto<u32>,
     F::SignedInt: CastFrom<F::Int>,
@@ -237,6 +239,8 @@ where
 {
     let one = F::Int::ONE;
     let zero = F::Int::ZERO;
+    let one_hw = HalfRep::<F>::ONE;
+    let zero_hw = HalfRep::<F>::ZERO;
     let hw = F::BITS / 2;
     let lo_mask = F::Int::MAX >> hw;
 
@@ -399,9 +403,7 @@ where
         let c_hw = F::C_HW;
 
         // Check that the top bit is set, i.e. value is within `[1, 2)`.
-        debug_assert!(
-            b_uq1_hw & HalfRep::<F>::ONE << (HalfRep::<F>::BITS - 1) > HalfRep::<F>::ZERO
-        );
+        debug_assert!(b_uq1_hw & one_hw << (HalfRep::<F>::BITS - 1) > zero_hw);
 
         // b >= 1, thus an upper bound for 3/4 + 1/sqrt(2) - b/2 is about 0.9572,
         // so x0 fits to UQ0.HW without wrapping.
@@ -437,8 +439,7 @@ where
             // no overflow occurred earlier: ((rep_t)x_UQ0_hw * b_UQ1_hw >> HW) is
             // expected to be strictly positive because b_UQ1_hw has its highest bit set
             // and x_UQ0_hw should be rather large (it converges to 1/2 < 1/b_hw <= 1).
-            let corr_uq1_hw: HalfRep<F> =
-                HalfRep::<F>::ZERO.wrapping_sub(x_uq0_hw.widen_mul(b_uq1_hw).hi());
+            let corr_uq1_hw: HalfRep<F> = zero_hw.wrapping_sub(x_uq0_hw.widen_mul(b_uq1_hw).hi());
 
             // Now, we should multiply UQ0.HW and UQ1.(HW-1) numbers, naturally
             // obtaining an UQ1.(HW-1) number and proving its highest bit could be
@@ -483,7 +484,7 @@ where
         // be not below that value (see g(x) above), so it is safe to decrement just
         // once after the final iteration. On the other hand, an effective value of
         // divisor changes after this point (from b_hw to b), so adjust here.
-        x_uq0_hw = x_uq0_hw.wrapping_sub(HalfRep::<F>::ONE);
+        x_uq0_hw = x_uq0_hw.wrapping_sub(one_hw);
 
         // Error estimations for full-precision iterations are calculated just
         // as above, but with U := 2^-W and taking extra decrementing into account.
@@ -548,13 +549,8 @@ where
         assert!(F::BITS == 32, "native full iterations only supports f32");
 
         for _ in 0..full_iterations {
-            let corr_uq1: u32 = 0.wrapping_sub(
-                ((CastInto::<u32>::cast(x_uq0) as u64) * (CastInto::<u32>::cast(b_uq1) as u64))
-                    >> F::BITS,
-            ) as u32;
-            x_uq0 = ((((CastInto::<u32>::cast(x_uq0) as u64) * (corr_uq1 as u64)) >> (F::BITS - 1))
-                as u32)
-                .cast();
+            let corr_uq1: F::Int = zero.wrapping_sub(x_uq0.widen_mul(b_uq1).hi());
+            x_uq0 = (x_uq0.widen_mul(corr_uq1) >> (F::BITS - 1)).lo();
         }
     }
 

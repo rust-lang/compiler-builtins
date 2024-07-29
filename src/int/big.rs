@@ -93,7 +93,15 @@ macro_rules! impl_common {
             type Output = Self;
 
             fn shl(self, rhs: u32) -> Self::Output {
-                todo!()
+                unimplemented!("only used to meet trait bounds")
+            }
+        }
+
+        impl ops::Shr<u32> for $ty {
+            type Output = Self;
+
+            fn shr(self, rhs: u32) -> Self::Output {
+                unimplemented!("only used to meet trait bounds")
             }
         }
     };
