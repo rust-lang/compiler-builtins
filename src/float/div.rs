@@ -88,13 +88,13 @@ trait FloatDivision: Float
 where
     Self::Int: DInt,
 {
-    /// Iterations that are done at half of the float's width, done for optimization.
-    const HALF_ITERATIONS: usize;
+    // /// Iterations that are done at half of the float's width, done for optimization.
+    // const HALF_ITERATIONS: usize;
 
-    /// Iterations that are done at the full float's width. Must be at least one.
-    const FULL_ITERATIONS: usize = 1;
+    // /// Iterations that are done at the full float's width. Must be at least one.
+    // const FULL_ITERATIONS: usize = 1;
 
-    const USE_NATIVE_FULL_ITERATIONS: bool = size_of::<Self>() < size_of::<*const ()>();
+    // const USE_NATIVE_FULL_ITERATIONS: bool = size_of::<Self>() < size_of::<*const ()>();
 
     /// C is (3/4 + 1/sqrt(2)) - 1 truncated to W0 fractional bits as UQ0.HW
     /// with W0 being either 16 or 32 and W0 <= HW.
@@ -102,52 +102,33 @@ where
     /// b/2 is subtracted to obtain x0) wrapped to [0, 1) range.
     const C_HW: HalfRep<Self>;
 
-    /// u_n for different precisions (with N-1 half-width iterations):
-    /// W0 is the precision of C
-    ///   u_0 = (3/4 - 1/sqrt(2) + 2^-W0) * 2^HW
-    ///
-    /// Estimated with bc:
-    ///   define half1(un) { return 2.0 * (un + un^2) / 2.0^hw + 1.0; }
-    ///   define half2(un) { return 2.0 * un / 2.0^hw + 2.0; }
-    ///   define full1(un) { return 4.0 * (un + 3.01) / 2.0^hw + 2.0 * (un + 3.01)^2 + 4.0; }
-    ///   define full2(un) { return 4.0 * (un + 3.01) / 2.0^hw + 8.0; }
-    ///
-    ///             | f32 (0 + 3) | f32 (2 + 1)  | f64 (3 + 1)  | f128 (4 + 1)
-    /// u_0         | < 184224974 | < 2812.1     | < 184224974  | < 791240234244348797
-    /// u_1         | < 15804007  | < 242.7      | < 15804007   | < 67877681371350440
-    /// u_2         | < 116308    | < 2.81       | < 116308     | < 499533100252317
-    /// u_3         | < 7.31      |              | < 7.31       | < 27054456580
-    /// u_4         |             |              |              | < 80.4
-    /// Final (U_N) | same as u_3 | < 72         | < 218        | < 13920
-    ///
-    /// Add 2 to U_N due to final decrement.
-    const RECIPROCAL_PRECISION: u16 = {
-        // Do some related configuration validation
-        if !Self::USE_NATIVE_FULL_ITERATIONS {
-            if Self::FULL_ITERATIONS != 1 {
-                panic!("Only a single emulated full iteration is supported");
-            }
-            if !(Self::HALF_ITERATIONS > 0) {
-                panic!("Invalid number of half iterations");
-            }
-        }
+    // const RECIPROCAL_PRECISION: u16 = {
+    //     // Do some related configuration validation
+    //     if !Self::USE_NATIVE_FULL_ITERATIONS {
+    //         if Self::FULL_ITERATIONS != 1 {
+    //             panic!("Only a single emulated full iteration is supported");
+    //         }
+    //         if !(Self::HALF_ITERATIONS > 0) {
+    //             panic!("Invalid number of half iterations");
+    //         }
+    //     }
 
-        if Self::FULL_ITERATIONS < 1 {
-            panic!("Must have at least one full iteration");
-        }
+    //     if Self::FULL_ITERATIONS < 1 {
+    //         panic!("Must have at least one full iteration");
+    //     }
 
-        if Self::BITS == 32 && Self::HALF_ITERATIONS == 2 && Self::FULL_ITERATIONS == 1 {
-            74u16
-        } else if Self::BITS == 32 && Self::HALF_ITERATIONS == 0 && Self::FULL_ITERATIONS == 3 {
-            10
-        } else if Self::BITS == 64 && Self::HALF_ITERATIONS == 3 && Self::FULL_ITERATIONS == 1 {
-            220
-        } else if Self::BITS == 128 && Self::HALF_ITERATIONS == 4 && Self::FULL_ITERATIONS == 1 {
-            13922
-        } else {
-            panic!("Invalid number of iterations")
-        }
-    };
+    //     if Self::BITS == 32 && Self::HALF_ITERATIONS == 2 && Self::FULL_ITERATIONS == 1 {
+    //         74u16
+    //     } else if Self::BITS == 32 && Self::HALF_ITERATIONS == 0 && Self::FULL_ITERATIONS == 3 {
+    //         10
+    //     } else if Self::BITS == 64 && Self::HALF_ITERATIONS == 3 && Self::FULL_ITERATIONS == 1 {
+    //         220
+    //     } else if Self::BITS == 128 && Self::HALF_ITERATIONS == 4 && Self::FULL_ITERATIONS == 1 {
+    //         13922
+    //     } else {
+    //         panic!("Invalid number of iterations")
+    //     }
+    // };
 }
 
 /// Calculate the number of iterations required to get needed precision of a float type.
@@ -171,9 +152,57 @@ const fn calc_iterations<F: Float>() -> (usize, usize) {
     }
 }
 
+/// u_n for different precisions (with N-1 half-width iterations):
+/// W0 is the precision of C
+///   u_0 = (3/4 - 1/sqrt(2) + 2^-W0) * 2^HW
+///
+/// Estimated with bc:
+///   define half1(un) { return 2.0 * (un + un^2) / 2.0^hw + 1.0; }
+///   define half2(un) { return 2.0 * un / 2.0^hw + 2.0; }
+///   define full1(un) { return 4.0 * (un + 3.01) / 2.0^hw + 2.0 * (un + 3.01)^2 + 4.0; }
+///   define full2(un) { return 4.0 * (un + 3.01) / 2.0^hw + 8.0; }
+///
+///             | f32 (0 + 3) | f32 (2 + 1)  | f64 (3 + 1)  | f128 (4 + 1)
+/// u_0         | < 184224974 | < 2812.1     | < 184224974  | < 791240234244348797
+/// u_1         | < 15804007  | < 242.7      | < 15804007   | < 67877681371350440
+/// u_2         | < 116308    | < 2.81       | < 116308     | < 499533100252317
+/// u_3         | < 7.31      |              | < 7.31       | < 27054456580
+/// u_4         |             |              |              | < 80.4
+/// Final (U_N) | same as u_3 | < 72         | < 218        | < 13920
+///
+/// Add 2 to U_N due to final decrement.
+const fn reciprocal_precision<F: Float>() -> u16 {
+    let (half_iterations, full_iterations) = calc_iterations::<F>();
+
+    // if !Self::USE_NATIVE_FULL_ITERATIONS {
+    //     if Self::FULL_ITERATIONS != 1 {
+    //         panic!("Only a single emulated full iteration is supported");
+    //     }
+    //     if !(Self::HALF_ITERATIONS > 0) {
+    //         panic!("Invalid number of half iterations");
+    //     }
+    // }
+
+    if full_iterations < 1 {
+        panic!("Must have at least one full iteration");
+    }
+
+    if F::BITS == 32 && half_iterations == 2 && full_iterations == 1 {
+        74u16
+    } else if F::BITS == 32 && half_iterations == 0 && full_iterations == 3 {
+        10
+    } else if F::BITS == 64 && half_iterations == 3 && full_iterations == 1 {
+        220
+    } else if F::BITS == 128 && half_iterations == 4 && full_iterations == 1 {
+        13922
+    } else {
+        panic!("Invalid number of iterations")
+    }
+}
+
 impl FloatDivision for f32 {
-    const HALF_ITERATIONS: usize = 0;
-    const FULL_ITERATIONS: usize = 3;
+    // const HALF_ITERATIONS: usize = 0;
+    // const FULL_ITERATIONS: usize = 3;
 
     /// Use 16-bit initial estimation in case we are using half-width iterations
     /// for float32 division. This is expected to be useful for some 16-bit
@@ -185,7 +214,7 @@ impl FloatDivision for f32 {
 }
 
 impl FloatDivision for f64 {
-    const HALF_ITERATIONS: usize = 3;
+    // const HALF_ITERATIONS: usize = 3;
 
     /// HW is at least 32. Shifting into the highest bits if needed.
     const C_HW: HalfRep<Self> = 0x7504F333 << (HalfRep::<Self>::BITS - 32);
@@ -193,7 +222,7 @@ impl FloatDivision for f64 {
 
 #[cfg(not(feature = "no-f16-f128"))]
 impl FloatDivision for f128 {
-    const HALF_ITERATIONS: usize = 4;
+    // const HALF_ITERATIONS: usize = 4;
 
     // const C_HW: HalfRep<Self> = 0x7504F333 << (HalfRep::<Self>::BITS - 32);
     const C_HW: HalfRep<Self> = 0x7504f333f9de6108;
@@ -258,6 +287,7 @@ where
     let quiet_bit = implicit_bit >> 1;
     let qnan_rep = exponent_mask | quiet_bit;
     let (half_iterations, full_iterations) = calc_iterations::<F>();
+    let recip_precision = reciprocal_precision::<F>();
 
     let a_rep = a.repr();
     let b_rep = b.repr();
@@ -546,7 +576,7 @@ where
     if full_iterations > 1 {
         // Need to use concrete types since `F::Int::D` might not support math. So, restrict to
         // one type.
-        assert!(F::BITS == 32, "native full iterations only supports f32");
+        // assert!(F::BITS == 32, "native full iterations only supports f32");
 
         for _ in 0..full_iterations {
             let corr_uq1: F::Int = zero.wrapping_sub(x_uq0.widen_mul(b_uq1).hi());
@@ -558,7 +588,7 @@ where
     x_uq0 = x_uq0.wrapping_sub(2.cast());
 
     // Suppose 1/b - P * 2^-W < x < 1/b + P * 2^-W
-    x_uq0 -= F::RECIPROCAL_PRECISION.cast();
+    x_uq0 -= recip_precision.cast();
 
     // Now 1/b - (2*P) * 2^-W < x < 1/b
     // FIXME Is x_UQ0 still >= 0.5?
@@ -640,7 +670,7 @@ where
                                      // conditionally turns the below LT comparison into LTE
     abs_result += u8::from(residual_lo > b_significand).into();
 
-    if F::BITS == 128 || (F::BITS == 32 && F::HALF_ITERATIONS > 0) {
+    if F::BITS == 128 || (F::BITS == 32 && half_iterations > 0) {
         // Do not round Infinity to NaN
         abs_result +=
             u8::from(abs_result < inf_rep && residual_lo > (2 + 1).cast() * b_significand).into();
