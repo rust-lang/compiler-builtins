@@ -104,7 +104,7 @@ where
 ///
 /// ASSUMPTION: the initial estimate should have at least 8 bits of precision. If this is not
 /// true, results will be inaccurate.
-const fn calc_iterations<F: Float>() -> (usize, usize) {
+const fn get_iterations<F: Float>() -> (usize, usize) {
     // Precision doubles with each iteration
     let total_iterations = F::BITS.ilog2() as usize - 2;
 
@@ -137,16 +137,7 @@ const fn calc_iterations<F: Float>() -> (usize, usize) {
 ///
 /// Add 2 to U_N due to final decrement.
 const fn reciprocal_precision<F: Float>() -> u16 {
-    let (half_iterations, full_iterations) = calc_iterations::<F>();
-
-    // if !Self::USE_NATIVE_FULL_ITERATIONS {
-    //     if Self::FULL_ITERATIONS != 1 {
-    //         panic!("Only a single emulated full iteration is supported");
-    //     }
-    //     if !(Self::HALF_ITERATIONS > 0) {
-    //         panic!("Invalid number of half iterations");
-    //     }
-    // }
+    let (half_iterations, full_iterations) = get_iterations::<F>();
 
     if full_iterations < 1 {
         panic!("Must have at least one full iteration");
@@ -248,7 +239,7 @@ where
     let inf_rep = exponent_mask;
     let quiet_bit = implicit_bit >> 1;
     let qnan_rep = exponent_mask | quiet_bit;
-    let (half_iterations, full_iterations) = calc_iterations::<F>();
+    let (half_iterations, full_iterations) = get_iterations::<F>();
     let recip_precision = reciprocal_precision::<F>();
 
     let a_rep = a.repr();
@@ -638,6 +629,15 @@ where
     }
 
     F::from_repr(abs_result | quotient_sign)
+}
+
+fn iter_once<I>(x_uq0: I, b_uq1: I) -> I
+where
+    I: Int + HInt,
+    <I as HInt>::D: ops::Shr<u32, Output = <I as HInt>::D>,
+{
+    let corr_uq1: I = I::ZERO.wrapping_sub(x_uq0.widen_mul(b_uq1).hi());
+    (x_uq0.widen_mul(corr_uq1) >> (I::BITS - 1)).lo()
 }
 
 intrinsics! {
