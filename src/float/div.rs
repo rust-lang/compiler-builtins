@@ -88,47 +88,11 @@ trait FloatDivision: Float
 where
     Self::Int: DInt,
 {
-    // /// Iterations that are done at half of the float's width, done for optimization.
-    // const HALF_ITERATIONS: usize;
-
-    // /// Iterations that are done at the full float's width. Must be at least one.
-    // const FULL_ITERATIONS: usize = 1;
-
-    // const USE_NATIVE_FULL_ITERATIONS: bool = size_of::<Self>() < size_of::<*const ()>();
-
     /// C is (3/4 + 1/sqrt(2)) - 1 truncated to W0 fractional bits as UQ0.HW
     /// with W0 being either 16 or 32 and W0 <= HW.
     /// That is, C is the aforementioned 3/4 + 1/sqrt(2) constant (from which
     /// b/2 is subtracted to obtain x0) wrapped to [0, 1) range.
     const C_HW: HalfRep<Self>;
-
-    // const RECIPROCAL_PRECISION: u16 = {
-    //     // Do some related configuration validation
-    //     if !Self::USE_NATIVE_FULL_ITERATIONS {
-    //         if Self::FULL_ITERATIONS != 1 {
-    //             panic!("Only a single emulated full iteration is supported");
-    //         }
-    //         if !(Self::HALF_ITERATIONS > 0) {
-    //             panic!("Invalid number of half iterations");
-    //         }
-    //     }
-
-    //     if Self::FULL_ITERATIONS < 1 {
-    //         panic!("Must have at least one full iteration");
-    //     }
-
-    //     if Self::BITS == 32 && Self::HALF_ITERATIONS == 2 && Self::FULL_ITERATIONS == 1 {
-    //         74u16
-    //     } else if Self::BITS == 32 && Self::HALF_ITERATIONS == 0 && Self::FULL_ITERATIONS == 3 {
-    //         10
-    //     } else if Self::BITS == 64 && Self::HALF_ITERATIONS == 3 && Self::FULL_ITERATIONS == 1 {
-    //         220
-    //     } else if Self::BITS == 128 && Self::HALF_ITERATIONS == 4 && Self::FULL_ITERATIONS == 1 {
-    //         13922
-    //     } else {
-    //         panic!("Invalid number of iterations")
-    //     }
-    // };
 }
 
 /// Calculate the number of iterations required to get needed precision of a float type.
@@ -144,8 +108,9 @@ const fn calc_iterations<F: Float>() -> (usize, usize) {
     // Precision doubles with each iteration
     let total_iterations = F::BITS.ilog2() as usize - 2;
 
-    if size_of::<F>() < size_of::<*const ()>() {
-        // No need to use half iterations if math at the half
+    // If widening multiply will be efficient (uses word-sized integers), there is no reason
+    // to use half-sized iterations.
+    if 2 * size_of::<F>() <= size_of::<*const ()>() {
         (0, total_iterations)
     } else {
         (total_iterations - 1, 1)
@@ -201,9 +166,6 @@ const fn reciprocal_precision<F: Float>() -> u16 {
 }
 
 impl FloatDivision for f32 {
-    // const HALF_ITERATIONS: usize = 0;
-    // const FULL_ITERATIONS: usize = 3;
-
     /// Use 16-bit initial estimation in case we are using half-width iterations
     /// for float32 division. This is expected to be useful for some 16-bit
     /// targets. Not used by default as it requires performing more work during
@@ -573,15 +535,9 @@ where
         x_uq0
     };
 
-    if full_iterations > 1 {
-        // Need to use concrete types since `F::Int::D` might not support math. So, restrict to
-        // one type.
-        // assert!(F::BITS == 32, "native full iterations only supports f32");
-
-        for _ in 0..full_iterations {
-            let corr_uq1: F::Int = zero.wrapping_sub(x_uq0.widen_mul(b_uq1).hi());
-            x_uq0 = (x_uq0.widen_mul(corr_uq1) >> (F::BITS - 1)).lo();
-        }
+    for _ in 0..full_iterations {
+        let corr_uq1: F::Int = zero.wrapping_sub(x_uq0.widen_mul(b_uq1).hi());
+        x_uq0 = (x_uq0.widen_mul(corr_uq1) >> (F::BITS - 1)).lo();
     }
 
     // Finally, account for possible overflow, as explained above.
