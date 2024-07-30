@@ -422,7 +422,7 @@ where
             // no overflow occurred earlier: ((rep_t)x_UQ0_hw * b_UQ1_hw >> HW) is
             // expected to be strictly positive because b_UQ1_hw has its highest bit set
             // and x_UQ0_hw should be rather large (it converges to 1/2 < 1/b_hw <= 1).
-            let corr_uq1_hw: HalfRep<F> = zero_hw.wrapping_sub(x_uq0_hw.widen_mul(b_uq1_hw).hi());
+            // let corr_uq1_hw: HalfRep<F> = zero_hw.wrapping_sub(x_uq0_hw.widen_mul(b_uq1_hw).hi());
 
             // Now, we should multiply UQ0.HW and UQ1.(HW-1) numbers, naturally
             // obtaining an UQ1.(HW-1) number and proving its highest bit could be
@@ -436,7 +436,7 @@ where
             // The fact corr_UQ1_hw was virtually round up (due to result of
             // multiplication being **first** truncated, then negated - to improve
             // error estimations) can increase x_UQ0_hw by up to 2*Ulp of x_UQ0_hw.
-            x_uq0_hw = (x_uq0_hw.widen_mul(corr_uq1_hw) >> (hw - 1)).cast();
+            // x_uq0_hw = (x_uq0_hw.widen_mul(corr_uq1_hw) >> (hw - 1)).cast();
 
             // Now, either no overflow occurred or x_UQ0_hw is 0 or 1 in its half_rep_t
             // representation. In the latter case, x_UQ0_hw will be either 0 or 1 after
@@ -453,6 +453,8 @@ where
             //         = 2*e_n*eps1 - (e_n^2*b_hw + eps2) + 2*eps1/b_hw
             //                        \------ >0 -------/   \-- >0 ---/
             // abs(e_{n+1}) <= 2*abs(e_n)*U + max(2*e_n^2 + U, 2 * U)
+
+            x_uq0_hw = iter_once(x_uq0_hw, b_uq1_hw);
         }
 
         // For initial half-width iterations, U = 2^-HW
@@ -527,8 +529,7 @@ where
     };
 
     for _ in 0..full_iterations {
-        let corr_uq1: F::Int = zero.wrapping_sub(x_uq0.widen_mul(b_uq1).hi());
-        x_uq0 = (x_uq0.widen_mul(corr_uq1) >> (F::BITS - 1)).lo();
+        x_uq0 = iter_once(x_uq0, b_uq1);
     }
 
     // Finally, account for possible overflow, as explained above.
