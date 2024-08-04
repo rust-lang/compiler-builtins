@@ -67,57 +67,68 @@ fn not_u128() {
 
 #[test]
 fn shr_u128() {
-    let lo_a = [1, 2, 3, 10, u16::MAX as u128, u32::MAX as u128, u128::MAX];
-    let b = [0, 1, 2, 4, 10, 31, 32, 33, 64, 96, 127];
+    let only_low = [
+        1,
+        u16::MAX.into(),
+        u32::MAX.into(),
+        u64::MAX.into(),
+        u128::MAX,
+    ];
 
     let mut errors = Vec::new();
 
-    for a in lo_a {
-        for b in b {
-            let res = a.widen() >> b;
-            let expected = (a >> b).widen();
-            if res != expected {
-                errors.push((a, b, res, expected));
+    for a in only_low {
+        for perturb in 0..10 {
+            let a = a.saturating_add(perturb);
+            for shift in 0..128 {
+                let res = a.widen() >> shift;
+                let expected = (a >> shift).widen();
+                if res != expected {
+                    errors.push((a.widen(), shift, res, expected));
+                }
             }
+        }
+    }
+
+    let check = [
+        (
+            u256::MAX,
+            1,
+            u256([u64::MAX, u64::MAX, u64::MAX, u64::MAX >> 1]),
+        ),
+        (
+            u256::MAX,
+            5,
+            u256([u64::MAX, u64::MAX, u64::MAX, u64::MAX >> 5]),
+        ),
+        (u256::MAX, 63, u256([u64::MAX, u64::MAX, u64::MAX, 1])),
+        (u256::MAX, 64, u256([u64::MAX, u64::MAX, u64::MAX, 0])),
+        (u256::MAX, 65, u256([u64::MAX, u64::MAX, u64::MAX >> 1, 0])),
+        (u256::MAX, 127, u256([u64::MAX, u64::MAX, 1, 0])),
+        (u256::MAX, 128, u256([u64::MAX, u64::MAX, 0, 0])),
+        (u256::MAX, 129, u256([u64::MAX, u64::MAX >> 1, 0, 0])),
+        (u256::MAX, 191, u256([u64::MAX, 1, 0, 0])),
+        (u256::MAX, 192, u256([u64::MAX, 0, 0, 0])),
+        (u256::MAX, 193, u256([u64::MAX >> 1, 0, 0, 0])),
+        (u256::MAX, 191, u256([u64::MAX, 1, 0, 0])),
+        (u256::MAX, 254, u256([0b11, 0, 0, 0])),
+        (u256::MAX, 255, u256([1, 0, 0, 0])),
+    ];
+
+    for (input, shift, expected) in check {
+        let res = input >> shift;
+        if res != expected {
+            errors.push((input, shift, res, expected));
         }
     }
 
     for (a, b, res, expected) in &errors {
         eprintln!(
-            "FAILURE: {a:#034x} >> {b} = {} got {}",
+            "FAILURE: {} >> {b} = {} got {}",
+            hexu(*a),
             hexu(*expected),
             hexu(*res),
         );
     }
     assert!(errors.is_empty());
 }
-
-// #[test]
-// fn shr_u128() {
-//     let tests = [
-//         (u128::MAX / 2, 2_u128, u256([u64::MAX - 1, u64::MAX, 0, 0])),
-//         (u128::MAX, 2_u128, u256([u64::MAX - 1, u64::MAX, 1, 0])),
-//         (u128::MAX, u128::MAX, u256([1, 0, u64::MAX - 1, u64::MAX])),
-//         (u128::MIN, u128::MIN, u256::ZERO),
-//         (1234, 0, u256::ZERO),
-//         (0, 1234, u256::ZERO),
-//     ];
-
-//     let mut errors = Vec::new();
-//     for (i, (a, b, exp)) in tests.iter().copied().enumerate() {
-//         let res = a.widen_mul(b);
-//         assert_eq!(res, res_z);
-//         if res != exp {
-//             errors.push((i, a, b, exp, res));
-//         }
-//     }
-
-//     for (i, a, b, exp, res) in &errors {
-//         eprintln!(
-//             "FAILURE ({i}): {a:#034x} * {b:#034x} = {} got {}",
-//             hexu(*exp),
-//             hexu(*res)
-//         );
-//     }
-//     assert!(errors.is_empty());
-// }

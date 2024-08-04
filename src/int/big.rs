@@ -123,16 +123,13 @@ impl ops::Shr<u32> for u256 {
         let byte_shift = rhs / 64;
         let bit_shift = rhs % 64;
 
-        dbg!(self, rhs, byte_shift, bit_shift);
-
         for idx in 0..4 {
             let base_idx = idx + byte_shift as usize;
-            dbg!(base_idx);
 
             let Some(base) = ret.0.get(base_idx) else {
+                ret.0[idx] = 0;
                 continue;
             };
-            dbg!(base);
 
             let mut new_val = base >> bit_shift;
 
