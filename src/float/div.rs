@@ -332,8 +332,8 @@ where
         b_significand,
     );
 
-    // Transform to a fixed-point representation. We know this is in the range [1.0, 2.0] since
-    // the explicit bit is set.
+    // Transform to a fixed-point representation by shifting the significand to the high bits. We
+    // know this is in the range [1.0, 2.0] since the explicit bit is set above.
     let b_uq1 = b_significand << (F::BITS - significand_bits - 1);
 
     println!("b_uq1: {:#034x}", b_uq1);
@@ -632,6 +632,9 @@ where
     F::from_repr(abs_result | quotient_sign)
 }
 
+/// Perform one iteration at any width.
+///
+/// Given
 fn iter_once<I>(x_uq0: I, b_uq1: I) -> I
 where
     I: Int + HInt,
