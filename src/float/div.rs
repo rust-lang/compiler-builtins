@@ -11,6 +11,7 @@ Relevant notation:
   fixed-point number with 1 integral bit, and 31 decimal bits. A `uqN` variable of type `uM`
   will have N bits of integer and M-N bits of fraction.
 - `hw`: half width, i.e. for `f64` this will be a `u32`.
+- `x` is the best estimate of `1/b`
 
 # Method Overview
 
@@ -110,6 +111,7 @@ const fn get_iterations<F: Float>() -> (usize, usize) {
 
     // If widening multiply will be efficient (uses word-sized integers), there is no reason
     // to use half-sized iterations.
+    // TODO: use half iterations.
     if 2 * size_of::<F>() <= size_of::<*const ()>() {
         (0, total_iterations)
     } else {
@@ -422,6 +424,7 @@ where
             // no overflow occurred earlier: ((rep_t)x_UQ0_hw * b_UQ1_hw >> HW) is
             // expected to be strictly positive because b_UQ1_hw has its highest bit set
             // and x_UQ0_hw should be rather large (it converges to 1/2 < 1/b_hw <= 1).
+
             // let corr_uq1_hw: HalfRep<F> = zero_hw.wrapping_sub(x_uq0_hw.widen_mul(b_uq1_hw).hi());
 
             // Now, we should multiply UQ0.HW and UQ1.(HW-1) numbers, naturally
@@ -436,6 +439,7 @@ where
             // The fact corr_UQ1_hw was virtually round up (due to result of
             // multiplication being **first** truncated, then negated - to improve
             // error estimations) can increase x_UQ0_hw by up to 2*Ulp of x_UQ0_hw.
+
             // x_uq0_hw = (x_uq0_hw.widen_mul(corr_uq1_hw) >> (hw - 1)).cast();
 
             // Now, either no overflow occurred or x_UQ0_hw is 0 or 1 in its half_rep_t
@@ -632,17 +636,34 @@ where
     F::from_repr(abs_result | quotient_sign)
 }
 
-/// Perform one iteration at any width.
-///
-/// Given
-fn iter_once<I>(x_uq0: I, b_uq1: I) -> I
-where
-    I: Int + HInt,
-    <I as HInt>::D: ops::Shr<u32, Output = <I as HInt>::D>,
-{
-    let corr_uq1: I = I::ZERO.wrapping_sub(x_uq0.widen_mul(b_uq1).hi());
-    (x_uq0.widen_mul(corr_uq1) >> (I::BITS - 1)).lo()
+mod implementation {
+    use crate::int::{DInt, HInt, Int};
+    use core::ops;
+
+    /// Perform one iteration at any width to approach `1/b`, given previous guess `x`. It returns
+    /// the next `x` as a UQ0 number.
+    ///
+    /// This is the `x_{n+1} = 2*x_n - b*x_n^2` algorithm, implemented as `x_n * (2 - b*x_n)`.
+    pub fn iter_once<I>(x_uq0: I, b_uq1: I) -> I
+    where
+        I: Int + HInt,
+        <I as HInt>::D: ops::Shr<u32, Output = <I as HInt>::D>,
+    {
+        // `corr = 2 - b*x_n`
+        //
+        // This looks like `0 - b*x_n`. However, this works - in `UQ1`, `0.0 - x = 2.0 - x`.
+        let corr_uq1: I = I::ZERO.wrapping_sub(x_uq0.widen_mul(b_uq1).hi());
+
+        // `x_n * corr = x_n * (2 - b*x_n)`
+        (x_uq0.widen_mul(corr_uq1) >> (I::BITS - 1)).lo()
+    }
 }
+
+#[cfg(not(feature = "public-test-deps"))]
+use implementation::*;
+
+#[cfg(feature = "public-test-deps")]
+pub use implementation::*;
 
 intrinsics! {
     #[avr_skip]
