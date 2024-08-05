@@ -467,7 +467,7 @@ macro_rules! intrinsics {
         mod $name {
             $(#[$($attr)*])*
             #[no_mangle]
-            #[cfg_attr(all(not(windows), not(target_vendor = "apple")), linkage = "weak")]
+            #[linkage = "weak"]
             $(unsafe $($empty)?)? extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 super::$name($($argname),*)
             }
