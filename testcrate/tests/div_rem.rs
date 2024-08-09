@@ -1,3 +1,4 @@
+#![feature(f128)]
 #![allow(unused_macros)]
 
 use compiler_builtins::int::sdiv::{__divmoddi4, __divmodsi4, __divmodti4};
@@ -115,7 +116,13 @@ macro_rules! float {
                 fuzz_float_2(N, |x: $f, y: $f| {
                     let quo0: $f = apfloat_fallback!($f, $apfloat_ty, $sys_available, Div::div, x, y);
                     let quo1: $f = $fn(x, y);
-                    #[cfg(not(target_arch = "arm"))]
+
+                    // ARM SIMD instructions always flush subnormals to zero
+                    if cfg!(target_arch = "arm") &&
+                        ((Float::is_subnormal(quo0)) || Float::is_subnormal(quo1)) {
+                        return;
+                    }
+
                     if !Float::eq_repr(quo0, quo1) {
                         panic!(
                             "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
@@ -125,21 +132,6 @@ macro_rules! float {
                             quo0,
                             quo1
                         );
-                    }
-
-                    // ARM SIMD instructions always flush subnormals to zero
-                    #[cfg(target_arch = "arm")]
-                    if !(Float::is_subnormal(quo0) || Float::is_subnormal(quo1)) {
-                        if !Float::eq_repr(quo0, quo1) {
-                            panic!(
-                                "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
-                                stringify!($fn),
-                                x,
-                                y,
-                                quo0,
-                                quo1
-                            );
-                        }
                     }
                 });
             }
@@ -155,14 +147,77 @@ mod float_div {
         f32, __divsf3, Single, all();
         f64, __divdf3, Double, all();
     }
-}
 
-#[cfg(target_arch = "arm")]
-mod float_div_arm {
-    use super::*;
-
+    #[cfg(target_arch = "arm")]
     float! {
         f32, __divsf3vfp, Single, all();
         f64, __divdf3vfp, Double, all();
     }
+
+    #[cfg(not(feature = "no-f16-f128"))]
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    float! {
+        f128, __divtf3, Quad, not(feature = "no-sys-f128");
+    }
+
+    #[cfg(not(feature = "no-f16-f128"))]
+    #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
+    float! {
+        f128, __divkf3, Quad, not(feature = "no-sys-f128");
+    }
 }
+
+// #[test]
+// fn problem_f128() {
+//     use compiler_builtins::float::div::__divtf3;
+
+//     let a = f128::from_bits(0x00000000000000000000000000000001);
+//     let b = f128::from_bits(0x0001FFFFFFFFFFFFFFFFFFFFFFFFFFFF);
+//     let res = __divtf3(a, b);
+//     println!(
+//         "{:#036x} / {:#036x} = {:#036x}",
+//         a.to_bits(),
+//         b.to_bits(),
+//         res.to_bits()
+//     );
+//     // got 0x3f8f0000000000000000000000000001
+//     // exp 0x3f8e0000000000000000000000000001
+//     assert_eq!(res.to_bits(), 0x3F8E0000000000000000000000000001);
+//     panic!();
+// }
+
+// #[test]
+// fn not_problem_f64() {
+//     use compiler_builtins::float::div::__divdf3;
+
+//     let a = f64::from_bits(0x0000000000000001);
+//     let b = f64::from_bits(0x001FFFFFFFFFFFFF);
+//     let res = __divdf3(a, b);
+//     println!(
+//         "{:#018x} / {:#018x} = {:#018x}",
+//         a.to_bits(),
+//         b.to_bits(),
+//         res.to_bits()
+//     );
+//     // 0x3CA0000000000001
+//     assert_eq!(res.to_bits(), 0x3CA0000000000001);
+//     panic!();
+// }
+
+// #[test]
+// fn not_problem_f32() {
+//     use compiler_builtins::float::div::__divsf3;
+
+//     let a = f32::from_bits(0x00000001);
+//     let b = f32::from_bits(0x00FFFFFF);
+//     let res = __divsf3(a, b);
+//     println!(
+//         "{:#010x} / {:#010x} = {:#010x}",
+//         a.to_bits(),
+//         b.to_bits(),
+//         res.to_bits()
+//     );
+//     // 0x33800001
+//     assert_eq!(res.to_bits(), 0x33800001);
+//     panic!();
+// }
