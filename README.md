@@ -469,40 +469,40 @@ Floating-point implementations of builtins that are only called from soft-float 
 
 Unsupported in any current target: used on old versions of 32-bit iOS with ARMv5.
 
-- ~~[x] arm/adddf3vfp.S~~
-- ~~[x] arm/addsf3vfp.S~~
-- ~~[x] arm/divdf3vfp.S~~
-- ~~[x] arm/divsf3vfp.S~~
-- ~~[x] arm/eqdf2vfp.S~~
-- ~~[x] arm/eqsf2vfp.S~~
-- ~~[x] arm/extendsfdf2vfp.S~~
-- ~~[ ] arm/fixdfsivfp.S~~
-- ~~[ ] arm/fixsfsivfp.S~~
-- ~~[ ] arm/fixunsdfsivfp.S~~
-- ~~[ ] arm/fixunssfsivfp.S~~
-- ~~[ ] arm/floatsidfvfp.S~~
-- ~~[ ] arm/floatsisfvfp.S~~
-- ~~[ ] arm/floatunssidfvfp.S~~
-- ~~[ ] arm/floatunssisfvfp.S~~
-- ~~[x] arm/gedf2vfp.S~~
-- ~~[x] arm/gesf2vfp.S~~
-- ~~[x] arm/gtdf2vfp.S~~
-- ~~[x] arm/gtsf2vfp.S~~
-- ~~[x] arm/ledf2vfp.S~~
-- ~~[x] arm/lesf2vfp.S~~
-- ~~[x] arm/ltdf2vfp.S~~
-- ~~[x] arm/ltsf2vfp.S~~
-- ~~[x] arm/muldf3vfp.S~~
-- ~~[x] arm/mulsf3vfp.S~~
-- ~~[x] arm/nedf2vfp.S~~
-- ~~[ ] arm/negdf2vfp.S~~
-- ~~[ ] arm/negsf2vfp.S~~
-- ~~[x] arm/nesf2vfp.S~~
-- ~~[x] arm/subdf3vfp.S~~
-- ~~[x] arm/subsf3vfp.S~~
-- ~~[x] arm/truncdfsf2vfp.S~~
-- ~~[ ] arm/unorddf2vfp.S~~
-- ~~[ ] arm/unordsf2vfp.S~~
+- ~~arm/adddf3vfp.S~~
+- ~~arm/addsf3vfp.S~~
+- ~~arm/divdf3vfp.S~~
+- ~~arm/divsf3vfp.S~~
+- ~~arm/eqdf2vfp.S~~
+- ~~arm/eqsf2vfp.S~~
+- ~~arm/extendsfdf2vfp.S~~
+- ~~arm/fixdfsivfp.S~~
+- ~~arm/fixsfsivfp.S~~
+- ~~arm/fixunsdfsivfp.S~~
+- ~~arm/fixunssfsivfp.S~~
+- ~~arm/floatsidfvfp.S~~
+- ~~arm/floatsisfvfp.S~~
+- ~~arm/floatunssidfvfp.S~~
+- ~~arm/floatunssisfvfp.S~~
+- ~~arm/gedf2vfp.S~~
+- ~~arm/gesf2vfp.S~~
+- ~~arm/gtdf2vfp.S~~
+- ~~arm/gtsf2vfp.S~~
+- ~~arm/ledf2vfp.S~~
+- ~~arm/lesf2vfp.S~~
+- ~~arm/ltdf2vfp.S~~
+- ~~arm/ltsf2vfp.S~~
+- ~~arm/muldf3vfp.S~~
+- ~~arm/mulsf3vfp.S~~
+- ~~arm/nedf2vfp.S~~
+- ~~arm/negdf2vfp.S~~
+- ~~arm/negsf2vfp.S~~
+- ~~arm/nesf2vfp.S~~
+- ~~arm/subdf3vfp.S~~
+- ~~arm/subsf3vfp.S~~
+- ~~arm/truncdfsf2vfp.S~~
+- ~~arm/unorddf2vfp.S~~
+- ~~arm/unordsf2vfp.S~~
 
 ## License
 
