@@ -1,7 +1,6 @@
 // makes configuration easier
 #![allow(unused_macros)]
 
-use compiler_builtins::float::Float;
 use testcrate::*;
 
 /// Make sure that the the edge case tester and randomized tester don't break, and list examples of
@@ -66,66 +65,147 @@ fn fuzz_values() {
 
 #[test]
 fn leading_zeros() {
-    use compiler_builtins::int::__clzsi2;
-    use compiler_builtins::int::leading_zeros::{
-        usize_leading_zeros_default, usize_leading_zeros_riscv,
-    };
-    fuzz(N, |x: usize| {
-        let lz = x.leading_zeros() as usize;
-        let lz0 = __clzsi2(x);
-        let lz1 = usize_leading_zeros_default(x);
-        let lz2 = usize_leading_zeros_riscv(x);
-        if lz0 != lz {
-            panic!("__clzsi2({}): std: {}, builtins: {}", x, lz, lz0);
-        }
-        if lz1 != lz {
-            panic!(
-                "usize_leading_zeros_default({}): std: {}, builtins: {}",
-                x, lz, lz1
-            );
-        }
-        if lz2 != lz {
-            panic!(
-                "usize_leading_zeros_riscv({}): std: {}, builtins: {}",
-                x, lz, lz2
-            );
-        }
-    })
-}
-
-macro_rules! extend {
-    ($fX:ident, $fD:ident, $fn:ident) => {
-        fuzz_float(N, |x: $fX| {
-            let tmp0 = x as $fD;
-            let tmp1: $fD = $fn(x);
-            if !Float::eq_repr(tmp0, tmp1) {
+    use compiler_builtins::int::leading_zeros::{leading_zeros_default, leading_zeros_riscv};
+    {
+        use compiler_builtins::int::leading_zeros::__clzsi2;
+        fuzz(N, |x: u32| {
+            if x == 0 {
+                return; // undefined value for an intrinsic
+            }
+            let lz = x.leading_zeros() as usize;
+            let lz0 = __clzsi2(x);
+            let lz1 = leading_zeros_default(x);
+            let lz2 = leading_zeros_riscv(x);
+            if lz0 != lz {
+                panic!("__clzsi2({}): std: {}, builtins: {}", x, lz, lz0);
+            }
+            if lz1 != lz {
                 panic!(
-                    "{}({}): std: {}, builtins: {}",
-                    stringify!($fn),
-                    x,
-                    tmp0,
-                    tmp1
+                    "leading_zeros_default({}): std: {}, builtins: {}",
+                    x, lz, lz1
                 );
             }
+            if lz2 != lz {
+                panic!("leading_zeros_riscv({}): std: {}, builtins: {}", x, lz, lz2);
+            }
         });
-    };
+    }
+
+    {
+        use compiler_builtins::int::leading_zeros::__clzdi2;
+        fuzz(N, |x: u64| {
+            if x == 0 {
+                return; // undefined value for an intrinsic
+            }
+            let lz = x.leading_zeros() as usize;
+            let lz0 = __clzdi2(x);
+            let lz1 = leading_zeros_default(x);
+            let lz2 = leading_zeros_riscv(x);
+            if lz0 != lz {
+                panic!("__clzdi2({}): std: {}, builtins: {}", x, lz, lz0);
+            }
+            if lz1 != lz {
+                panic!(
+                    "leading_zeros_default({}): std: {}, builtins: {}",
+                    x, lz, lz1
+                );
+            }
+            if lz2 != lz {
+                panic!("leading_zeros_riscv({}): std: {}, builtins: {}", x, lz, lz2);
+            }
+        });
+    }
+
+    {
+        use compiler_builtins::int::leading_zeros::__clzti2;
+        fuzz(N, |x: u128| {
+            if x == 0 {
+                return; // undefined value for an intrinsic
+            }
+            let lz = x.leading_zeros() as usize;
+            let lz0 = __clzti2(x);
+            if lz0 != lz {
+                panic!("__clzti2({}): std: {}, builtins: {}", x, lz, lz0);
+            }
+        });
+    }
 }
 
-// PowerPC tests are failing on LLVM 13: https://github.com/rust-lang/rust/issues/88520
-#[cfg(not(target_arch = "powerpc64"))]
 #[test]
-fn float_extend() {
-    use compiler_builtins::float::extend::__extendsfdf2;
-
-    extend!(f32, f64, __extendsfdf2);
+fn trailing_zeros() {
+    use compiler_builtins::int::trailing_zeros::{__ctzdi2, __ctzsi2, __ctzti2, trailing_zeros};
+    fuzz(N, |x: u32| {
+        if x == 0 {
+            return; // undefined value for an intrinsic
+        }
+        let tz = x.trailing_zeros() as usize;
+        let tz0 = __ctzsi2(x);
+        let tz1 = trailing_zeros(x);
+        if tz0 != tz {
+            panic!("__ctzsi2({}): std: {}, builtins: {}", x, tz, tz0);
+        }
+        if tz1 != tz {
+            panic!("trailing_zeros({}): std: {}, builtins: {}", x, tz, tz1);
+        }
+    });
+    fuzz(N, |x: u64| {
+        if x == 0 {
+            return; // undefined value for an intrinsic
+        }
+        let tz = x.trailing_zeros() as usize;
+        let tz0 = __ctzdi2(x);
+        let tz1 = trailing_zeros(x);
+        if tz0 != tz {
+            panic!("__ctzdi2({}): std: {}, builtins: {}", x, tz, tz0);
+        }
+        if tz1 != tz {
+            panic!("trailing_zeros({}): std: {}, builtins: {}", x, tz, tz1);
+        }
+    });
+    fuzz(N, |x: u128| {
+        if x == 0 {
+            return; // undefined value for an intrinsic
+        }
+        let tz = x.trailing_zeros() as usize;
+        let tz0 = __ctzti2(x);
+        if tz0 != tz {
+            panic!("__ctzti2({}): std: {}, builtins: {}", x, tz, tz0);
+        }
+    });
 }
 
-#[cfg(target_arch = "arm")]
 #[test]
-fn float_extend_arm() {
-    use compiler_builtins::float::extend::__extendsfdf2vfp;
+#[cfg(not(target_arch = "avr"))]
+fn bswap() {
+    use compiler_builtins::int::bswap::{__bswapdi2, __bswapsi2};
+    fuzz(N, |x: u32| {
+        assert_eq!(x.swap_bytes(), __bswapsi2(x));
+    });
+    fuzz(N, |x: u64| {
+        assert_eq!(x.swap_bytes(), __bswapdi2(x));
+    });
 
-    extend!(f32, f64, __extendsfdf2vfp);
+    assert_eq!(__bswapsi2(0x12345678u32), 0x78563412u32);
+    assert_eq!(__bswapsi2(0x00000001u32), 0x01000000u32);
+    assert_eq!(__bswapdi2(0x123456789ABCDEF0u64), 0xF0DEBC9A78563412u64);
+    assert_eq!(__bswapdi2(0x0200000001000000u64), 0x0000000100000002u64);
+
+    #[cfg(any(target_pointer_width = "32", target_pointer_width = "64"))]
+    {
+        use compiler_builtins::int::bswap::__bswapti2;
+        fuzz(N, |x: u128| {
+            assert_eq!(x.swap_bytes(), __bswapti2(x));
+        });
+
+        assert_eq!(
+            __bswapti2(0x123456789ABCDEF013579BDF02468ACEu128),
+            0xCE8A4602DF9B5713F0DEBC9A78563412u128
+        );
+        assert_eq!(
+            __bswapti2(0x04000000030000000200000001000000u128),
+            0x00000001000000020000000300000004u128
+        );
+    }
 }
 
 // This is approximate because of issues related to
@@ -134,81 +214,52 @@ fn float_extend_arm() {
 macro_rules! pow {
     ($($f:ty, $tolerance:expr, $fn:ident);*;) => {
         $(
-            fuzz_float_2(N, |x: $f, y: $f| {
-                if !(Float::is_subnormal(x) || Float::is_subnormal(y) || x.is_nan()) {
-                    let n = y.to_bits() & !<$f as Float>::SIGNIFICAND_MASK;
-                    let n = (n as <$f as Float>::SignedInt) >> <$f as Float>::SIGNIFICAND_BITS;
-                    let n = n as i32;
-                    let tmp0: $f = x.powi(n);
-                    let tmp1: $f = $fn(x, n);
-                    let (a, b) = if tmp0 < tmp1 {
-                        (tmp0, tmp1)
-                    } else {
-                        (tmp1, tmp0)
-                    };
-                    let good = {
-                        if a == b {
-                            // handles infinity equality
-                            true
-                        } else if a < $tolerance {
-                            b < $tolerance
+            #[test]
+            fn $fn() {
+                use compiler_builtins::float::pow::$fn;
+                use compiler_builtins::float::Float;
+                fuzz_float_2(N, |x: $f, y: $f| {
+                    if !(Float::is_subnormal(x) || Float::is_subnormal(y) || x.is_nan()) {
+                        let n = y.to_bits() & !<$f as Float>::SIGNIFICAND_MASK;
+                        let n = (n as <$f as Float>::SignedInt) >> <$f as Float>::SIGNIFICAND_BITS;
+                        let n = n as i32;
+                        let tmp0: $f = x.powi(n);
+                        let tmp1: $f = $fn(x, n);
+                        let (a, b) = if tmp0 < tmp1 {
+                            (tmp0, tmp1)
                         } else {
-                            let quo = b / a;
-                            (quo < (1. + $tolerance)) && (quo > (1. - $tolerance))
+                            (tmp1, tmp0)
+                        };
+                        let good = {
+                            if a == b {
+                                // handles infinity equality
+                                true
+                            } else if a < $tolerance {
+                                b < $tolerance
+                            } else {
+                                let quo = b / a;
+                                (quo < (1. + $tolerance)) && (quo > (1. - $tolerance))
+                            }
+                        };
+                        if !good {
+                            panic!(
+                                "{}({}, {}): std: {}, builtins: {}",
+                                stringify!($fn), x, n, tmp0, tmp1
+                            );
                         }
-                    };
-                    if !good {
-                        panic!(
-                            "{}({}, {}): std: {}, builtins: {}",
-                            stringify!($fn), x, n, tmp0, tmp1
-                        );
                     }
-                }
-            });
+                });
+            }
         )*
     };
 }
 
 #[cfg(not(all(target_arch = "x86", not(target_feature = "sse"))))]
-#[test]
-fn float_pow() {
-    use compiler_builtins::float::pow::{__powidf2, __powisf2};
+mod float_pow {
+    use super::*;
 
-    pow!(
+    pow! {
         f32, 1e-4, __powisf2;
         f64, 1e-12, __powidf2;
-    );
-}
-
-macro_rules! trunc {
-    ($fX:ident, $fD:ident, $fn:ident) => {
-        fuzz_float(N, |x: $fX| {
-            let tmp0 = x as $fD;
-            let tmp1: $fD = $fn(x);
-            if !Float::eq_repr(tmp0, tmp1) {
-                panic!(
-                    "{}({}): std: {}, builtins: {}",
-                    stringify!($fn),
-                    x,
-                    tmp0,
-                    tmp1
-                );
-            }
-        });
-    };
-}
-
-#[test]
-fn float_trunc() {
-    use compiler_builtins::float::trunc::__truncdfsf2;
-
-    trunc!(f64, f32, __truncdfsf2);
-}
-
-#[cfg(target_arch = "arm")]
-#[test]
-fn float_trunc_arm() {
-    use compiler_builtins::float::trunc::__truncdfsf2vfp;
-
-    trunc!(f64, f32, __truncdfsf2vfp);
+    }
 }

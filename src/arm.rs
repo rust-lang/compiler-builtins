@@ -3,14 +3,14 @@
 
 use core::intrinsics;
 
-// iOS symbols have a leading underscore.
-#[cfg(target_os = "ios")]
+// Apple symbols have a leading underscore.
+#[cfg(target_vendor = "apple")]
 macro_rules! bl {
     ($func:literal) => {
         concat!("bl _", $func)
     };
 }
-#[cfg(not(target_os = "ios"))]
+#[cfg(not(target_vendor = "apple"))]
 macro_rules! bl {
     ($func:literal) => {
         concat!("bl ", $func)
@@ -22,7 +22,6 @@ intrinsics! {
     // custom calling convention which can't be implemented using a normal Rust function.
     #[naked]
     #[cfg(not(target_env = "msvc"))]
-    #[cfg_attr(all(not(windows), not(target_vendor="apple")), linkage = "weak")]
     pub unsafe extern "C" fn __aeabi_uidivmod() {
         core::arch::asm!(
             "push {{lr}}",
@@ -37,7 +36,6 @@ intrinsics! {
     }
 
     #[naked]
-    #[cfg_attr(all(not(windows), not(target_vendor="apple")), linkage = "weak")]
     pub unsafe extern "C" fn __aeabi_uldivmod() {
         core::arch::asm!(
             "push {{r4, lr}}",
@@ -54,7 +52,6 @@ intrinsics! {
     }
 
     #[naked]
-    #[cfg_attr(all(not(windows), not(target_vendor="apple")), linkage = "weak")]
     pub unsafe extern "C" fn __aeabi_idivmod() {
         core::arch::asm!(
             "push {{r0, r1, r4, lr}}",
@@ -68,7 +65,6 @@ intrinsics! {
     }
 
     #[naked]
-    #[cfg_attr(all(not(windows), not(target_vendor="apple")), linkage = "weak")]
     pub unsafe extern "C" fn __aeabi_ldivmod() {
         core::arch::asm!(
             "push {{r4, lr}}",
@@ -84,18 +80,14 @@ intrinsics! {
         );
     }
 
-    // The following functions use weak linkage to allow users to override
-    // with custom implementation.
     // FIXME: The `*4` and `*8` variants should be defined as aliases.
 
-    #[cfg(not(target_os = "ios"))]
-    #[linkage = "weak"]
+    #[cfg(not(target_vendor = "apple"))]
     pub unsafe extern "aapcs" fn __aeabi_memcpy(dest: *mut u8, src: *const u8, n: usize) {
-        ::mem::memcpy(dest, src, n);
+        crate::mem::memcpy(dest, src, n);
     }
 
-    #[cfg(not(target_os = "ios"))]
-    #[linkage = "weak"]
+    #[cfg(not(target_vendor = "apple"))]
     pub unsafe extern "aapcs" fn __aeabi_memcpy4(dest: *mut u8, src: *const u8, n: usize) {
         // We are guaranteed 4-alignment, so accessing at u32 is okay.
         let mut dest = dest as *mut u32;
@@ -112,39 +104,33 @@ intrinsics! {
         __aeabi_memcpy(dest as *mut u8, src as *const u8, n);
     }
 
-    #[cfg(not(target_os = "ios"))]
-    #[linkage = "weak"]
+    #[cfg(not(target_vendor = "apple"))]
     pub unsafe extern "aapcs" fn __aeabi_memcpy8(dest: *mut u8, src: *const u8, n: usize) {
         __aeabi_memcpy4(dest, src, n);
     }
 
-    #[cfg(not(target_os = "ios"))]
-    #[linkage = "weak"]
+    #[cfg(not(target_vendor = "apple"))]
     pub unsafe extern "aapcs" fn __aeabi_memmove(dest: *mut u8, src: *const u8, n: usize) {
-        ::mem::memmove(dest, src, n);
+        crate::mem::memmove(dest, src, n);
     }
 
-    #[cfg(not(any(target_os = "ios", target_env = "msvc")))]
-    #[linkage = "weak"]
+    #[cfg(not(any(target_vendor = "apple", target_env = "msvc")))]
     pub unsafe extern "aapcs" fn __aeabi_memmove4(dest: *mut u8, src: *const u8, n: usize) {
         __aeabi_memmove(dest, src, n);
     }
 
-    #[cfg(not(any(target_os = "ios", target_env = "msvc")))]
-    #[linkage = "weak"]
+    #[cfg(not(any(target_vendor = "apple", target_env = "msvc")))]
     pub unsafe extern "aapcs" fn __aeabi_memmove8(dest: *mut u8, src: *const u8, n: usize) {
         __aeabi_memmove(dest, src, n);
     }
 
-    #[cfg(not(target_os = "ios"))]
-    #[linkage = "weak"]
+    #[cfg(not(target_vendor = "apple"))]
     pub unsafe extern "aapcs" fn __aeabi_memset(dest: *mut u8, n: usize, c: i32) {
         // Note the different argument order
-        ::mem::memset(dest, c, n);
+        crate::mem::memset(dest, c, n);
     }
 
-    #[cfg(not(target_os = "ios"))]
-    #[linkage = "weak"]
+    #[cfg(not(target_vendor = "apple"))]
     pub unsafe extern "aapcs" fn __aeabi_memset4(dest: *mut u8, n: usize, c: i32) {
         let mut dest = dest as *mut u32;
         let mut n = n;
@@ -161,26 +147,22 @@ intrinsics! {
         __aeabi_memset(dest as *mut u8, n, byte as i32);
     }
 
-    #[cfg(not(target_os = "ios"))]
-    #[linkage = "weak"]
+    #[cfg(not(target_vendor = "apple"))]
     pub unsafe extern "aapcs" fn __aeabi_memset8(dest: *mut u8, n: usize, c: i32) {
         __aeabi_memset4(dest, n, c);
     }
 
-    #[cfg(not(target_os = "ios"))]
-    #[linkage = "weak"]
+    #[cfg(not(target_vendor = "apple"))]
     pub unsafe extern "aapcs" fn __aeabi_memclr(dest: *mut u8, n: usize) {
         __aeabi_memset(dest, n, 0);
     }
 
-    #[cfg(not(any(target_os = "ios", target_env = "msvc")))]
-    #[linkage = "weak"]
+    #[cfg(not(any(target_vendor = "apple", target_env = "msvc")))]
     pub unsafe extern "aapcs" fn __aeabi_memclr4(dest: *mut u8, n: usize) {
         __aeabi_memset4(dest, n, 0);
     }
 
-    #[cfg(not(any(target_os = "ios", target_env = "msvc")))]
-    #[linkage = "weak"]
+    #[cfg(not(any(target_vendor = "apple", target_env = "msvc")))]
     pub unsafe extern "aapcs" fn __aeabi_memclr8(dest: *mut u8, n: usize) {
         __aeabi_memset4(dest, n, 0);
     }

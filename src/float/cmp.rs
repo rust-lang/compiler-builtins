@@ -1,7 +1,7 @@
 #![allow(unreachable_code)]
 
-use float::Float;
-use int::Int;
+use crate::float::Float;
+use crate::int::MinInt;
 
 #[derive(Clone, Copy)]
 enum Result {
@@ -99,61 +99,120 @@ fn unord<F: Float>(a: F, b: F) -> bool {
 }
 
 intrinsics! {
+    #[avr_skip]
     pub extern "C" fn __lesf2(a: f32, b: f32) -> i32 {
         cmp(a, b).to_le_abi()
     }
 
+    #[avr_skip]
     pub extern "C" fn __gesf2(a: f32, b: f32) -> i32 {
         cmp(a, b).to_ge_abi()
     }
 
+    #[avr_skip]
     #[arm_aeabi_alias = __aeabi_fcmpun]
     pub extern "C" fn __unordsf2(a: f32, b: f32) -> i32 {
         unord(a, b) as i32
     }
 
+    #[avr_skip]
     pub extern "C" fn __eqsf2(a: f32, b: f32) -> i32 {
         cmp(a, b).to_le_abi()
     }
 
+    #[avr_skip]
     pub extern "C" fn __ltsf2(a: f32, b: f32) -> i32 {
         cmp(a, b).to_le_abi()
     }
 
+    #[avr_skip]
     pub extern "C" fn __nesf2(a: f32, b: f32) -> i32 {
         cmp(a, b).to_le_abi()
     }
 
+    #[avr_skip]
     pub extern "C" fn __gtsf2(a: f32, b: f32) -> i32 {
         cmp(a, b).to_ge_abi()
     }
 
+    #[avr_skip]
     pub extern "C" fn __ledf2(a: f64, b: f64) -> i32 {
         cmp(a, b).to_le_abi()
     }
 
+    #[avr_skip]
     pub extern "C" fn __gedf2(a: f64, b: f64) -> i32 {
         cmp(a, b).to_ge_abi()
     }
 
+    #[avr_skip]
     #[arm_aeabi_alias = __aeabi_dcmpun]
     pub extern "C" fn __unorddf2(a: f64, b: f64) -> i32 {
         unord(a, b) as i32
     }
 
+    #[avr_skip]
     pub extern "C" fn __eqdf2(a: f64, b: f64) -> i32 {
         cmp(a, b).to_le_abi()
     }
 
+    #[avr_skip]
     pub extern "C" fn __ltdf2(a: f64, b: f64) -> i32 {
         cmp(a, b).to_le_abi()
     }
 
+    #[avr_skip]
     pub extern "C" fn __nedf2(a: f64, b: f64) -> i32 {
         cmp(a, b).to_le_abi()
     }
 
+    #[avr_skip]
     pub extern "C" fn __gtdf2(a: f64, b: f64) -> i32 {
+        cmp(a, b).to_ge_abi()
+    }
+}
+
+#[cfg(f128_enabled)]
+intrinsics! {
+    #[avr_skip]
+    #[ppc_alias = __lekf2]
+    pub extern "C" fn __letf2(a: f128, b: f128) -> i32 {
+        cmp(a, b).to_le_abi()
+    }
+
+    #[avr_skip]
+    #[ppc_alias = __gekf2]
+    pub extern "C" fn __getf2(a: f128, b: f128) -> i32 {
+        cmp(a, b).to_ge_abi()
+    }
+
+    #[avr_skip]
+    #[ppc_alias = __unordkf2]
+    pub extern "C" fn __unordtf2(a: f128, b: f128) -> i32 {
+        unord(a, b) as i32
+    }
+
+    #[avr_skip]
+    #[ppc_alias = __eqkf2]
+    pub extern "C" fn __eqtf2(a: f128, b: f128) -> i32 {
+        cmp(a, b).to_le_abi()
+    }
+
+    #[avr_skip]
+    #[ppc_alias = __ltkf2]
+    pub extern "C" fn __lttf2(a: f128, b: f128) -> i32 {
+        cmp(a, b).to_le_abi()
+    }
+
+    #[avr_skip]
+    #[ppc_alias = __nekf2]
+    pub extern "C" fn __netf2(a: f128, b: f128) -> i32 {
+        cmp(a, b).to_le_abi()
+    }
+
+    #[avr_skip]
+    #[ppc_alias = __gtkf2]
+    pub extern "C" fn __gttf2(a: f128, b: f128) -> i32 {
         cmp(a, b).to_ge_abi()
     }
 }
@@ -198,56 +257,5 @@ intrinsics! {
 
     pub extern "aapcs" fn __aeabi_dcmpgt(a: f64, b: f64) -> i32 {
         (__gtdf2(a, b) > 0) as i32
-    }
-
-    // On hard-float targets LLVM will use native instructions
-    // for all VFP intrinsics below
-
-    pub extern "C" fn __gesf2vfp(a: f32, b: f32) -> i32 {
-        (a >= b) as i32
-    }
-
-    pub extern "C" fn __gedf2vfp(a: f64, b: f64) -> i32 {
-        (a >= b) as i32
-    }
-
-    pub extern "C" fn __gtsf2vfp(a: f32, b: f32) -> i32 {
-        (a > b) as i32
-    }
-
-    pub extern "C" fn __gtdf2vfp(a: f64, b: f64) -> i32 {
-        (a > b) as i32
-    }
-
-    pub extern "C" fn __ltsf2vfp(a: f32, b: f32) -> i32 {
-        (a < b) as i32
-    }
-
-    pub extern "C" fn __ltdf2vfp(a: f64, b: f64) -> i32 {
-        (a < b) as i32
-    }
-
-    pub extern "C" fn __lesf2vfp(a: f32, b: f32) -> i32 {
-        (a <= b) as i32
-    }
-
-    pub extern "C" fn __ledf2vfp(a: f64, b: f64) -> i32 {
-        (a <= b) as i32
-    }
-
-    pub extern "C" fn __nesf2vfp(a: f32, b: f32) -> i32 {
-        (a != b) as i32
-    }
-
-    pub extern "C" fn __nedf2vfp(a: f64, b: f64) -> i32 {
-        (a != b) as i32
-    }
-
-    pub extern "C" fn __eqsf2vfp(a: f32, b: f32) -> i32 {
-        (a == b) as i32
-    }
-
-    pub extern "C" fn __eqdf2vfp(a: f64, b: f64) -> i32 {
-        (a == b) as i32
     }
 }

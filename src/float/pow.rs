@@ -1,5 +1,5 @@
-use float::Float;
-use int::Int;
+use crate::float::Float;
+use crate::int::Int;
 
 /// Returns `a` raised to the power `b`
 fn pow<F: Float>(a: F, b: i32) -> F {
@@ -26,10 +26,12 @@ fn pow<F: Float>(a: F, b: i32) -> F {
 }
 
 intrinsics! {
+    #[avr_skip]
     pub extern "C" fn __powisf2(a: f32, b: i32) -> f32 {
         pow(a, b)
     }
 
+    #[avr_skip]
     pub extern "C" fn __powidf2(a: f64, b: i32) -> f64 {
         pow(a, b)
     }

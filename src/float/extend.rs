@@ -1,5 +1,5 @@
-use float::Float;
-use int::{CastInto, Int};
+use crate::float::Float;
+use crate::int::{CastInto, Int, MinInt};
 
 /// Generic conversion from a narrower to a wider IEEE-754 floating-point type
 fn extend<F: Float, R: Float>(a: F) -> R
@@ -70,14 +70,53 @@ where
 }
 
 intrinsics! {
+    #[avr_skip]
     #[aapcs_on_arm]
     #[arm_aeabi_alias = __aeabi_f2d]
     pub extern "C" fn  __extendsfdf2(a: f32) -> f64 {
         extend(a)
     }
+}
 
-    #[cfg(target_arch = "arm")]
-    pub extern "C" fn  __extendsfdf2vfp(a: f32) -> f64 {
-        a as f64 // LLVM generate 'fcvtds'
+intrinsics! {
+    #[avr_skip]
+    #[aapcs_on_arm]
+    #[apple_f16_arg_abi]
+    #[arm_aeabi_alias = __aeabi_h2f]
+    #[cfg(f16_enabled)]
+    pub extern "C" fn __extendhfsf2(a: f16) -> f32 {
+        extend(a)
+    }
+
+    #[avr_skip]
+    #[aapcs_on_arm]
+    #[apple_f16_arg_abi]
+    #[cfg(f16_enabled)]
+    pub extern "C" fn __gnu_h2f_ieee(a: f16) -> f32 {
+        extend(a)
+    }
+
+    #[avr_skip]
+    #[aapcs_on_arm]
+    #[ppc_alias = __extendhfkf2]
+    #[cfg(all(f16_enabled, f128_enabled))]
+    pub extern "C" fn __extendhftf2(a: f16) -> f128 {
+        extend(a)
+    }
+
+    #[avr_skip]
+    #[aapcs_on_arm]
+    #[ppc_alias = __extendsfkf2]
+    #[cfg(f128_enabled)]
+    pub extern "C" fn __extendsftf2(a: f32) -> f128 {
+        extend(a)
+    }
+
+    #[avr_skip]
+    #[aapcs_on_arm]
+    #[ppc_alias = __extenddfkf2]
+    #[cfg(f128_enabled)]
+    pub extern "C" fn __extenddftf2(a: f64) -> f128 {
+        extend(a)
     }
 }

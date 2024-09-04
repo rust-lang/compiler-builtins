@@ -1,6 +1,7 @@
 #![cfg_attr(feature = "compiler-builtins", compiler_builtins)]
 #![cfg_attr(not(feature = "no-asm"), feature(asm))]
 #![feature(abi_unadjusted)]
+#![feature(asm_experimental_arch)]
 #![cfg_attr(not(feature = "no-asm"), feature(global_asm))]
 #![feature(cfg_target_has_atomic)]
 #![feature(compiler_builtins)]
@@ -11,9 +12,13 @@
 #![feature(linkage)]
 #![feature(naked_functions)]
 #![feature(repr_simd)]
+#![feature(c_unwind)]
+#![cfg_attr(f16_enabled, feature(f16))]
+#![cfg_attr(f128_enabled, feature(f128))]
 #![no_builtins]
 #![no_std]
 #![allow(unused_features)]
+#![allow(internal_features)]
 // We use `u128` in a whole bunch of places which we currently agree with the
 // compiler on ABIs and such, so we should be "good enough" for now and changes
 // to the `u128` ABI will be reflected here.
@@ -42,19 +47,27 @@ mod macros;
 pub mod float;
 pub mod int;
 
-#[cfg(any(
-    all(target_family = "wasm", target_os = "unknown"),
-    all(target_arch = "x86_64", target_os = "none"),
-    all(target_arch = "x86_64", target_os = "uefi"),
-    all(target_arch = "arm", target_os = "none"),
-    target_os = "xous",
-    all(target_vendor = "fortanix", target_env = "sgx")
-))]
+// Disable for any of the following:
+// - x86 without sse2 due to ABI issues
+//   - <https://github.com/rust-lang/rust/issues/114479>
+// - All unix targets (linux, macos, freebsd, android, etc)
+// - wasm with known target_os
+#[cfg(not(any(
+    all(target_arch = "x86", not(target_feature = "sse2")),
+    unix,
+    all(target_family = "wasm", not(target_os = "unknown"))
+)))]
 pub mod math;
 pub mod mem;
 
 #[cfg(target_arch = "arm")]
 pub mod arm;
+
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
+pub mod aarch64;
+
+#[cfg(all(target_arch = "aarch64", target_os = "linux", not(feature = "no-asm"),))]
+pub mod aarch64_linux;
 
 #[cfg(all(
     kernel_user_helpers,
@@ -62,6 +75,9 @@ pub mod arm;
     target_arch = "arm"
 ))]
 pub mod arm_linux;
+
+#[cfg(target_arch = "hexagon")]
+pub mod hexagon;
 
 #[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))]
 pub mod riscv;

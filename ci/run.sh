@@ -1,30 +1,66 @@
-set -ex
+#!/bin/bash
 
-cargo=cargo
+set -eux
+
+target="${1:-}"
+
+export RUST_BACKTRACE="${RUST_BACKTRACE:-full}"
+
+if [ -z "$target" ]; then
+    host_target=$(rustc -vV | awk '/^host/ { print $2 }')
+    echo "Defaulted to host target $host_target"
+    target="$host_target"
+fi
+
+if [ "${USING_CONTAINER_RUSTC:-}" = 1 ]; then
+    # Install nonstandard components if we have control of the environment
+    rustup target list --installed |
+        grep -E "^$target\$" ||
+        rustup target add "$target"
+fi
 
 # Test our implementation
-if [ "$XARGO" = "1" ]; then
-    # FIXME: currently these tests don't work...
-    echo nothing to do
+if [ "${NO_STD:-}" = "1" ]; then
+    echo "nothing to do for no_std"
 else
-    run="cargo test --manifest-path testcrate/Cargo.toml --target $1"
+    run="cargo test --manifest-path testcrate/Cargo.toml --no-fail-fast --target $target"
     $run
     $run --release
     $run --features c
     $run --features c --release
     $run --features no-asm
     $run --features no-asm --release
+    $run --features no-f16-f128
+    $run --features no-f16-f128 --release
+    $run --benches
+    $run --benches --release
 fi
 
-cargo build --target $1
-cargo build --target $1 --release
-cargo build --target $1 --features c
-cargo build --target $1 --release --features c
-cargo build --target $1 --features no-asm
-cargo build --target $1 --release --features no-asm
+if [ "${TEST_VERBATIM:-}" = "1" ]; then
+    verb_path=$(cmd.exe //C echo \\\\?\\%cd%\\testcrate\\target2)
+    cargo build --manifest-path testcrate/Cargo.toml --target $target --target-dir $verb_path --features c
+fi
 
-PREFIX=$(echo $1 | sed -e 's/unknown-//')-
-case $1 in
+if [ -d /builtins-target ]; then
+    rlib_paths=/builtins-target/"${target}"/debug/deps/libcompiler_builtins-*.rlib
+else
+    rlib_paths=target/"${target}"/debug/deps/libcompiler_builtins-*.rlib
+fi
+
+# Remove any existing artifacts from previous tests that don't set #![compiler_builtins]
+rm -f $rlib_paths
+
+cargo build --target "$target"
+cargo build --target "$target" --release
+cargo build --target "$target" --features c
+cargo build --target "$target" --release --features c
+cargo build --target "$target" --features no-asm
+cargo build --target "$target" --release --features no-asm
+cargo build --target "$target" --features no-f16-f128
+cargo build --target "$target" --release --features no-f16-f128
+
+PREFIX=${target//unknown-/}-
+case "$target" in
     armv7-*)
         PREFIX=arm-linux-gnueabihf-
         ;;
@@ -36,76 +72,87 @@ case $1 in
         ;;
 esac
 
-NM=$(find $(rustc --print sysroot) -name llvm-nm)
+NM=$(find "$(rustc --print sysroot)" \( -name llvm-nm -o -name llvm-nm.exe \) )
 if [ "$NM" = "" ]; then
-  NM=${PREFIX}nm
+  NM="${PREFIX}nm"
 fi
-
-if [ -d /target ]; then
-    path=/target/${1}/debug/deps/libcompiler_builtins-*.rlib
-else
-    path=target/${1}/debug/deps/libcompiler_builtins-*.rlib
+# i686-pc-windows-gnu tools have a dependency on some DLLs, so run it with
+# rustup run to ensure that those are in PATH.
+TOOLCHAIN="$(rustup show active-toolchain | sed 's/ (default)//')"
+if [[ "$TOOLCHAIN" == *i686-pc-windows-gnu ]]; then
+  NM="rustup run $TOOLCHAIN $NM"
 fi
 
 # Look out for duplicated symbols when we include the compiler-rt (C) implementation
-for rlib in $(echo $path); do
+for rlib in $rlib_paths; do
     set +x
     echo "================================================================"
-    echo checking $rlib for duplicate symbols
+    echo "checking $rlib for duplicate symbols"
     echo "================================================================"
+    
+    duplicates_found=0
 
-    stdout=$($NM -g --defined-only $rlib 2>&1)
     # NOTE On i586, It's normal that the get_pc_thunk symbol appears several
     # times so ignore it
-    #
-    # FIXME(#167) - we shouldn't ignore `__builtin_cl` style symbols here.
-    set +e
-    echo "$stdout" | \
-      sort | \
-      uniq -d | \
-      grep -v __x86.get_pc_thunk | \
-      grep -v __builtin_cl | \
-      grep -v __builtin_ctz | \
-      grep 'T __'
+    $NM -g --defined-only "$rlib" 2>&1 |
+      sort |
+      uniq -d |
+      grep -v __x86.get_pc_thunk --quiet |
+      grep 'T __' && duplicates_found=1
 
-    if test $? = 0; then
+    if [ "$duplicates_found" != 0 ]; then
+        echo "error: found duplicate symbols"
         exit 1
+    else
+        echo "success; no duplicate symbols found"
     fi
-
-    set -ex
 done
 
-rm -f $path
+rm -f $rlib_paths
+
+build_intrinsics() {
+    cargo build --target "$target" -v --example intrinsics  "$@"
+}
 
 # Verify that we haven't drop any intrinsic/symbol
-build_intrinsics="$cargo build --target $1 -v --example intrinsics"
-RUSTFLAGS="-C debug-assertions=no" $build_intrinsics
-RUSTFLAGS="-C debug-assertions=no" $build_intrinsics --release
-RUSTFLAGS="-C debug-assertions=no" $build_intrinsics --features c
-RUSTFLAGS="-C debug-assertions=no" $build_intrinsics --features c --release
+build_intrinsics
+build_intrinsics --release
+build_intrinsics --features c
+build_intrinsics --features c --release
 
 # Verify that there are no undefined symbols to `panic` within our
 # implementations
-#
-# TODO(#79) fix the undefined references problem for debug-assertions+lto
-if [ -z "$DEBUG_LTO_BUILD_DOESNT_WORK" ]; then
-  RUSTFLAGS="-C debug-assertions=no" \
-    CARGO_INCREMENTAL=0 \
-    CARGO_PROFILE_DEV_LTO=true \
-    $cargo rustc --features "$INTRINSICS_FEATURES" --target $1 --example intrinsics
-fi
+CARGO_PROFILE_DEV_LTO=true \
+    cargo build --target "$target" --example intrinsics
 CARGO_PROFILE_RELEASE_LTO=true \
-  $cargo rustc --features "$INTRINSICS_FEATURES" --target $1 --example intrinsics --release
+    cargo build --target "$target" --example intrinsics --release
 
-# Ensure no references to a panicking function
-for rlib in $(echo $path); do
-    set +ex
-    $NM -u $rlib 2>&1 | grep panicking
+# Ensure no references to any symbols from core
+for rlib in $(echo $rlib_paths); do
+    set +x
+    echo "================================================================"
+    echo "checking $rlib for references to core"
+    echo "================================================================"
+    set -x
 
-    if test $? = 0; then
+    tmpdir="${CARGO_TARGET_DIR:-target}/tmp"
+    test -d "$tmpdir" || mkdir "$tmpdir"
+    defined="$tmpdir/defined_symbols.txt"
+    undefined="$tmpdir/defined_symbols.txt"
+
+    $NM --quiet -U "$rlib" | grep 'T _ZN4core' | awk '{print $3}' | sort | uniq > "$defined"
+    $NM --quiet -u "$rlib" | grep 'U _ZN4core' | awk '{print $2}' | sort | uniq > "$undefined"
+    grep_has_results=0
+    grep -v -F -x -f "$defined" "$undefined" && grep_has_results=1
+
+    if [ "$target" = "powerpc64-unknown-linux-gnu" ]; then
+        echo "FIXME: powerpc64 fails these tests"
+    elif [ "$grep_has_results" != 0 ]; then
+        echo "error: found unexpected references to core"
         exit 1
+    else
+        echo "success; no references to core found"
     fi
-    set -ex
 done
 
 true

@@ -1,5 +1,5 @@
-use float::Float;
-use int::{CastInto, DInt, HInt, Int};
+use crate::float::Float;
+use crate::int::{CastInto, DInt, HInt, Int, MinInt};
 
 fn mul<F: Float>(a: F, b: F) -> F
 where
@@ -149,18 +149,13 @@ where
         }
 
         // Otherwise, shift the significand of the result so that the round
-        // bit is the high bit of productLo.
-        if shift < bits {
-            let sticky = product_low << (bits - shift);
-            product_low = product_high << (bits - shift) | product_low >> shift | sticky;
-            product_high >>= shift;
-        } else if shift < (2 * bits) {
-            let sticky = product_high << (2 * bits - shift) | product_low;
-            product_low = product_high >> (shift - bits) | sticky;
-            product_high = zero;
-        } else {
-            product_high = zero;
-        }
+        // bit is the high bit of `product_low`.
+        // Ensure one of the non-highest bits in `product_low` is set if the shifted out bit are
+        // not all zero so that the result is correctly rounded below.
+        let sticky = product_low << (bits - shift) != zero;
+        product_low =
+            product_high << (bits - shift) | product_low >> shift | (sticky as u32).cast();
+        product_high >>= shift;
     } else {
         // Result is normal before rounding; insert the exponent.
         product_high &= significand_mask;
@@ -185,25 +180,23 @@ where
 }
 
 intrinsics! {
+    #[avr_skip]
     #[aapcs_on_arm]
     #[arm_aeabi_alias = __aeabi_fmul]
     pub extern "C" fn __mulsf3(a: f32, b: f32) -> f32 {
         mul(a, b)
     }
 
+    #[avr_skip]
     #[aapcs_on_arm]
     #[arm_aeabi_alias = __aeabi_dmul]
     pub extern "C" fn __muldf3(a: f64, b: f64) -> f64 {
         mul(a, b)
     }
 
-    #[cfg(target_arch = "arm")]
-    pub extern "C" fn __mulsf3vfp(a: f32, b: f32) -> f32 {
-        a * b
-    }
-
-    #[cfg(target_arch = "arm")]
-    pub extern "C" fn __muldf3vfp(a: f64, b: f64) -> f64 {
-        a * b
+    #[ppc_alias = __mulkf3]
+    #[cfg(f128_enabled)]
+    pub extern "C" fn __multf3(a: f128, b: f128) -> f128 {
+        mul(a, b)
     }
 }

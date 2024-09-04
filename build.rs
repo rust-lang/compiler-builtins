@@ -1,23 +1,33 @@
-use std::env;
+use std::{collections::BTreeMap, env, path::PathBuf, sync::atomic::Ordering};
+
+mod configure;
+
+use configure::{configure_f16_f128, Target};
 
 fn main() {
-    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo::rerun-if-changed=build.rs");
+    println!("cargo::rerun-if-changed=configure.rs");
 
-    let target = env::var("TARGET").unwrap();
+    let target = Target::from_env();
     let cwd = env::current_dir().unwrap();
+
+    configure_check_cfg();
+    configure_f16_f128(&target);
 
     println!("cargo:compiler-rt={}", cwd.join("compiler-rt").display());
 
     // Activate libm's unstable features to make full use of Nightly.
+    println!("cargo::rustc-check-cfg=cfg(feature, values(\"unstable\", \"force-soft-floats\"))");
     println!("cargo:rustc-cfg=feature=\"unstable\"");
+    println!("cargo:rustc-cfg=feature=\"force-soft-floats\"");
 
     // Emscripten's runtime includes all the builtins
-    if target.contains("emscripten") {
+    if target.os == "emscripten" {
         return;
     }
 
     // OpenBSD provides compiler_rt by default, use it instead of rebuilding it from source
-    if target.contains("openbsd") {
+    if target.os == "openbsd" {
         println!("cargo:rustc-link-search=native=/usr/lib");
         println!("cargo:rustc-link-lib=compiler_rt");
         return;
@@ -25,20 +35,22 @@ fn main() {
 
     // Forcibly enable memory intrinsics on wasm & SGX as we don't have a libc to
     // provide them.
-    if (target.contains("wasm") && !target.contains("wasi"))
-        || (target.contains("sgx") && target.contains("fortanix"))
-        || target.contains("-none")
-        || target.contains("nvptx")
-        || target.contains("uefi")
+    if (target.triple.contains("wasm") && !target.triple.contains("wasi"))
+        || (target.triple.contains("sgx") && target.triple.contains("fortanix"))
+        || target.triple.contains("-none")
+        || target.triple.contains("nvptx")
+        || target.triple.contains("uefi")
+        || target.triple.contains("xous")
     {
         println!("cargo:rustc-cfg=feature=\"mem\"");
     }
 
     // These targets have hardware unaligned access support.
-    if target.contains("x86_64")
-        || target.contains("i686")
-        || target.contains("aarch64")
-        || target.contains("bpf")
+    println!("cargo::rustc-check-cfg=cfg(feature, values(\"mem-unaligned\"))");
+    if target.arch.contains("x86_64")
+        || target.arch.contains("x86")
+        || target.arch.contains("aarch64")
+        || target.arch.contains("bpf")
     {
         println!("cargo:rustc-cfg=feature=\"mem-unaligned\"");
     }
@@ -46,7 +58,7 @@ fn main() {
     // NOTE we are going to assume that llvm-target, what determines our codegen option, matches the
     // target triple. This is usually correct for our built-in targets but can break in presence of
     // custom targets, which can have arbitrary names.
-    let llvm_target = target.split('-').collect::<Vec<_>>();
+    let llvm_target = target.triple.split('-').collect::<Vec<_>>();
 
     // Build missing intrinsics from compiler-rt C source code. If we're
     // mangling names though we assume that we're also in test mode so we don't
@@ -55,21 +67,15 @@ fn main() {
     if !cfg!(feature = "mangled-names") && cfg!(feature = "c") {
         // Don't use a C compiler for these targets:
         //
-        // * wasm - clang for wasm is somewhat hard to come by and it's
-        //   unlikely that the C is really that much better than our own Rust.
         // * nvptx - everything is bitcode, not compatible with mixed C/Rust
-        // * riscv - the rust-lang/rust distribution container doesn't have a C
-        //   compiler.
-        if !target.contains("wasm")
-            && !target.contains("nvptx")
-            && (!target.starts_with("riscv") || target.contains("xous"))
-        {
+        if !target.arch.contains("nvptx") {
             #[cfg(feature = "c")]
             c::compile(&llvm_target, &target);
         }
     }
 
     // To compile intrinsics.rs for thumb targets, where there is no libc
+    println!("cargo::rustc-check-cfg=cfg(thumb)");
     if llvm_target[0].starts_with("thumb") {
         println!("cargo:rustc-cfg=thumb")
     }
@@ -77,6 +83,7 @@ fn main() {
     // compiler-rt `cfg`s away some intrinsics for thumbv6m and thumbv8m.base because
     // these targets do not have full Thumb-2 support but only original Thumb-1.
     // We have to cfg our code accordingly.
+    println!("cargo::rustc-check-cfg=cfg(thumb_1)");
     if llvm_target[0] == "thumbv6m" || llvm_target[0] == "thumbv8m.base" {
         println!("cargo:rustc-cfg=thumb_1")
     }
@@ -84,23 +91,151 @@ fn main() {
     // Only emit the ARM Linux atomic emulation on pre-ARMv6 architectures. This
     // includes the old androideabi. It is deprecated but it is available as a
     // rustc target (arm-linux-androideabi).
+    println!("cargo::rustc-check-cfg=cfg(kernel_user_helpers)");
     if llvm_target[0] == "armv4t"
         || llvm_target[0] == "armv5te"
-        || target == "arm-linux-androideabi"
+        || target.triple == "arm-linux-androideabi"
     {
         println!("cargo:rustc-cfg=kernel_user_helpers")
     }
+
+    if llvm_target[0].starts_with("aarch64") {
+        generate_aarch64_outlined_atomics();
+    }
+}
+
+fn aarch64_symbol(ordering: Ordering) -> &'static str {
+    match ordering {
+        Ordering::Relaxed => "relax",
+        Ordering::Acquire => "acq",
+        Ordering::Release => "rel",
+        Ordering::AcqRel => "acq_rel",
+        _ => panic!("unknown symbol for {:?}", ordering),
+    }
+}
+
+/// The `concat_idents` macro is extremely annoying and doesn't allow us to define new items.
+/// Define them from the build script instead.
+/// Note that the majority of the code is still defined in `aarch64.rs` through inline macros.
+fn generate_aarch64_outlined_atomics() {
+    use std::fmt::Write;
+    // #[macro_export] so that we can use this in tests
+    let gen_macro =
+        |name| format!("#[macro_export] macro_rules! foreach_{name} {{ ($macro:path) => {{\n");
+
+    // Generate different macros for add/clr/eor/set so that we can test them separately.
+    let sym_names = ["cas", "ldadd", "ldclr", "ldeor", "ldset", "swp"];
+    let mut macros = BTreeMap::new();
+    for sym in sym_names {
+        macros.insert(sym, gen_macro(sym));
+    }
+
+    // Only CAS supports 16 bytes, and it has a different implementation that uses a different macro.
+    let mut cas16 = gen_macro("cas16");
+
+    for ordering in [
+        Ordering::Relaxed,
+        Ordering::Acquire,
+        Ordering::Release,
+        Ordering::AcqRel,
+    ] {
+        let sym_ordering = aarch64_symbol(ordering);
+        for size in [1, 2, 4, 8] {
+            for (sym, macro_) in &mut macros {
+                let name = format!("__aarch64_{sym}{size}_{sym_ordering}");
+                writeln!(macro_, "$macro!( {ordering:?}, {size}, {name} );").unwrap();
+            }
+        }
+        let name = format!("__aarch64_cas16_{sym_ordering}");
+        writeln!(cas16, "$macro!( {ordering:?}, {name} );").unwrap();
+    }
+
+    let mut buf = String::new();
+    for macro_def in macros.values().chain(std::iter::once(&cas16)) {
+        buf += macro_def;
+        buf += "}; }\n";
+    }
+    let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
+    std::fs::write(out_dir.join("outlined_atomics.rs"), buf).unwrap();
+}
+
+/// Emit directives for features we expect to support that aren't in `Cargo.toml`.
+///
+/// These are mostly cfg elements emitted by this `build.rs`.
+fn configure_check_cfg() {
+    // Functions where we can set the "optimized-c" flag
+    const HAS_OPTIMIZED_C: &[&str] = &[
+        "__ashldi3",
+        "__ashlsi3",
+        "__ashrdi3",
+        "__ashrsi3",
+        "__bswapsi2",
+        "__bswapdi2",
+        "__bswapti2",
+        "__divdi3",
+        "__divsi3",
+        "__divmoddi4",
+        "__divmodsi4",
+        "__divmodsi4",
+        "__divmodti4",
+        "__lshrdi3",
+        "__lshrsi3",
+        "__moddi3",
+        "__modsi3",
+        "__muldi3",
+        "__udivdi3",
+        "__udivmoddi4",
+        "__udivmodsi4",
+        "__udivsi3",
+        "__umoddi3",
+        "__umodsi3",
+    ];
+
+    // Build a list of all aarch64 atomic operation functions
+    let mut aarch_atomic = Vec::new();
+    for aarch_op in ["cas", "ldadd", "ldclr", "ldeor", "ldset", "swp"] {
+        let op_sizes = if aarch_op == "cas" {
+            [1, 2, 4, 8, 16].as_slice()
+        } else {
+            [1, 2, 4, 8].as_slice()
+        };
+
+        for op_size in op_sizes {
+            for ordering in ["relax", "acq", "rel", "acq_rel"] {
+                aarch_atomic.push(format!("__aarch64_{}{}_{}", aarch_op, op_size, ordering));
+            }
+        }
+    }
+
+    for fn_name in HAS_OPTIMIZED_C
+        .iter()
+        .copied()
+        .chain(aarch_atomic.iter().map(|s| s.as_str()))
+    {
+        println!(
+            "cargo::rustc-check-cfg=cfg({}, values(\"optimized-c\"))",
+            fn_name
+        );
+    }
+
+    // Rustc is unaware of sparc target features, but this does show up from
+    // `rustc --print target-features --target sparc64-unknown-linux-gnu`.
+    println!("cargo::rustc-check-cfg=cfg(target_feature, values(\"vis3\"))");
+
+    // FIXME: these come from libm and should be changed there
+    println!("cargo::rustc-check-cfg=cfg(feature, values(\"checked\"))");
+    println!("cargo::rustc-check-cfg=cfg(assert_no_panic)");
 }
 
 #[cfg(feature = "c")]
 mod c {
-    extern crate cc;
-
     use std::collections::{BTreeMap, HashSet};
     use std::env;
     use std::fs::{self, File};
     use std::io::Write;
     use std::path::{Path, PathBuf};
+
+    use super::Target;
 
     struct Sources {
         // SYMBOL -> PATH TO SOURCE
@@ -142,11 +277,7 @@ mod c {
     }
 
     /// Compile intrinsics from the compiler-rt C source code
-    pub fn compile(llvm_target: &[&str], target: &String) {
-        let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
-        let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
-        let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
-        let target_vendor = env::var("CARGO_CFG_TARGET_VENDOR").unwrap();
+    pub fn compile(llvm_target: &[&str], target: &Target) {
         let mut consider_float_intrinsics = true;
         let cfg = &mut cc::Build::new();
 
@@ -155,8 +286,8 @@ mod c {
         //
         // Therefore, evaluate if those flags are present and set a boolean that causes any
         // compiler-rt intrinsics that contain floating point source to be excluded for this target.
-        if target_arch == "aarch64" {
-            let cflags_key = String::from("CFLAGS_") + &(target.to_owned().replace("-", "_"));
+        if target.arch == "aarch64" {
+            let cflags_key = String::from("CFLAGS_") + &(target.triple.replace("-", "_"));
             if let Ok(cflags_value) = env::var(cflags_key) {
                 if cflags_value.contains("+nofp") || cflags_value.contains("+nosimd") {
                     consider_float_intrinsics = false;
@@ -164,9 +295,17 @@ mod c {
             }
         }
 
+        // `compiler-rt` requires `COMPILER_RT_HAS_FLOAT16` to be defined to make it use the
+        // `_Float16` type for `f16` intrinsics. This shouldn't matter as all existing `f16`
+        // intrinsics have been ported to Rust in `compiler-builtins` as C compilers don't
+        // support `_Float16` on all targets (whereas Rust does). However, define the macro
+        // anyway to prevent issues like rust#118813 and rust#123885 silently reoccuring if more
+        // `f16` intrinsics get accidentally added here in the future.
+        cfg.define("COMPILER_RT_HAS_FLOAT16", None);
+
         cfg.warnings(false);
 
-        if target_env == "msvc" {
+        if target.env == "msvc" {
             // Don't pull in extra libraries on MSVC
             cfg.flag("/Zl");
 
@@ -195,7 +334,7 @@ mod c {
         // at odds with compiling with `-ffreestanding`, as the header
         // may be incompatible or not present. Create a minimal stub
         // header to use instead.
-        if target_os == "uefi" {
+        if target.os == "uefi" {
             let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
             let include_dir = out_dir.join("include");
             if !include_dir.exists() {
@@ -211,11 +350,7 @@ mod c {
             ("__absvsi2", "absvsi2.c"),
             ("__addvdi3", "addvdi3.c"),
             ("__addvsi3", "addvsi3.c"),
-            ("__clzdi2", "clzdi2.c"),
-            ("__clzsi2", "clzsi2.c"),
             ("__cmpdi2", "cmpdi2.c"),
-            ("__ctzdi2", "ctzdi2.c"),
-            ("__ctzsi2", "ctzsi2.c"),
             ("__int_util", "int_util.c"),
             ("__mulvdi3", "mulvdi3.c"),
             ("__mulvsi3", "mulvsi3.c"),
@@ -235,39 +370,20 @@ mod c {
             sources.extend(&[
                 ("__divdc3", "divdc3.c"),
                 ("__divsc3", "divsc3.c"),
-                ("__divxc3", "divxc3.c"),
-                ("__extendhfsf2", "extendhfsf2.c"),
                 ("__muldc3", "muldc3.c"),
                 ("__mulsc3", "mulsc3.c"),
-                ("__mulxc3", "mulxc3.c"),
                 ("__negdf2", "negdf2.c"),
                 ("__negsf2", "negsf2.c"),
-                ("__powixf2", "powixf2.c"),
-                ("__truncdfhf2", "truncdfhf2.c"),
-                ("__truncsfhf2", "truncsfhf2.c"),
             ]);
-        }
-
-        // When compiling in rustbuild (the rust-lang/rust repo) this library
-        // also needs to satisfy intrinsics that jemalloc or C in general may
-        // need, so include a few more that aren't typically needed by
-        // LLVM/Rust.
-        if cfg!(feature = "rustbuild") {
-            sources.extend(&[("__ffsdi2", "ffsdi2.c")]);
         }
 
         // On iOS and 32-bit OSX these are all just empty intrinsics, no need to
         // include them.
-        if target_os != "ios"
-            && target_os != "watchos"
-            && (target_vendor != "apple" || target_arch != "x86")
-        {
+        if target.vendor != "apple" || target.arch != "x86" {
             sources.extend(&[
                 ("__absvti2", "absvti2.c"),
                 ("__addvti3", "addvti3.c"),
-                ("__clzti2", "clzti2.c"),
                 ("__cmpti2", "cmpti2.c"),
-                ("__ctzti2", "ctzti2.c"),
                 ("__ffsti2", "ffsti2.c"),
                 ("__mulvti3", "mulvti3.c"),
                 ("__negti2", "negti2.c"),
@@ -282,7 +398,7 @@ mod c {
             }
         }
 
-        if target_vendor == "apple" {
+        if target.vendor == "apple" {
             sources.extend(&[
                 ("atomic_flag_clear", "atomic_flag_clear.c"),
                 ("atomic_flag_clear_explicit", "atomic_flag_clear_explicit.c"),
@@ -296,29 +412,12 @@ mod c {
             ]);
         }
 
-        if target_env == "msvc" {
-            if target_arch == "x86_64" {
-                sources.extend(&[("__floatdixf", "x86_64/floatdixf.c")]);
-            }
-        } else {
-            // None of these seem to be used on x86_64 windows, and they've all
-            // got the wrong ABI anyway, so we want to avoid them.
-            if target_os != "windows" {
-                if target_arch == "x86_64" {
-                    sources.extend(&[
-                        ("__floatdixf", "x86_64/floatdixf.c"),
-                        ("__floatundixf", "x86_64/floatundixf.S"),
-                    ]);
-                }
-            }
-
-            if target_arch == "x86" {
+        if target.env != "msvc" {
+            if target.arch == "x86" {
                 sources.extend(&[
                     ("__ashldi3", "i386/ashldi3.S"),
                     ("__ashrdi3", "i386/ashrdi3.S"),
                     ("__divdi3", "i386/divdi3.S"),
-                    ("__floatdixf", "i386/floatdixf.S"),
-                    ("__floatundixf", "i386/floatundixf.S"),
                     ("__lshrdi3", "i386/lshrdi3.S"),
                     ("__moddi3", "i386/moddi3.S"),
                     ("__muldi3", "i386/muldi3.S"),
@@ -328,19 +427,13 @@ mod c {
             }
         }
 
-        if target_arch == "arm"
-            && target_os != "ios"
-            && target_os != "watchos"
-            && target_env != "msvc"
-        {
+        if target.arch == "arm" && target.vendor != "apple" && target.env != "msvc" {
             sources.extend(&[
                 ("__aeabi_div0", "arm/aeabi_div0.c"),
                 ("__aeabi_drsub", "arm/aeabi_drsub.c"),
                 ("__aeabi_frsub", "arm/aeabi_frsub.c"),
                 ("__bswapdi2", "arm/bswapdi2.S"),
                 ("__bswapsi2", "arm/bswapsi2.S"),
-                ("__clzdi2", "arm/clzdi2.S"),
-                ("__clzsi2", "arm/clzsi2.S"),
                 ("__divmodsi4", "arm/divmodsi4.S"),
                 ("__divsi3", "arm/divsi3.S"),
                 ("__modsi3", "arm/modsi3.S"),
@@ -354,7 +447,7 @@ mod c {
                 ("__umodsi3", "arm/umodsi3.S"),
             ]);
 
-            if target_os == "freebsd" {
+            if target.os == "freebsd" {
                 sources.extend(&[("__clear_cache", "clear_cache.c")]);
             }
 
@@ -426,61 +519,48 @@ mod c {
             ]);
         }
 
-        if target_arch == "aarch64" && consider_float_intrinsics {
+        if (target.arch == "aarch64" || target.arch == "arm64ec") && consider_float_intrinsics {
             sources.extend(&[
                 ("__comparetf2", "comparetf2.c"),
-                ("__extenddftf2", "extenddftf2.c"),
-                ("__extendsftf2", "extendsftf2.c"),
-                ("__fixtfdi", "fixtfdi.c"),
-                ("__fixtfsi", "fixtfsi.c"),
-                ("__fixtfti", "fixtfti.c"),
-                ("__fixunstfdi", "fixunstfdi.c"),
-                ("__fixunstfsi", "fixunstfsi.c"),
-                ("__fixunstfti", "fixunstfti.c"),
                 ("__floatditf", "floatditf.c"),
                 ("__floatsitf", "floatsitf.c"),
                 ("__floatunditf", "floatunditf.c"),
                 ("__floatunsitf", "floatunsitf.c"),
-                ("__trunctfdf2", "trunctfdf2.c"),
-                ("__trunctfsf2", "trunctfsf2.c"),
-                ("__addtf3", "addtf3.c"),
-                ("__multf3", "multf3.c"),
-                ("__subtf3", "subtf3.c"),
                 ("__divtf3", "divtf3.c"),
                 ("__powitf2", "powitf2.c"),
                 ("__fe_getround", "fp_mode.c"),
                 ("__fe_raise_inexact", "fp_mode.c"),
             ]);
 
-            if target_os != "windows" {
+            if target.os != "windows" {
                 sources.extend(&[("__multc3", "multc3.c")]);
             }
         }
 
-        if target_arch == "mips" {
+        if target.arch == "mips" || target.arch == "riscv32" || target.arch == "riscv64" {
             sources.extend(&[("__bswapsi2", "bswapsi2.c")]);
         }
 
-        if target_arch == "mips64" {
+        if target.arch == "mips64" {
             sources.extend(&[
-                ("__extenddftf2", "extenddftf2.c"),
                 ("__netf2", "comparetf2.c"),
-                ("__addtf3", "addtf3.c"),
-                ("__multf3", "multf3.c"),
-                ("__subtf3", "subtf3.c"),
-                ("__fixtfsi", "fixtfsi.c"),
                 ("__floatsitf", "floatsitf.c"),
-                ("__fixunstfsi", "fixunstfsi.c"),
                 ("__floatunsitf", "floatunsitf.c"),
                 ("__fe_getround", "fp_mode.c"),
-                ("__divtf3", "divtf3.c"),
-                ("__trunctfdf2", "trunctfdf2.c"),
-                ("__trunctfsf2", "trunctfsf2.c"),
+            ]);
+        }
+
+        if target.arch == "loongarch64" {
+            sources.extend(&[
+                ("__netf2", "comparetf2.c"),
+                ("__floatsitf", "floatsitf.c"),
+                ("__floatunsitf", "floatunsitf.c"),
+                ("__fe_getround", "fp_mode.c"),
             ]);
         }
 
         // Remove the assembly implementations that won't compile for the target
-        if llvm_target[0] == "thumbv6m" || llvm_target[0] == "thumbv8m.base" || target_os == "uefi"
+        if llvm_target[0] == "thumbv6m" || llvm_target[0] == "thumbv8m.base" || target.os == "uefi"
         {
             let mut to_remove = Vec::new();
             for (k, v) in sources.map.iter() {
@@ -489,9 +569,6 @@ mod c {
                 }
             }
             sources.remove(&to_remove);
-
-            // But use some generic implementations where possible
-            sources.extend(&[("__clzdi2", "clzdi2.c"), ("__clzsi2", "clzsi2.c")])
         }
 
         if llvm_target[0] == "thumbv7m" || llvm_target[0] == "thumbv7em" {
@@ -499,7 +576,7 @@ mod c {
         }
 
         // Android uses emulated TLS so we need a runtime support function.
-        if target_os == "android" {
+        if target.os == "android" {
             sources.extend(&[("__emutls_get_address", "emutls.c")]);
 
             // Work around a bug in the NDK headers (fixed in
@@ -508,13 +585,20 @@ mod c {
             cfg.define("LONG_BIT", "(8 * sizeof(long))");
         }
 
+        // OpenHarmony also uses emulated TLS.
+        if target.env == "ohos" {
+            sources.extend(&[("__emutls_get_address", "emutls.c")]);
+        }
+
         // When compiling the C code we require the user to tell us where the
         // source code is, and this is largely done so when we're compiling as
         // part of rust-lang/rust we can use the same llvm-project repository as
         // rust-lang/rust.
         let root = match env::var_os("RUST_COMPILER_RT_ROOT") {
             Some(s) => PathBuf::from(s),
-            None => panic!("RUST_COMPILER_RT_ROOT is not set"),
+            None => {
+                panic!("RUST_COMPILER_RT_ROOT is not set. You may need to download compiler-rt.")
+            }
         };
         if !root.exists() {
             panic!("RUST_COMPILER_RT_ROOT={} does not exist", root.display());
@@ -529,12 +613,17 @@ mod c {
         // sets of flags to the same source file.
         // Note: Out-of-line aarch64 atomics are not supported by the msvc toolchain (#430).
         let src_dir = root.join("lib/builtins");
-        if target_arch == "aarch64" && target_env != "msvc" {
+        if target.arch == "aarch64" && target.env != "msvc" {
             // See below for why we're building these as separate libraries.
             build_aarch64_out_of_line_atomics_libraries(&src_dir, cfg);
 
             // Some run-time CPU feature detection is necessary, as well.
-            sources.extend(&[("__aarch64_have_lse_atomics", "cpu_model.c")]);
+            let cpu_model_src = if src_dir.join("cpu_model.c").exists() {
+                "cpu_model.c"
+            } else {
+                "cpu_model/aarch64.c"
+            };
+            sources.extend(&[("__aarch64_have_lse_atomics", cpu_model_src)]);
         }
 
         let mut added_sources = HashSet::new();
@@ -552,7 +641,7 @@ mod c {
 
     fn build_aarch64_out_of_line_atomics_libraries(builtins_dir: &Path, cfg: &mut cc::Build) {
         let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-        let outlined_atomics_file = builtins_dir.join("aarch64/lse.S");
+        let outlined_atomics_file = builtins_dir.join("aarch64").join("lse.S");
         println!("cargo:rerun-if-changed={}", outlined_atomics_file.display());
 
         cfg.include(&builtins_dir);

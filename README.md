@@ -16,13 +16,13 @@ you can use this crate to get those intrinsics and solve the linker errors. To
 do that, add this crate somewhere in the dependency graph of the crate you are
 building:
 
-``` toml
+```toml
 # Cargo.toml
 [dependencies]
 compiler_builtins = { git = "https://github.com/rust-lang/compiler-builtins" }
 ```
 
-``` rust
+```rust
 extern crate compiler_builtins;
 
 // ...
@@ -52,17 +52,17 @@ features = ["c"]
 2. Fork this repository.
 3. Port the intrinsic(s) and their corresponding [unit tests][1] from their
    [C implementation][2] to Rust.
-4. Implement a [test generator][3] to compare the behavior of the ported intrinsic(s)
-   with their implementation on the testing host. Note that randomized compiler-builtin tests
-   should be run using `cargo test --features gen-tests`.
-4. Send a Pull Request (PR).
-5. Once the PR passes our extensive [testing infrastructure][4], we'll merge it!
-6. Celebrate :tada:
+4. Add a test to compare the behavior of the ported intrinsic(s) with their
+   implementation on the testing host.
+5. Add the intrinsic to `examples/intrinsics.rs` to verify it can be linked on
+   all targets.
+6. Send a Pull Request (PR).
+7. Once the PR passes our extensive testing infrastructure, we'll merge it!
+8. Celebrate :tada:
 
-[1]: https://github.com/rust-lang/compiler-rt/tree/8598065bd965d9713bfafb6c1e766d63a7b17b89/test/builtins/Unit
-[2]: https://github.com/rust-lang/compiler-rt/tree/8598065bd965d9713bfafb6c1e766d63a7b17b89/lib/builtins
-[3]: https://github.com/rust-lang/compiler-builtins/blob/0ba07e49264a54cb5bbd4856fcea083bb3fbec15/build.rs#L180-L265
-[4]: https://travis-ci.org/rust-lang/compiler-builtins
+[1]: https://github.com/rust-lang/llvm-project/tree/9e3de9490ff580cd484fbfa2908292b4838d56e7/compiler-rt/test/builtins/Unit
+[2]: https://github.com/rust-lang/llvm-project/tree/9e3de9490ff580cd484fbfa2908292b4838d56e7/compiler-rt/lib/builtins
+[3]: https://github.com/rust-lang/compiler-builtins/actions
 
 ### Porting Reminders
 
@@ -78,12 +78,32 @@ features = ["c"]
 [8]: http://en.cppreference.com/w/cpp/language/implicit_conversion
 [9]: https://doc.rust-lang.org/std/primitive.i32.html
 
+## Testing
+
+The easiest way to test locally is using Docker. This can be done by running
+`./ci/run-docker.sh [target]`. If no target is specified, all targets will be
+run.
+
+In order to run the full test suite, you will also need the C compiler runtime
+to test against, located in a directory called `compiler-rt`. This can be
+obtained with the following:
+
+```sh
+curl -L -o rustc-llvm-18.0.tar.gz https://github.com/rust-lang/llvm-project/archive/rustc/18.0-2024-02-13.tar.gz
+tar xzf rustc-llvm-18.0.tar.gz --strip-components 1 llvm-project-rustc-18.0-2024-02-13/compiler-rt
+```
+
+Local targets may also be tested with `./ci/run.sh [target]`.
+
+Note that testing may not work on all hosts, in which cases it is acceptable to
+rely on CI.
+
 ## Progress
 
+- [x] aarch64/chkstk.S
 - [x] adddf3.c
 - [x] addsf3.c
-- [x] arm/adddf3vfp.S
-- [x] arm/addsf3vfp.S
+- [x] arm/addsf3.S
 - [x] arm/aeabi_dcmp.S
 - [x] arm/aeabi_fcmp.S
 - [x] arm/aeabi_idivmod.S
@@ -93,56 +113,40 @@ features = ["c"]
 - [x] arm/aeabi_memset.S
 - [x] arm/aeabi_uidivmod.S
 - [x] arm/aeabi_uldivmod.S
-- [x] arm/divdf3vfp.S
+- [ ] arm/chkstk.S
 - [ ] arm/divmodsi4.S (generic version is done)
-- [x] arm/divsf3vfp.S
 - [ ] arm/divsi3.S (generic version is done)
-- [x] arm/eqdf2vfp.S
-- [x] arm/eqsf2vfp.S
-- [x] arm/extendsfdf2vfp.S
-- [ ] arm/fixdfsivfp.S
-- [ ] arm/fixsfsivfp.S
-- [ ] arm/fixunsdfsivfp.S
-- [ ] arm/fixunssfsivfp.S
-- [ ] arm/floatsidfvfp.S
-- [ ] arm/floatsisfvfp.S
-- [ ] arm/floatunssidfvfp.S
-- [ ] arm/floatunssisfvfp.S
-- [x] arm/gedf2vfp.S
-- [x] arm/gesf2vfp.S
-- [x] arm/gtdf2vfp.S
-- [x] arm/gtsf2vfp.S
-- [x] arm/ledf2vfp.S
-- [x] arm/lesf2vfp.S
-- [x] arm/ltdf2vfp.S
-- [x] arm/ltsf2vfp.S
 - [ ] arm/modsi3.S (generic version is done)
-- [x] arm/muldf3vfp.S
-- [x] arm/mulsf3vfp.S
-- [x] arm/nedf2vfp.S
-- [ ] arm/negdf2vfp.S
-- [ ] arm/negsf2vfp.S
-- [x] arm/nesf2vfp.S
 - [x] arm/softfloat-alias.list
-- [x] arm/subdf3vfp.S
-- [x] arm/subsf3vfp.S
-- [x] arm/truncdfsf2vfp.S
 - [ ] arm/udivmodsi4.S (generic version is done)
 - [ ] arm/udivsi3.S (generic version is done)
 - [ ] arm/umodsi3.S (generic version is done)
-- [ ] arm/unorddf2vfp.S
-- [ ] arm/unordsf2vfp.S
 - [x] ashldi3.c
 - [x] ashrdi3.c
+- [ ] avr/divmodhi4.S
+- [ ] avr/divmodqi4.S
+- [ ] avr/mulhi3.S
+- [ ] avr/mulqi3.S
+- [ ] avr/udivmodhi4.S
+- [ ] avr/udivmodqi4.S
+- [x] bswapdi2.c
+- [x] bswapsi2.c
+- [x] bswapti2.c
+- [x] clzdi2.c
+- [x] clzsi2.c
+- [x] clzti2.c
 - [x] comparedf2.c
 - [x] comparesf2.c
+- [x] ctzdi2.c
+- [x] ctzsi2.c
+- [x] ctzti2.c
 - [x] divdf3.c
 - [x] divdi3.c
 - [x] divmoddi4.c
 - [x] divmodsi4.c
+- [x] divmodti4.c
 - [x] divsf3.c
 - [x] divsi3.c
-- [ ] extendhfsf2.c
 - [x] extendsfdf2.c
 - [x] fixdfdi.c
 - [x] fixdfsi.c
@@ -163,7 +167,6 @@ features = ["c"]
 - [ ] i386/ashldi3.S
 - [ ] i386/ashrdi3.S
 - [x] i386/chkstk.S
-- [x] i386/chkstk2.S
 - [ ] i386/divdi3.S
 - [ ] i386/lshrdi3.S
 - [ ] i386/moddi3.S
@@ -180,11 +183,11 @@ features = ["c"]
 - [x] mulsf3.c
 - [x] powidf2.c
 - [x] powisf2.c
+- [ ] riscv/muldi3.S
+- [ ] riscv/mulsi3.S
 - [x] subdf3.c
 - [x] subsf3.c
-- [ ] truncdfhf2.c
 - [x] truncdfsf2.c
-- [ ] truncsfhf2.c
 - [x] udivdi3.c
 - [x] udivmoddi4.c
 - [x] udivmodsi4.c
@@ -192,9 +195,8 @@ features = ["c"]
 - [x] umoddi3.c
 - [x] umodsi3.c
 - [x] x86_64/chkstk.S
-- [x] x86_64/chkstk2.S
 
-These builtins are needed to support 128-bit integers, which are in the process of being added to Rust.
+These builtins are needed to support 128-bit integers.
 
 - [x] ashlti3.c
 - [x] ashrti3.c
@@ -215,62 +217,123 @@ These builtins are needed to support 128-bit integers, which are in the process 
 - [x] udivti3.c
 - [x] umodti3.c
 
+These builtins are needed to support `f16` and `f128`, which are in the process
+of being added to Rust.
+
+- [x] addtf3.c
+- [x] comparetf2.c
+- [ ] divtf3.c
+- [x] extenddftf2.c
+- [x] extendhfsf2.c
+- [x] extendhftf2.c
+- [x] extendsftf2.c
+- [x] fixtfdi.c
+- [x] fixtfsi.c
+- [x] fixtfti.c
+- [x] fixunstfdi.c
+- [x] fixunstfsi.c
+- [x] fixunstfti.c
+- [ ] floatditf.c
+- [ ] floatsitf.c
+- [ ] floattitf.c
+- [ ] floatunditf.c
+- [ ] floatunsitf.c
+- [ ] floatuntitf.c
+- [x] multf3.c
+- [ ] powitf2.c
+- [x] subtf3.c
+- [x] truncdfhf2.c
+- [x] truncsfhf2.c
+- [x] trunctfdf2.c
+- [x] trunctfhf2.c
+- [x] trunctfsf2.c
+
+
+These builtins are used by the Hexagon DSP
+
+- [ ] hexagon/common_entry_exit_abi1.S
+- [ ] hexagon/common_entry_exit_abi2.S
+- [ ] hexagon/common_entry_exit_legacy.S
+- [x] hexagon/dfaddsub.S~~
+- [x] hexagon/dfdiv.S~~
+- [x] hexagon/dffma.S~~
+- [x] hexagon/dfminmax.S~~
+- [x] hexagon/dfmul.S~~
+- [x] hexagon/dfsqrt.S~~
+- [x] hexagon/divdi3.S~~
+- [x] hexagon/divsi3.S~~
+- [x] hexagon/fastmath2_dlib_asm.S~~
+- [x] hexagon/fastmath2_ldlib_asm.S~~
+- [x] hexagon/fastmath_dlib_asm.S~~
+- [x] hexagon/memcpy_forward_vp4cp4n2.S~~
+- [x] hexagon/memcpy_likely_aligned.S~~
+- [x] hexagon/moddi3.S~~
+- [x] hexagon/modsi3.S~~
+- [x] hexagon/sfdiv_opt.S~~
+- [x] hexagon/sfsqrt_opt.S~~
+- [x] hexagon/udivdi3.S~~
+- [x] hexagon/udivmoddi4.S~~
+- [x] hexagon/udivmodsi4.S~~
+- [x] hexagon/udivsi3.S~~
+- [x] hexagon/umoddi3.S~~
+- [x] hexagon/umodsi3.S~~
+
 ## Unimplemented functions
 
-These builtins involve floating-point types ("`f128`", "`f80`" and complex numbers) that are not supported by Rust.
+These builtins are for x87 `f80` floating-point numbers that are not supported
+by Rust.
 
-- ~~addtf3.c~~
-- ~~comparetf2.c~~
-- ~~divdc3.c~~
-- ~~divsc3.c~~
-- ~~divtc3.c~~
-- ~~divtf3.c~~
-- ~~divxc3.c~~
-- ~~extenddftf2.c~~
-- ~~extendsftf2.c~~
-- ~~fixtfdi.c~~
-- ~~fixtfsi.c~~
-- ~~fixtfti.c~~
-- ~~fixunstfdi.c~~
-- ~~fixunstfsi.c~~
-- ~~fixunstfti.c~~
+- ~~extendxftf2.c~~
 - ~~fixunsxfdi.c~~
 - ~~fixunsxfsi.c~~
 - ~~fixunsxfti.c~~
 - ~~fixxfdi.c~~
 - ~~fixxfti.c~~
-- ~~floatditf.c~~
 - ~~floatdixf.c~~
-- ~~floatsitf.c~~
 - ~~floattixf.c~~
-- ~~floatunditf.c~~
 - ~~floatundixf.c~~
-- ~~floatunsitf.c~~
 - ~~floatuntixf.c~~
 - ~~i386/floatdixf.S~~
 - ~~i386/floatundixf.S~~
-- ~~muldc3.c~~
-- ~~mulsc3.c~~
-- ~~multc3.c~~
-- ~~multf3.c~~
-- ~~mulxc3.c~~
-- ~~powitf2.c~~
-- ~~powixf2.c~~
+- ~~x86_64/floatdixf.c~~
+- ~~x86_64/floatundixf.S~~
+
+These builtins are for IBM "extended double" non-IEEE 128-bit floating-point
+numbers.
+
 - ~~ppc/divtc3.c~~
 - ~~ppc/fixtfdi.c~~
+- ~~ppc/fixtfti.c~~
 - ~~ppc/fixunstfdi.c~~
+- ~~ppc/fixunstfti.c~~
 - ~~ppc/floatditf.c~~
+- ~~ppc/floattitf.c~~
 - ~~ppc/floatunditf.c~~
 - ~~ppc/gcc_qadd.c~~
 - ~~ppc/gcc_qdiv.c~~
 - ~~ppc/gcc_qmul.c~~
 - ~~ppc/gcc_qsub.c~~
 - ~~ppc/multc3.c~~
-- ~~subtf3.c~~
-- ~~trunctfdf2.c~~
-- ~~trunctfsf2.c~~
-- ~~x86_64/floatdixf.c~~
-- ~~x86_64/floatundixf.S~~
+
+These builtins are for 16-bit brain floating-point numbers that are not
+supported by Rust.
+
+- ~~truncdfbf2.c~~
+- ~~truncsfbf2.c~~
+- ~~trunctfxf2.c~~
+
+These builtins involve complex floating-point types that are not supported by
+Rust.
+
+- ~~divdc3.c~~
+- ~~divsc3.c~~
+- ~~divtc3.c~~
+- ~~divxc3.c~~
+- ~~muldc3.c~~
+- ~~mulsc3.c~~
+- ~~multc3.c~~
+- ~~mulxc3.c~~
+- ~~powixf2.c~~
 
 These builtins are never called by LLVM.
 
@@ -299,14 +362,9 @@ These builtins are never called by LLVM.
 - ~~arm/switch32.S~~
 - ~~arm/switch8.S~~
 - ~~arm/switchu8.S~~
-- ~~clzdi2.c~~
-- ~~clzsi2.c~~
-- ~~clzti2.c~~
 - ~~cmpdi2.c~~
 - ~~cmpti2.c~~
-- ~~ctzdi2.c~~
-- ~~ctzsi2.c~~
-- ~~ctzti2.c~~
+- ~~ffssi2.c~~
 - ~~ffsdi2.c~~ - this is [called by gcc][jemalloc-fail] though!
 - ~~ffsti2.c~~
 - ~~mulvdi3.c~~
@@ -369,13 +427,34 @@ Rust only exposes atomic types on platforms that support them, and therefore doe
 
 Miscellaneous functionality that is not used by Rust.
 
+- ~~aarch64/fp_mode.c~~
+- ~~aarch64/lse.S~~ (LSE atomics)
+- ~~aarch64/sme-abi-init.c~~ (matrix extension)
+- ~~aarch64/sme-abi.S~~ (matrix extension)
+- ~~aarch64/sme-libc-routines.c~~ (matrix extension)
 - ~~apple_versioning.c~~
+- ~~arm/fp_mode.c~~
+- ~~avr/exit.S~~
 - ~~clear_cache.c~~
+- ~~cpu_model/aarch64.c~~
+- ~~cpu_model/x86.c~~
+- ~~crtbegin.c~~
+- ~~crtend.c~~
 - ~~emutls.c~~
 - ~~enable_execute_stack.c~~
 - ~~eprintf.c~~
+- ~~fp_mode.c~~ (float exception handling)
 - ~~gcc_personality_v0.c~~
+- ~~i386/fp_mode.c~~
+- ~~int_util.c~~
+- ~~loongarch/fp_mode.c~~
+- ~~os_version_check.c~~
+- ~~riscv/fp_mode.c~~
+- ~~riscv/restore.S~~ (callee-saved registers)
+- ~~riscv/save.S~~ (callee-saved registers)
 - ~~trampoline_setup.c~~
+- ~~ve/grow_stack.S~~
+- ~~ve/grow_stack_align.S~~
 
 Floating-point implementations of builtins that are only called from soft-float code. It would be better to simply use the generic soft-float versions in this case.
 
@@ -387,6 +466,43 @@ Floating-point implementations of builtins that are only called from soft-float 
 - ~~x86_64/floatundisf.S~~
 - ~~x86_64/floatdidf.c~~
 - ~~x86_64/floatdisf.c~~
+
+Unsupported in any current target: used on old versions of 32-bit iOS with ARMv5.
+
+- ~~arm/adddf3vfp.S~~
+- ~~arm/addsf3vfp.S~~
+- ~~arm/divdf3vfp.S~~
+- ~~arm/divsf3vfp.S~~
+- ~~arm/eqdf2vfp.S~~
+- ~~arm/eqsf2vfp.S~~
+- ~~arm/extendsfdf2vfp.S~~
+- ~~arm/fixdfsivfp.S~~
+- ~~arm/fixsfsivfp.S~~
+- ~~arm/fixunsdfsivfp.S~~
+- ~~arm/fixunssfsivfp.S~~
+- ~~arm/floatsidfvfp.S~~
+- ~~arm/floatsisfvfp.S~~
+- ~~arm/floatunssidfvfp.S~~
+- ~~arm/floatunssisfvfp.S~~
+- ~~arm/gedf2vfp.S~~
+- ~~arm/gesf2vfp.S~~
+- ~~arm/gtdf2vfp.S~~
+- ~~arm/gtsf2vfp.S~~
+- ~~arm/ledf2vfp.S~~
+- ~~arm/lesf2vfp.S~~
+- ~~arm/ltdf2vfp.S~~
+- ~~arm/ltsf2vfp.S~~
+- ~~arm/muldf3vfp.S~~
+- ~~arm/mulsf3vfp.S~~
+- ~~arm/nedf2vfp.S~~
+- ~~arm/negdf2vfp.S~~
+- ~~arm/negsf2vfp.S~~
+- ~~arm/nesf2vfp.S~~
+- ~~arm/subdf3vfp.S~~
+- ~~arm/subsf3vfp.S~~
+- ~~arm/truncdfsf2vfp.S~~
+- ~~arm/unorddf2vfp.S~~
+- ~~arm/unordsf2vfp.S~~
 
 ## License
 

@@ -1,6 +1,6 @@
 use core::ops;
 
-use super::int::Int;
+use crate::int::{DInt, Int, MinInt};
 
 pub mod add;
 pub mod cmp;
@@ -12,8 +12,12 @@ pub mod pow;
 pub mod sub;
 pub mod trunc;
 
+/// Wrapper to extract the integer type half of the float's size
+pub(crate) type HalfRep<F> = <<F as Float>::Int as DInt>::H;
+
 public_test_dep! {
 /// Trait for some basic operations on floats
+#[allow(dead_code)]
 pub(crate) trait Float:
     Copy
     + core::fmt::Debug
@@ -59,7 +63,7 @@ pub(crate) trait Float:
     /// A mask for the significand
     const SIGNIFICAND_MASK: Self::Int;
 
-    // The implicit bit of the float format
+    /// The implicit bit of the float format
     const IMPLICIT_BIT: Self::Int;
 
     /// A mask for the exponent
@@ -76,8 +80,8 @@ pub(crate) trait Float:
     /// compared.
     fn eq_repr(self, rhs: Self) -> bool;
 
-    /// Returns the sign bit
-    fn sign(self) -> bool;
+    /// Returns true if the sign is negative
+    fn is_sign_negative(self) -> bool;
 
     /// Returns the exponent with bias
     fn exp(self) -> Self::ExpInt;
@@ -127,14 +131,27 @@ macro_rules! float_impl {
                 self.to_bits() as Self::SignedInt
             }
             fn eq_repr(self, rhs: Self) -> bool {
-                if self.is_nan() && rhs.is_nan() {
+                #[cfg(feature = "mangled-names")]
+                fn is_nan(x: $ty) -> bool {
+                    // When using mangled-names, the "real" compiler-builtins might not have the
+                    // necessary builtin (__unordtf2) to test whether `f128` is NaN.
+                    // FIXME(f16_f128): Remove once the nightly toolchain has the __unordtf2 builtin
+                    // x is NaN if all the bits of the exponent are set and the significand is non-0
+                    x.repr() & $ty::EXPONENT_MASK == $ty::EXPONENT_MASK
+                        && x.repr() & $ty::SIGNIFICAND_MASK != 0
+                }
+                #[cfg(not(feature = "mangled-names"))]
+                fn is_nan(x: $ty) -> bool {
+                    x.is_nan()
+                }
+                if is_nan(self) && is_nan(rhs) {
                     true
                 } else {
                     self.repr() == rhs.repr()
                 }
             }
-            fn sign(self) -> bool {
-                self.signed_repr() < Self::SignedInt::ZERO
+            fn is_sign_negative(self) -> bool {
+                self.is_sign_negative()
             }
             fn exp(self) -> Self::ExpInt {
                 ((self.to_bits() & Self::EXPONENT_MASK) >> Self::SIGNIFICAND_BITS) as Self::ExpInt
@@ -171,5 +188,9 @@ macro_rules! float_impl {
     };
 }
 
+#[cfg(f16_enabled)]
+float_impl!(f16, u16, i16, i8, 16, 10);
 float_impl!(f32, u32, i32, i16, 32, 23);
 float_impl!(f64, u64, i64, i16, 64, 52);
+#[cfg(f128_enabled)]
+float_impl!(f128, u128, i128, i16, 128, 112);
