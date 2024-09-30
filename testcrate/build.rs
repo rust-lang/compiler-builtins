@@ -10,7 +10,7 @@ enum Feature {
 }
 
 mod builtins_configure {
-    include!("../configure.rs");
+    include!("../compiler-builtins/configure.rs");
 }
 
 fn main() {
