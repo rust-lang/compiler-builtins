@@ -1,7 +1,7 @@
 #[allow(dead_code)]
 #[allow(unused_imports)]
 #[allow(clippy::all)]
-#[path = "../libm/src/math/mod.rs"]
+#[path = "../../libm/src/math/mod.rs"]
 mod libm;
 
 #[allow(unused_macros)]
