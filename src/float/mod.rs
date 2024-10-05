@@ -3,6 +3,7 @@ use core::ops;
 use crate::int::{DInt, Int, MinInt};
 
 pub mod add;
+pub mod bitops;
 pub mod cmp;
 pub mod conv;
 pub mod div;
