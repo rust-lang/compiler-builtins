@@ -34,12 +34,12 @@ fn copysign_f128(magnitude: f128, sign: f128) -> f128 {
 }
 
 intrinsics! {
-    #[cfg_attr(target_env = "msvc", export_name = "_fcopysign")]
+    #[cfg(not(any(target_env = "msvc", target_vendor = "apple")))]
     pub extern "C" fn fcopysign(magnitude: f32, sign: f32) -> f32 {
         copysign_f32(magnitude, sign)
     }
 
-    #[cfg_attr(target_env = "msvc", export_name = "_copysign")]
+    #[cfg(not(any(target_env = "msvc", target_vendor = "apple")))]
     pub extern "C" fn copysign(magnitude: f64, sign: f64) -> f64 {
         copysign_f64(magnitude, sign)
     }
