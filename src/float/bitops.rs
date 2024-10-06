@@ -2,11 +2,13 @@
 // LLVM should be taught how to always emit llvm.fcopysign for f{16,32,64,128} without needing this!
 
 // FIXME: delete when we move fabs to core and it reaches stable
+#[cfg(not(any(target_env = "msvc", target_vendor = "apple")))]
 fn fabs_f32(f: f32) -> f32 {
     f32::from_bits(f.to_bits() & const { !(i32::MIN as u32) })
 }
 
 // FIXME: delete when we move fabs to core and it reaches stable
+#[cfg(not(any(target_env = "msvc", target_vendor = "apple")))]
 fn fabs_f64(f: f64) -> f64 {
     f64::from_bits(f.to_bits() & const { !(i64::MIN as u64) })
 }
@@ -17,11 +19,13 @@ fn fabs_128(f: f128) -> f128 {
     f128::from_bits(f.to_bits() & const { !(i128::MIN as u128) })
 }
 
+#[cfg(not(any(target_env = "msvc", target_vendor = "apple")))]
 fn copysign_f32(magnitude: f32, sign: f32) -> f32 {
     let sign = fabs_f32(sign).to_bits() ^ sign.to_bits();
     f32::from_bits(fabs_f32(magnitude).to_bits() | sign)
 }
 
+#[cfg(not(any(target_env = "msvc", target_vendor = "apple")))]
 fn copysign_f64(magnitude: f64, sign: f64) -> f64 {
     let sign = fabs_f64(sign).to_bits() ^ sign.to_bits();
     f64::from_bits(fabs_f64(magnitude).to_bits() | sign)
