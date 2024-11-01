@@ -64,7 +64,7 @@ pub fn configure_f16_f128(target: &Target) {
         "arm64ec" => (false, false),
         // `f16` crashes <https://github.com/llvm/llvm-project/issues/50374>
         "s390x" => (false, true),
-        // `f16` test failures
+        // FIXME(llvm): `f16` test failures fixed by <https://github.com/llvm/llvm-project/pull/107791>
         "loongarch64" => (false, true),
         // `f128` crashes <https://github.com/llvm/llvm-project/issues/96432>
         "mips64" | "mips64r6" => (true, false),
