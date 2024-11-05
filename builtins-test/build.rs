@@ -11,6 +11,7 @@ enum Feature {
     NoSysF128IntConvert,
     NoSysF16,
     NoSysF16F64Convert,
+    NoSysF16IntConvert,
     NoSysF16F128Convert,
 }
 
@@ -19,7 +20,13 @@ impl Feature {
         match self {
             Self::NoSysF128 => [Self::NoSysF128IntConvert, Self::NoSysF16F128Convert].as_slice(),
             Self::NoSysF128IntConvert => [].as_slice(),
-            Self::NoSysF16 => [Self::NoSysF16F64Convert, Self::NoSysF16F128Convert].as_slice(),
+            Self::NoSysF16 => [
+                Self::NoSysF16IntConvert,
+                Self::NoSysF16F64Convert,
+                Self::NoSysF16F128Convert,
+            ]
+            .as_slice(),
+            Self::NoSysF16IntConvert => [].as_slice(),
             Self::NoSysF16F64Convert => [].as_slice(),
             Self::NoSysF16F128Convert => [].as_slice(),
         }
@@ -80,9 +87,11 @@ fn main() {
         features.insert(Feature::NoSysF16);
     }
 
-    // These platforms are missing either `__extendhfdf2` or `__truncdfhf2`.
+    // These platforms are missing either `__extendhfdf2` or `__truncdfhf2` and int
+    // conversions.
     if target.vendor == "apple" || target.os == "windows" {
         features.insert(Feature::NoSysF16F64Convert);
+        features.insert(Feature::NoSysF16IntConvert);
     }
 
     // Add implied features. Collection is required for borrows.
@@ -100,6 +109,10 @@ fn main() {
             Feature::NoSysF128IntConvert => (
                 "no-sys-f128-int-convert",
                 "using apfloat fallback for f128 <-> int conversions",
+            ),
+            Feature::NoSysF16IntConvert => (
+                "no-sys-f16-int-convert",
+                "using apfloat fallback for f16 <-> int conversions",
             ),
             Feature::NoSysF16F64Convert => (
                 "no-sys-f16-f64-convert",
