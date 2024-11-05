@@ -77,6 +77,26 @@ mod int_to_float {
         F::from_bits(conv(i.unsigned_abs()) | sign_bit)
     }
 
+    #[cfg(f16_enabled)]
+    pub fn u32_to_f16_bits(i: u32) -> u16 {
+        let n = i.leading_zeros();
+        let i_m = i.wrapping_shl(n);
+        // Mantissa with implicit bit set
+        let m_base: u16 = (i_m >> shift_f_lt_i::<u32, f16>()) as u16;
+        // The entire lower half of `i` will be truncated (masked portion), plus the
+        // next `EXP_BITS` bits.
+        let adj = (i_m >> f16::EXP_BITS | i_m & 0xFF) as u16;
+        let m = m_adj::<f16>(m_base, adj);
+        let e = if i == 0 { 0 } else { exp::<u32, f16>(n) - 1 };
+        // Any int can have an exponent out of range for `f16`, unlike other float types.
+        // Clamp this.
+        if e >= f16::EXP_SAT as u16 - 1 {
+            f16::INFINITY.to_bits()
+        } else {
+            repr::<f16>(e, m)
+        }
+    }
+
     pub fn u32_to_f32_bits(i: u32) -> u32 {
         if i == 0 {
             return 0;
@@ -120,6 +140,33 @@ mod int_to_float {
         (h as u128) << 64
     }
 
+    #[cfg(f16_enabled)]
+    pub fn u64_to_f16_bits(i: u64) -> u16 {
+        let n = i.leading_zeros();
+        let i_m = i.wrapping_shl(n); // Mantissa, shifted so the first bit is nonzero
+        let m_base: u16 = (i_m >> shift_f_lt_i::<u64, f16>()) as u16;
+
+        // Within the upper `F::BITS`, everything except for the signifcand
+        // gets truncated
+        let d1: u16 = (i_m >> (u64::BITS - f16::BITS - f16::SIG_BITS - 1)).cast_lossy();
+
+        // The entire rest of `i_m` gets truncated. Zero the upper `F::BITS` then just
+        // check if it is nonzero.
+        let d2: u16 = (i_m << f16::BITS >> f16::BITS != 0).into();
+        let adj = d1 | d2;
+
+        // Mantissa with implicit bit set
+        let m = m_adj::<f16>(m_base, adj);
+        let e = if i == 0 { 0 } else { exp::<u64, f16>(n) - 1 };
+
+        // Clamp to infinity if the exponent is out of range
+        if e >= f16::EXP_SAT as u16 - 1 {
+            f16::INFINITY.to_bits()
+        } else {
+            repr::<f16>(e, m)
+        }
+    }
+
     pub fn u64_to_f32_bits(i: u64) -> u32 {
         let n = i.leading_zeros();
         let i_m = i.wrapping_shl(n);
@@ -156,6 +203,33 @@ mod int_to_float {
         let m = (i as u128) << shift_f_gt_i::<u64, f128>(n);
         let e = exp::<u64, f128>(n) - 1;
         repr::<f128>(e, m)
+    }
+
+    #[cfg(f16_enabled)]
+    pub fn u128_to_f16_bits(i: u128) -> u16 {
+        let n = i.leading_zeros();
+        let i_m = i.wrapping_shl(n); // Mantissa, shifted so the first bit is nonzero
+        let m_base: u16 = (i_m >> shift_f_lt_i::<u128, f16>()) as u16;
+
+        // Within the upper `F::BITS`, everything except for the signifcand
+        // gets truncated
+        let d1: u16 = (i_m >> (u128::BITS - f16::BITS - f16::SIG_BITS - 1)).cast_lossy();
+
+        // The entire rest of `i_m` gets truncated. Zero the upper `F::BITS` then just
+        // check if it is nonzero.
+        let d2: u16 = (i_m << f16::BITS >> f16::BITS != 0).into();
+        let adj = d1 | d2;
+
+        // Mantissa with implicit bit set
+        let m = m_adj::<f16>(m_base, adj);
+        let e = if i == 0 { 0 } else { exp::<u128, f16>(n) - 1 };
+
+        // Clamp to infinity if the exponent is out of range
+        if e >= f16::EXP_SAT as u16 - 1 {
+            f16::INFINITY.to_bits()
+        } else {
+            repr::<f16>(e, m)
+        }
     }
 
     pub fn u128_to_f32_bits(i: u128) -> u32 {
@@ -208,6 +282,13 @@ mod int_to_float {
 
 // Conversions from unsigned integers to floats.
 intrinsics! {
+    /* u32 -> fN */
+
+    #[cfg(f16_enabled)]
+    pub extern "C" fn __floatunsihf(i: u32) -> f16 {
+        f16::from_bits(int_to_float::u32_to_f16_bits(i))
+    }
+
     #[arm_aeabi_alias = __aeabi_ui2f]
     pub extern "C" fn __floatunsisf(i: u32) -> f32 {
         f32::from_bits(int_to_float::u32_to_f32_bits(i))
@@ -218,6 +299,19 @@ intrinsics! {
         f64::from_bits(int_to_float::u32_to_f64_bits(i))
     }
 
+    #[ppc_name = __floatunsikf]
+    #[cfg(f128_enabled)]
+    pub extern "C" fn __floatunsitf(i: u32) -> f128 {
+        f128::from_bits(int_to_float::u32_to_f128_bits(i))
+    }
+
+    /* u64 -> fN */
+
+    #[cfg(f16_enabled)]
+    pub extern "C" fn __floatundihf(i: u64) -> f16 {
+        f16::from_bits(int_to_float::u64_to_f16_bits(i))
+    }
+
     #[arm_aeabi_alias = __aeabi_ul2f]
     pub extern "C" fn __floatundisf(i: u64) -> f32 {
         f32::from_bits(int_to_float::u64_to_f32_bits(i))
@@ -226,6 +320,26 @@ intrinsics! {
     #[arm_aeabi_alias = __aeabi_ul2d]
     pub extern "C" fn __floatundidf(i: u64) -> f64 {
         f64::from_bits(int_to_float::u64_to_f64_bits(i))
+    }
+
+    #[ppc_name = __floatundikf]
+    #[cfg(f128_enabled)]
+    pub extern "C" fn __floatunditf(i: u64) -> f128 {
+        f128::from_bits(int_to_float::u64_to_f128_bits(i))
+    }
+
+    /* u128 -> fN */
+
+    #[cfg(f16_enabled)]
+    #[cfg(not(all(target_os = "uefi", target_arch = "x86_64")))]
+    pub extern "C" fn __floatuntihf(i: u128) -> f16 {
+        f16::from_bits(int_to_float::u128_to_f16_bits(i))
+    }
+
+    #[cfg(f16_enabled)]
+    #[cfg(all(target_os = "uefi", target_arch = "x86_64"))]
+    pub extern "C" fn __floatuntihf(i: u128) -> f16 {
+        f16::from_bits(int_to_float::u128_to_f16_bits((u128::from(hi) << 64) | u128::from(lo)))
     }
 
     #[cfg(not(all(target_os = "uefi", target_arch = "x86_64")))]
@@ -248,18 +362,6 @@ intrinsics! {
         f64::from_bits(int_to_float::u128_to_f64_bits((u128::from(hi) << 64) | u128::from(lo)))
     }
 
-    #[ppc_name = __floatunsikf]
-    #[cfg(f128_enabled)]
-    pub extern "C" fn __floatunsitf(i: u32) -> f128 {
-        f128::from_bits(int_to_float::u32_to_f128_bits(i))
-    }
-
-    #[ppc_name = __floatundikf]
-    #[cfg(f128_enabled)]
-    pub extern "C" fn __floatunditf(i: u64) -> f128 {
-        f128::from_bits(int_to_float::u64_to_f128_bits(i))
-    }
-
     #[ppc_name = __floatuntikf]
     #[cfg(f128_enabled)]
     pub extern "C" fn __floatuntitf(i: u128) -> f128 {
@@ -269,6 +371,13 @@ intrinsics! {
 
 // Conversions from signed integers to floats.
 intrinsics! {
+    /* i32 -> fN */
+
+    #[cfg(f16_enabled)]
+    pub extern "C" fn __floatsihf(i: i32) -> f16 {
+        int_to_float::signed(i, int_to_float::u32_to_f16_bits)
+    }
+
     #[arm_aeabi_alias = __aeabi_i2f]
     pub extern "C" fn __floatsisf(i: i32) -> f32 {
         int_to_float::signed(i, int_to_float::u32_to_f32_bits)
@@ -277,6 +386,19 @@ intrinsics! {
     #[arm_aeabi_alias = __aeabi_i2d]
     pub extern "C" fn __floatsidf(i: i32) -> f64 {
         int_to_float::signed(i, int_to_float::u32_to_f64_bits)
+    }
+
+    #[ppc_name = __floatsikf]
+    #[cfg(f128_enabled)]
+    pub extern "C" fn __floatsitf(i: i32) -> f128 {
+        int_to_float::signed(i, int_to_float::u32_to_f128_bits)
+    }
+
+    /* i64 -> fN */
+
+    #[cfg(f16_enabled)]
+    pub extern "C" fn __floatdihf(i: i64) -> f16 {
+        int_to_float::signed(i, int_to_float::u64_to_f16_bits)
     }
 
     #[arm_aeabi_alias = __aeabi_l2f]
@@ -289,6 +411,25 @@ intrinsics! {
         int_to_float::signed(i, int_to_float::u64_to_f64_bits)
     }
 
+    #[ppc_name = __floatdikf]
+    #[cfg(f128_enabled)]
+    pub extern "C" fn __floatditf(i: i64) -> f128 {
+        int_to_float::signed(i, int_to_float::u64_to_f128_bits)
+    }
+
+    /* i128 -> fN */
+
+    #[cfg(f16_enabled)]
+    #[cfg(not(all(target_os = "uefi", target_arch = "x86_64")))]
+    pub extern "C" fn __floattihf(i: i128) -> f16 {
+        int_to_float::signed(i, int_to_float::u128_to_f16_bits)
+    }
+
+    #[cfg(f16_enabled)]
+    #[cfg(all(target_os = "uefi", target_arch = "x86_64"))]
+    pub extern "C" fn __floattihf(lo: u64, hi: u64) -> f16 {
+        int_to_float::signed((i128::from(hi) << 64) | i128::from(lo), int_to_float::u128_to_f16_bits)
+    }
     #[cfg(not(all(target_os = "uefi", target_arch = "x86_64")))]
     pub extern "C" fn __floattisf(i: i128) -> f32 {
         int_to_float::signed(i, int_to_float::u128_to_f32_bits)
@@ -307,18 +448,6 @@ intrinsics! {
     #[cfg(all(target_os = "uefi", target_arch = "x86_64"))]
     pub extern "C" fn __floattidf(lo: u64, hi: u64) -> f64 {
         int_to_float::signed((i128::from(hi) << 64) | i128::from(lo), int_to_float::u128_to_f64_bits)
-    }
-
-    #[ppc_name = __floatsikf]
-    #[cfg(f128_enabled)]
-    pub extern "C" fn __floatsitf(i: i32) -> f128 {
-        int_to_float::signed(i, int_to_float::u32_to_f128_bits)
-    }
-
-    #[ppc_name = __floatdikf]
-    #[cfg(f128_enabled)]
-    pub extern "C" fn __floatditf(i: i64) -> f128 {
-        int_to_float::signed(i, int_to_float::u64_to_f128_bits)
     }
 
     #[ppc_name = __floattikf]
@@ -411,6 +540,8 @@ where
 
 // Conversions from floats to unsigned integers.
 intrinsics! {
+    /* f32 -> uN */
+
     #[arm_aeabi_alias = __aeabi_f2uiz]
     pub extern "C" fn __fixunssfsi(f: f32) -> u32 {
         float_to_unsigned_int(f)
@@ -425,6 +556,8 @@ intrinsics! {
         float_to_unsigned_int(f)
     }
 
+    /* f64 -> uN */
+
     #[arm_aeabi_alias = __aeabi_d2uiz]
     pub extern "C" fn __fixunsdfsi(f: f64) -> u32 {
         float_to_unsigned_int(f)
@@ -438,6 +571,8 @@ intrinsics! {
     pub extern "C" fn __fixunsdfti(f: f64) -> u128 {
         float_to_unsigned_int(f)
     }
+
+    /* f128 -> uN */
 
     #[ppc_name = __fixunskfsi]
     #[cfg(f128_enabled)]
@@ -460,6 +595,8 @@ intrinsics! {
 
 // Conversions from floats to signed integers.
 intrinsics! {
+    /* f32 -> iN */
+
     #[arm_aeabi_alias = __aeabi_f2iz]
     pub extern "C" fn __fixsfsi(f: f32) -> i32 {
         float_to_signed_int(f)
@@ -474,6 +611,8 @@ intrinsics! {
         float_to_signed_int(f)
     }
 
+    /* f64 -> iN */
+
     #[arm_aeabi_alias = __aeabi_d2iz]
     pub extern "C" fn __fixdfsi(f: f64) -> i32 {
         float_to_signed_int(f)
@@ -487,6 +626,8 @@ intrinsics! {
     pub extern "C" fn __fixdfti(f: f64) -> i128 {
         float_to_signed_int(f)
     }
+
+    /* f128 -> iN */
 
     #[ppc_name = __fixkfsi]
     #[cfg(f128_enabled)]
