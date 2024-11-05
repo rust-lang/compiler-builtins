@@ -34,7 +34,7 @@ mod i_to_f {
                                     FloatTy::from_u128(x.try_into().unwrap()).value
                                 };
 
-                                <$f_ty>::from_bits(apf.to_bits())
+                                <$f_ty>::from_bits(apf.to_bits().try_into().unwrap())
                             },
                             x
                         );
