@@ -6,6 +6,7 @@ enum Feature {
     NoSysF128,
     NoSysF128IntConvert,
     NoSysF16,
+    NoSysF16IntConvert,
     NoSysF16F128Convert,
 }
 
@@ -40,6 +41,7 @@ fn main() {
     {
         features.insert(Feature::NoSysF128);
         features.insert(Feature::NoSysF128IntConvert);
+        features.insert(Feature::NoSysF16IntConvert);
         features.insert(Feature::NoSysF16F128Convert);
     }
 
@@ -75,6 +77,10 @@ fn main() {
             Feature::NoSysF128IntConvert => (
                 "no-sys-f128-int-convert",
                 "using apfloat fallback for f128 <-> int conversions",
+            ),
+            Feature::NoSysF16IntConvert => (
+                "no-sys-f16-int-convert",
+                "using apfloat fallback for f16 <-> int conversions",
             ),
             Feature::NoSysF16F128Convert => (
                 "no-sys-f16-f128-convert",
