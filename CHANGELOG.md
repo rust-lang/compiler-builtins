@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.140](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.139...compiler_builtins-v0.1.140) - 2024-12-22
+
+### Other
+
+- Fix a bug in `abs_diff`
+- Disable `f16` on platforms that have recursion problems
+
 ## [0.1.139](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.138...compiler_builtins-v0.1.139) - 2024-11-03
 
 ### Other
