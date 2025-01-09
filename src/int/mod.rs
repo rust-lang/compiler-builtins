@@ -2,7 +2,6 @@ use core::ops;
 
 mod specialized_div_rem;
 
-pub mod addsub;
 mod big;
 pub mod bswap;
 pub mod leading_zeros;
