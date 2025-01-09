@@ -5,4 +5,8 @@ authors = ["Alex Crichton <alex@alexcrichton.com>"]
 edition = "2021"
 publish = false
 
+[lib]
+test = false
+bench = false
+
 [dependencies]

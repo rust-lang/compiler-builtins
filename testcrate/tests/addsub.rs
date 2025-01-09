@@ -1,6 +1,7 @@
 #![allow(unused_macros)]
 #![cfg_attr(f128_enabled, feature(f128))]
 
+#[allow(unused_imports)] // Unused on some archs
 use testcrate::*;
 
 macro_rules! float_sum {
