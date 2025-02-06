@@ -34,7 +34,7 @@ mod i_to_f {
                                     FloatTy::from_u128(x.try_into().unwrap()).value
                                 };
 
-                                <$f_ty>::from_bits(apf.to_bits())
+                                <$f_ty>::from_bits(apf.to_bits().try_into().unwrap())
                             },
                             x
                         );
@@ -98,6 +98,16 @@ mod i_to_f {
                 }
             )*
         };
+    }
+
+    #[cfg(f16_enabled)]
+    i_to_f! { f16, Half, not(feature = "no-sys-f16-int-convert"),
+        u32, __floatunsihf;
+        i32, __floatsihf;
+        u64, __floatundihf;
+        i64, __floatdihf;
+        u128, __floatuntihf;
+        i128, __floattihf;
     }
 
     i_to_f! { f32, Single, all(),
