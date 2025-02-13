@@ -121,7 +121,7 @@ macro_rules! float_bench {
         $(,)?
     ) => {paste::paste! {
         #[cfg($sys_available)]
-        extern "C" {
+        unsafe extern "C" {
             /// Binding for the system function
             #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
             fn $sys_fn($($arg: $arg_ty),*) -> $ret_ty;

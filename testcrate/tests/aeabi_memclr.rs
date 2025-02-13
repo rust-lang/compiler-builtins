@@ -24,7 +24,7 @@ macro_rules! panic {
     };
 }
 
-extern "C" {
+unsafe extern "C" {
     fn __aeabi_memclr4(dest: *mut u8, n: usize);
     fn __aeabi_memset4(dest: *mut u8, n: usize, c: u32);
 }

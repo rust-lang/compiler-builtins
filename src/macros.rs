@@ -255,7 +255,7 @@ macro_rules! intrinsics {
 
         #[cfg(all(any(windows, target_os = "uefi"), target_arch = "x86_64", not(feature = "mangled-names")))]
         mod $name {
-            #[no_mangle]
+            #[unsafe(no_mangle)]
             #[cfg_attr(not(all(windows, target_env = "gnu")), linkage = "weak")]
             extern $abi fn $name( $($argname: $ty),* )
                 -> $crate::macros::win64_128bit_abi_hack::U64x2
@@ -320,7 +320,7 @@ macro_rules! intrinsics {
 
         #[cfg(all(target_vendor = "apple", any(target_arch = "x86", target_arch = "x86_64"), not(feature = "mangled-names")))]
         mod $name {
-            #[no_mangle]
+            #[unsafe(no_mangle)]
             #[cfg_attr(not(all(windows, target_env = "gnu")), linkage = "weak")]
             $(#[$($attr)*])*
             extern $abi fn $name( $($argname: u16),* ) $(-> $ret)? {
@@ -356,7 +356,7 @@ macro_rules! intrinsics {
 
         #[cfg(all(target_vendor = "apple", any(target_arch = "x86", target_arch = "x86_64"), not(feature = "mangled-names")))]
         mod $name {
-            #[no_mangle]
+            #[unsafe(no_mangle)]
             #[cfg_attr(not(all(windows, target_env = "gnu")), linkage = "weak")]
             $(#[$($attr)*])*
             extern $abi fn $name( $($argname: $ty),* ) -> u16 {
@@ -397,7 +397,7 @@ macro_rules! intrinsics {
 
         #[cfg(all(target_arch = "arm", not(feature = "mangled-names")))]
         mod $name {
-            #[no_mangle]
+            #[unsafe(no_mangle)]
             #[cfg_attr(not(all(windows, target_env = "gnu")), linkage = "weak")]
             $(#[$($attr)*])*
             extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
@@ -407,7 +407,7 @@ macro_rules! intrinsics {
 
         #[cfg(all(target_arch = "arm", not(feature = "mangled-names")))]
         mod $alias {
-            #[no_mangle]
+            #[unsafe(no_mangle)]
             #[cfg_attr(not(all(windows, target_env = "gnu")), linkage = "weak")]
             $(#[$($attr)*])*
             extern "aapcs" fn $alias( $($argname: $ty),* ) $(-> $ret)? {
@@ -474,7 +474,7 @@ macro_rules! intrinsics {
         #[cfg(all(feature = "mem", not(feature = "mangled-names")))]
         mod $name {
             $(#[$($attr)*])*
-            #[no_mangle]
+            #[unsafe(no_mangle)]
             #[cfg_attr(not(all(windows, target_env = "gnu")), linkage = "weak")]
             unsafe extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 super::$name($($argname),*)
@@ -499,7 +499,7 @@ macro_rules! intrinsics {
         pub mod $name {
             #[naked]
             $(#[$($attr)*])*
-            #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
+            #[cfg_attr(not(feature = "mangled-names"), unsafe(no_mangle))]
             #[cfg_attr(not(all(windows, target_env = "gnu")), linkage = "weak")]
             pub unsafe extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 $($body)*
@@ -566,10 +566,10 @@ macro_rules! intrinsics {
         #[cfg(not(feature = "mangled-names"))]
         mod $name {
             $(#[$($attr)*])*
-            #[no_mangle]
+            #[unsafe(no_mangle)]
             #[cfg_attr(not(all(windows, target_env = "gnu")), linkage = "weak")]
             $(unsafe $($empty)?)? extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
-                super::$name($($argname),*)
+                $(unsafe $($empty)?)? { super::$name($($argname),*) }
             }
         }
 

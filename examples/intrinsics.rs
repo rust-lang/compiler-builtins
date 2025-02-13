@@ -17,7 +17,7 @@ extern crate panic_handler;
 
 #[cfg(all(not(thumb), not(windows), not(target_arch = "wasm32")))]
 #[link(name = "c")]
-extern "C" {}
+unsafe extern "C" {}
 
 // Every function in this module maps will be lowered to an intrinsic by LLVM, if the platform
 // doesn't have native support for the operation used in the function. ARM has a naming convention
@@ -626,7 +626,7 @@ fn run() {
 
     something_with_a_dtor(&|| assert_eq!(bb(1), 1));
 
-    extern "C" {
+    unsafe extern "C" {
         fn rust_begin_unwind(x: usize);
     }
 
@@ -647,14 +647,14 @@ fn something_with_a_dtor(f: &dyn Fn()) {
     f();
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[cfg(not(thumb))]
 fn main(_argc: core::ffi::c_int, _argv: *const *const u8) -> core::ffi::c_int {
     run();
     0
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[cfg(thumb)]
 pub fn _start() -> ! {
     run();
@@ -664,23 +664,23 @@ pub fn _start() -> ! {
 #[cfg(windows)]
 #[link(name = "kernel32")]
 #[link(name = "msvcrt")]
-extern "C" {}
+unsafe extern "C" {}
 
 // ARM targets need these symbols
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn __aeabi_unwind_cpp_pr0() {}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn __aeabi_unwind_cpp_pr1() {}
 
 #[cfg(not(windows))]
 #[allow(non_snake_case)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn _Unwind_Resume() {}
 
 #[cfg(not(windows))]
 #[lang = "eh_personality"]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn eh_personality() {}
 
 #[cfg(all(windows, target_env = "gnu"))]
