@@ -33,12 +33,16 @@ const WORD_COPY_THRESHOLD: usize = if 2 * WORD_SIZE > 16 {
     16
 };
 
+/// `x` must be valid for a read of `usize`.
 #[cfg(feature = "mem-unaligned")]
 unsafe fn read_usize_unaligned(x: *const usize) -> usize {
+    type Arr = [u8; core::mem::size_of::<usize>()];
     // Do not use `core::ptr::read_unaligned` here, since it calls `copy_nonoverlapping` which
     // is translated to memcpy in LLVM.
-    let x_read = (x as *const [u8; core::mem::size_of::<usize>()]).read();
-    core::mem::transmute(x_read)
+    // SAFETY: x is valid for reads by preconditions.
+    let x_read = unsafe { (x as *const Arr).read() };
+    // SAFETY: Same-sized POD cast
+    unsafe { core::mem::transmute::<Arr, usize>(x_read) }
 }
 
 #[inline(always)]
@@ -47,7 +51,7 @@ pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, mut n: usize) 
     unsafe fn copy_forward_bytes(mut dest: *mut u8, mut src: *const u8, n: usize) {
         let dest_end = dest.wrapping_add(n);
         while dest < dest_end {
-            *dest = *src;
+            unsafe { *dest = *src };
             dest = dest.wrapping_add(1);
             src = src.wrapping_add(1);
         }
@@ -60,7 +64,7 @@ pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, mut n: usize) 
         let dest_end = dest.wrapping_add(n) as *mut usize;
 
         while dest_usize < dest_end {
-            *dest_usize = *src_usize;
+            unsafe { *dest_usize = *src_usize };
             dest_usize = dest_usize.wrapping_add(1);
             src_usize = src_usize.wrapping_add(1);
         }
@@ -108,7 +112,7 @@ pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, mut n: usize) 
         let dest_end = dest.wrapping_add(n) as *mut usize;
 
         while dest_usize < dest_end {
-            *dest_usize = read_usize_unaligned(src_usize);
+            unsafe { *dest_usize = read_usize_unaligned(src_usize) };
             dest_usize = dest_usize.wrapping_add(1);
             src_usize = src_usize.wrapping_add(1);
         }
@@ -117,24 +121,26 @@ pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, mut n: usize) 
     if n >= WORD_COPY_THRESHOLD {
         // Align dest
         // Because of n >= 2 * WORD_SIZE, dst_misalignment < n
-        let dest_misalignment = (dest as usize).wrapping_neg() & WORD_MASK;
-        copy_forward_bytes(dest, src, dest_misalignment);
-        dest = dest.wrapping_add(dest_misalignment);
-        src = src.wrapping_add(dest_misalignment);
-        n -= dest_misalignment;
-
-        let n_words = n & !WORD_MASK;
-        let src_misalignment = src as usize & WORD_MASK;
-        if likely(src_misalignment == 0) {
-            copy_forward_aligned_words(dest, src, n_words);
-        } else {
-            copy_forward_misaligned_words(dest, src, n_words);
+        unsafe {
+            let dest_misalignment = (dest as usize).wrapping_neg() & WORD_MASK;
+            copy_forward_bytes(dest, src, dest_misalignment);
+            dest = dest.wrapping_add(dest_misalignment);
+            src = src.wrapping_add(dest_misalignment);
+            n -= dest_misalignment;
+            let n_words = n & !WORD_MASK;
+            let src_misalignment = src as usize & WORD_MASK;
+            if likely(src_misalignment == 0) {
+                copy_forward_aligned_words(dest, src, n_words);
+            } else {
+                copy_forward_misaligned_words(dest, src, n_words);
+            }
+            dest = dest.wrapping_add(n_words);
+            src = src.wrapping_add(n_words);
+            n -= n_words;
         }
-        dest = dest.wrapping_add(n_words);
-        src = src.wrapping_add(n_words);
-        n -= n_words;
     }
-    copy_forward_bytes(dest, src, n);
+
+    unsafe { copy_forward_bytes(dest, src, n) };
 }
 
 #[inline(always)]
@@ -147,7 +153,7 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, mut n: usize) {
         while dest_start < dest {
             dest = dest.wrapping_sub(1);
             src = src.wrapping_sub(1);
-            *dest = *src;
+            unsafe { *dest = *src };
         }
     }
 
@@ -160,7 +166,7 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, mut n: usize) {
         while dest_start < dest_usize {
             dest_usize = dest_usize.wrapping_sub(1);
             src_usize = src_usize.wrapping_sub(1);
-            *dest_usize = *src_usize;
+            unsafe { *dest_usize = *src_usize };
         }
     }
 
@@ -180,13 +186,13 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, mut n: usize) {
         // cfg needed because not all targets will have atomic loads that can be lowered
         // (e.g. BPF, MSP430), or provided by an external library (e.g. RV32I)
         #[cfg(target_has_atomic_load_store = "ptr")]
-        let mut prev_word = core::intrinsics::atomic_load_unordered(src_aligned);
+        let mut prev_word = unsafe { core::intrinsics::atomic_load_unordered(src_aligned) };
         #[cfg(not(target_has_atomic_load_store = "ptr"))]
-        let mut prev_word = core::ptr::read_volatile(src_aligned);
+        let mut prev_word = unsafe { core::ptr::read_volatile(src_aligned) };
 
         while dest_start < dest_usize {
             src_aligned = src_aligned.wrapping_sub(1);
-            let cur_word = *src_aligned;
+            let cur_word = unsafe { *src_aligned };
             #[cfg(target_endian = "little")]
             let resembled = prev_word << (WORD_SIZE * 8 - shift) | cur_word >> shift;
             #[cfg(target_endian = "big")]
@@ -208,7 +214,7 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, mut n: usize) {
         while dest_start < dest_usize {
             dest_usize = dest_usize.wrapping_sub(1);
             src_usize = src_usize.wrapping_sub(1);
-            *dest_usize = read_usize_unaligned(src_usize);
+            unsafe { *dest_usize = read_usize_unaligned(src_usize) };
         }
     }
 
@@ -218,24 +224,26 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, mut n: usize) {
     if n >= WORD_COPY_THRESHOLD {
         // Align dest
         // Because of n >= 2 * WORD_SIZE, dst_misalignment < n
-        let dest_misalignment = dest as usize & WORD_MASK;
-        copy_backward_bytes(dest, src, dest_misalignment);
-        dest = dest.wrapping_sub(dest_misalignment);
-        src = src.wrapping_sub(dest_misalignment);
-        n -= dest_misalignment;
+        unsafe {
+            let dest_misalignment = dest as usize & WORD_MASK;
+            copy_backward_bytes(dest, src, dest_misalignment);
+            dest = dest.wrapping_sub(dest_misalignment);
+            src = src.wrapping_sub(dest_misalignment);
+            n -= dest_misalignment;
 
-        let n_words = n & !WORD_MASK;
-        let src_misalignment = src as usize & WORD_MASK;
-        if likely(src_misalignment == 0) {
-            copy_backward_aligned_words(dest, src, n_words);
-        } else {
-            copy_backward_misaligned_words(dest, src, n_words);
+            let n_words = n & !WORD_MASK;
+            let src_misalignment = src as usize & WORD_MASK;
+            if likely(src_misalignment == 0) {
+                copy_backward_aligned_words(dest, src, n_words);
+            } else {
+                copy_backward_misaligned_words(dest, src, n_words);
+            }
+            dest = dest.wrapping_sub(n_words);
+            src = src.wrapping_sub(n_words);
+            n -= n_words;
         }
-        dest = dest.wrapping_sub(n_words);
-        src = src.wrapping_sub(n_words);
-        n -= n_words;
     }
-    copy_backward_bytes(dest, src, n);
+    unsafe { copy_backward_bytes(dest, src, n) };
 }
 
 #[inline(always)]
@@ -244,7 +252,7 @@ pub unsafe fn set_bytes(mut s: *mut u8, c: u8, mut n: usize) {
     pub unsafe fn set_bytes_bytes(mut s: *mut u8, c: u8, n: usize) {
         let end = s.wrapping_add(n);
         while s < end {
-            *s = c;
+            unsafe { *s = c };
             s = s.wrapping_add(1);
         }
     }
@@ -262,7 +270,7 @@ pub unsafe fn set_bytes(mut s: *mut u8, c: u8, mut n: usize) {
         let end = s.wrapping_add(n) as *mut usize;
 
         while s_usize < end {
-            *s_usize = broadcast;
+            unsafe { *s_usize = broadcast };
             s_usize = s_usize.wrapping_add(1);
         }
     }
@@ -271,24 +279,25 @@ pub unsafe fn set_bytes(mut s: *mut u8, c: u8, mut n: usize) {
         // Align s
         // Because of n >= 2 * WORD_SIZE, dst_misalignment < n
         let misalignment = (s as usize).wrapping_neg() & WORD_MASK;
-        set_bytes_bytes(s, c, misalignment);
+        unsafe { set_bytes_bytes(s, c, misalignment) };
         s = s.wrapping_add(misalignment);
         n -= misalignment;
 
         let n_words = n & !WORD_MASK;
-        set_bytes_words(s, c, n_words);
+        unsafe { set_bytes_words(s, c, n_words) };
         s = s.wrapping_add(n_words);
         n -= n_words;
     }
-    set_bytes_bytes(s, c, n);
+    unsafe { set_bytes_bytes(s, c, n) };
 }
 
+/// `memcmp` implementation. `s1` and `s2` must be valid for `n`.
 #[inline(always)]
 pub unsafe fn compare_bytes(s1: *const u8, s2: *const u8, n: usize) -> i32 {
     let mut i = 0;
     while i < n {
-        let a = *s1.wrapping_add(i);
-        let b = *s2.wrapping_add(i);
+        // SAFETY: `i < n`, thus the reads are valid by preconditions.
+        let (a, b) = unsafe { (*s1.wrapping_add(i), *s2.wrapping_add(i)) };
         if a != b {
             return a as i32 - b as i32;
         }
@@ -297,10 +306,12 @@ pub unsafe fn compare_bytes(s1: *const u8, s2: *const u8, n: usize) -> i32 {
     0
 }
 
+/// `strlen` implementation. `s` must be valid for reads up to and including a null character.
 #[inline(always)]
 pub unsafe fn c_string_length(mut s: *const core::ffi::c_char) -> usize {
     let mut n = 0;
-    while *s != 0 {
+    // SAFETY: safe to read until after the first `*s == 0`
+    while unsafe { *s } != 0 {
         n += 1;
         s = s.wrapping_add(1);
     }

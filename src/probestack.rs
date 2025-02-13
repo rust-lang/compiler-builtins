@@ -49,7 +49,7 @@
 // We only define stack probing for these architectures today.
 #![cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 
-extern "C" {
+unsafe extern "C" {
     pub fn __rust_probestack();
 }
 
