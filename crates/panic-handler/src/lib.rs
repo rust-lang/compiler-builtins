@@ -5,7 +5,7 @@
 
 extern crate core;
 
-#[panic_handler]
-fn panic(_: &core::panic::PanicInfo) -> ! {
-    loop {}
-}
+// #[panic_handler]
+// fn panic(_: &core::panic::PanicInfo) -> ! {
+//     loop {}
+// }
