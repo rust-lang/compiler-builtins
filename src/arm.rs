@@ -3,20 +3,6 @@
 
 use core::intrinsics;
 
-// Apple symbols have a leading underscore.
-#[cfg(target_vendor = "apple")]
-macro_rules! bl {
-    ($func:literal) => {
-        concat!("bl _", $func)
-    };
-}
-#[cfg(not(target_vendor = "apple"))]
-macro_rules! bl {
-    ($func:literal) => {
-        concat!("bl ", $func)
-    };
-}
-
 intrinsics! {
     // NOTE This function and the ones below are implemented using assembly because they are using a
     // custom calling convention which can't be implemented using a normal Rust function.
@@ -27,10 +13,11 @@ intrinsics! {
             "push {{lr}}",
             "sub sp, sp, #4",
             "mov r2, sp",
-            bl!("__udivmodsi4"),
+            "bl {func}",
             "ldr r1, [sp]",
             "add sp, sp, #4",
             "pop {{pc}}",
+            func = sym crate::int::udiv::__udivmodsi4,
         );
     }
 
@@ -41,11 +28,12 @@ intrinsics! {
             "sub sp, sp, #16",
             "add r4, sp, #8",
             "str r4, [sp]",
-            bl!("__udivmoddi4"),
+            "bl {func}",
             "ldr r2, [sp, #8]",
             "ldr r3, [sp, #12]",
             "add sp, sp, #16",
             "pop {{r4, pc}}",
+            func = sym crate::int::udiv::__udivmoddi4,
         );
     }
 
@@ -53,11 +41,12 @@ intrinsics! {
     pub unsafe extern "C" fn __aeabi_idivmod() {
         core::arch::naked_asm!(
             "push {{r0, r1, r4, lr}}",
-            bl!("__aeabi_idiv"),
+            "bl {func}",
             "pop {{r1, r2}}",
             "muls r2, r2, r0",
             "subs r1, r1, r2",
             "pop {{r4, pc}}",
+            func = sym crate::int::sdiv::__aeabi_idiv::__aeabi_idiv,
         );
     }
 
@@ -68,11 +57,12 @@ intrinsics! {
             "sub sp, sp, #16",
             "add r4, sp, #8",
             "str r4, [sp]",
-            bl!("__divmoddi4"),
+            "bl {func}",
             "ldr r2, [sp, #8]",
             "ldr r3, [sp, #12]",
             "add sp, sp, #16",
             "pop {{r4, pc}}",
+            func = sym crate::int::sdiv::__divmoddi4,
         );
     }
 

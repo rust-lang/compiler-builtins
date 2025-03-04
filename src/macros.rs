@@ -342,11 +342,11 @@ macro_rules! intrinsics {
         }
 
         #[cfg(all(target_arch = "arm", not(feature = "mangled-names")))]
-        mod $alias {
+        pub(crate) mod $alias {
             #[no_mangle]
             #[cfg_attr(not(all(windows, target_env = "gnu")), linkage = "weak")]
             $(#[$($attr)*])*
-            extern "aapcs" fn $alias( $($argname: $ty),* ) $(-> $ret)? {
+            pub(crate) extern "aapcs" fn $alias( $($argname: $ty),* ) $(-> $ret)? {
                 super::$name($($argname),*)
             }
         }
