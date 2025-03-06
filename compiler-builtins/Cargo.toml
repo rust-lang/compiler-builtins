@@ -27,6 +27,7 @@ links = 'compiler-rt'
 
 [lib]
 test = false
+bench = false
 
 [dependencies]
 # For more information on this dependency see
