@@ -37,7 +37,7 @@ core = { version = "1.0.0", optional = true, package = 'rustc-std-workspace-core
 cc = { optional = true, version = "1.0" }
 
 [dev-dependencies]
-panic-handler = { path = 'crates/panic-handler' }
+panic-handler = { path = '../crates/panic-handler' }
 
 [features]
 default = ["compiler-builtins"]
@@ -75,9 +75,9 @@ public-test-deps = []
 name = "intrinsics"
 required-features = ["compiler-builtins"]
 
-[workspace]
-resolver = "2"
-members = ["testcrate"]
+# [workspace]
+# resolver = "2"
+# members = ["testcrate"]
 
 [profile.release]
 panic = 'abort'
