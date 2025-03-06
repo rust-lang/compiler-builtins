@@ -1,3 +1,6 @@
 [workspace]
-members = ["compiler-builtins"]
+members = [
+    "compiler-builtins",
+    "testcrate",
+]
 resolver = "3"
