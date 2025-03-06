@@ -80,8 +80,8 @@ required-features = ["compiler-builtins"]
 # resolver = "2"
 # members = ["testcrate"]
 
-[profile.release]
-panic = 'abort'
+# [profile.release]
+# panic = 'abort'
 
-[profile.dev]
-panic = 'abort'
+# [profile.dev]
+# panic = 'abort'

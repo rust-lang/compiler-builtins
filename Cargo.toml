@@ -4,3 +4,9 @@ members = [
     "testcrate",
 ]
 resolver = "3"
+
+[profile.release]
+panic = 'abort'
+
+[profile.dev]
+panic = 'abort'
