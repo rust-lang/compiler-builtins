@@ -8,4 +8,4 @@ compiler_builtins = { path = "../compiler-builtins", features = ["compiler-built
 panic-handler = { path = '../crates/panic-handler' }
 
 [features]
-c = "compiler_builtins/c"
+c = ["compiler_builtins/c"]
