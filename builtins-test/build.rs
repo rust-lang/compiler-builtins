@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 mod builtins_configure {
-    include!("../configure.rs");
+    include!("../compiler-builtins/configure.rs");
 }
 
 /// Features to enable
@@ -30,6 +30,7 @@ fn main() {
     println!("cargo::rerun-if-changed=../configure.rs");
 
     let target = builtins_configure::Target::from_env();
+    builtins_configure::configure_aliases(&target);
     let mut features = HashSet::new();
 
     // These platforms do not have f128 symbols available in their system libraries, so
