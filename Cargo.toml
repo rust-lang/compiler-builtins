@@ -1,7 +1,7 @@
 [workspace]
 members = [
     "compiler-builtins",
-    "testcrate",
+    "builtins-test",
 ]
 resolver = "3"
 
