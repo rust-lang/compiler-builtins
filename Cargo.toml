@@ -1,9 +1,15 @@
 [workspace]
+resolver = "3"
 members = [
     "compiler-builtins",
     "builtins-test",
+    "builtins-test-intrinsics",
 ]
-resolver = "3"
+# Exclude builtins-test-intrinsics because features
+default-members = [
+    "compiler-builtins",
+    "builtins-test",
+]
 
 [profile.release]
 panic = 'abort'

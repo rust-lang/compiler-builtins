@@ -121,7 +121,7 @@ done
 rm -f "${rlib_paths[@]}"
 
 build_intrinsics() {
-    cargo build --target "$target" -v --example intrinsics  "$@"
+    cargo build --target "$target" -v --package builtins-test-intrinsics  "$@"
 }
 
 # Verify that we haven't drop any intrinsic/symbol
@@ -133,9 +133,9 @@ build_intrinsics --features c --release
 # Verify that there are no undefined symbols to `panic` within our
 # implementations
 CARGO_PROFILE_DEV_LTO=true \
-    cargo build --target "$target" --example intrinsics
+    cargo build --target "$target" --package builtins-test-intrinsics
 CARGO_PROFILE_RELEASE_LTO=true \
-    cargo build --target "$target" --example intrinsics --release
+    cargo build --target "$target" --package builtins-test-intrinsics --release
 
 # Ensure no references to any symbols from core
 update_rlib_paths
