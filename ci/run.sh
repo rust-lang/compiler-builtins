@@ -23,7 +23,7 @@ fi
 if [ "${NO_STD:-}" = "1" ]; then
     echo "nothing to do for no_std"
 else
-    run="cargo test --manifest-path testcrate/Cargo.toml --no-fail-fast --target $target"
+    run="cargo test --no-fail-fast --target $target"
     $run
     $run --release
     $run --features c
@@ -38,8 +38,7 @@ fi
 
 if [ "${TEST_VERBATIM:-}" = "1" ]; then
     verb_path=$(cmd.exe //C echo \\\\?\\%cd%\\testcrate\\target2)
-    cargo build --manifest-path testcrate/Cargo.toml \
-        --target "$target" --target-dir "$verb_path" --features c
+    cargo build --target "$target" --target-dir "$verb_path" --features c
 fi
 
 declare -a rlib_paths
