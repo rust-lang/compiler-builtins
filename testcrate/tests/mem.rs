@@ -128,11 +128,13 @@ fn memcmp_eq() {
 #[test]
 fn memcmp_ne() {
     let arr1 @ arr2 = gen_arr::<256>();
-    for i in 0..256 {
+    // Reduce iteration count in Miri as it is too slow otherwise.
+    let limit = if cfg!(miri) { 64 } else { 256 };
+    for i in 0..limit {
         let mut diff_arr = arr1;
         diff_arr.0[i] = 127;
         let expect = diff_arr.0[i].cmp(&arr2.0[i]);
-        for k in i + 1..256 {
+        for k in i + 1..limit {
             let result = unsafe { memcmp(diff_arr.0.as_ptr(), arr2.0.as_ptr(), k) };
             assert_eq!(expect, result.cmp(&0));
         }
