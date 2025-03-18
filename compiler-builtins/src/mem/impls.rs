@@ -41,6 +41,65 @@ unsafe fn read_usize_unaligned(x: *const usize) -> usize {
     core::mem::transmute(x_read)
 }
 
+/// Load `load_sz` many bytes from `src`, which must be usize-aligned. Acts as if we did a `usize`
+/// read with the out-of-bounds part filled with 0s.
+/// `load_sz` be strictly less than `WORD_SIZE`.
+#[cfg(not(feature = "mem-unaligned"))]
+#[inline(always)]
+unsafe fn load_aligned_partial(src: *const usize, load_sz: usize) -> usize {
+    debug_assert!(load_sz < WORD_SIZE);
+
+    let mut i = 0;
+    let mut out = 0usize;
+    macro_rules! load_prefix {
+        ($($ty:ty)+) => {$(
+            let chunk_sz = core::mem::size_of::<$ty>();
+            if (load_sz & chunk_sz) != 0 {
+                // Since we are doing the large reads first, this must still be aligned to `chunk_sz`.
+                *(&raw mut out).byte_add(i).cast::<$ty>() = *src.byte_add(i).cast::<$ty>();
+                i |= chunk_sz;
+            }
+        )+};
+    }
+    // We can read up to 7 bytes here, which is enough for WORD_SIZE of 8
+    // (since `load_size < WORD_SIZE`).
+    const { assert!(WORD_SIZE <= 8) };
+    load_prefix!(u32 u16 u8);
+    debug_assert!(i == load_sz);
+    out
+}
+
+/// Load `load_sz` many bytes from `src.byte_add(WORD_SIZE - load_sz)`. `src` must be `usize`-aligned.
+/// The bytes are returned as the *last* bytes of the return value, i.e., this acts as if we had done
+/// a `usize` read from `src`, with the out-of-bounds part filled with 0s.
+/// `load_sz` be strictly less than `WORD_SIZE`.
+#[cfg(not(feature = "mem-unaligned"))]
+#[inline(always)]
+unsafe fn load_aligned_end_partial(src: *const usize, load_sz: usize) -> usize {
+    debug_assert!(load_sz < WORD_SIZE);
+
+    let mut i = 0;
+    let mut out = 0usize;
+    let start_shift = WORD_SIZE - load_sz;
+    macro_rules! load_prefix {
+        ($($ty:ty)+) => {$(
+            let chunk_sz = core::mem::size_of::<$ty>();
+            if (load_sz & chunk_sz) != 0 {
+                // Since we are doing the small reads first, `start_shift + i` has in the mean
+                // time become aligned to `chunk_sz`.
+                *(&raw mut out).byte_add(start_shift + i).cast::<$ty>() = *src.byte_add(start_shift + i).cast::<$ty>();
+                i |= chunk_sz;
+            }
+        )+};
+    }
+    // We can read up to 7 bytes here, which is enough for WORD_SIZE of 8
+    // (since `load_size < WORD_SIZE`).
+    const { assert!(WORD_SIZE <= 8) };
+    load_prefix!(u8 u16 u32);
+    debug_assert!(i == load_sz);
+    out
+}
+
 #[inline(always)]
 pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, mut n: usize) {
     #[inline(always)]
@@ -66,40 +125,55 @@ pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, mut n: usize) 
         }
     }
 
+    /// `n` is in units of bytes, but must be a multiple of the word size and must not be 0.
+    /// `src` *must not* be `usize`-aligned.
     #[cfg(not(feature = "mem-unaligned"))]
     #[inline(always)]
     unsafe fn copy_forward_misaligned_words(dest: *mut u8, src: *const u8, n: usize) {
+        debug_assert!(n > 0 && n % WORD_SIZE == 0);
+        debug_assert!(src.addr() % WORD_SIZE != 0);
+
         let mut dest_usize = dest as *mut usize;
         let dest_end = dest.wrapping_add(n) as *mut usize;
 
         // Calculate the misalignment offset and shift needed to reassemble value.
+        // Since `src` is definitely not aligned, `offset` is in the range 1..WORD_SIZE.
         let offset = src as usize & WORD_MASK;
         let shift = offset * 8;
 
         // Realign src
-        let mut src_aligned = (src as usize & !WORD_MASK) as *mut usize;
-        // This will read (but won't use) bytes out of bound.
-        // cfg needed because not all targets will have atomic loads that can be lowered
-        // (e.g. BPF, MSP430), or provided by an external library (e.g. RV32I)
-        #[cfg(target_has_atomic_load_store = "ptr")]
-        let mut prev_word = core::intrinsics::atomic_load_unordered(src_aligned);
-        #[cfg(not(target_has_atomic_load_store = "ptr"))]
-        let mut prev_word = core::ptr::read_volatile(src_aligned);
+        let mut src_aligned = src.byte_sub(offset) as *mut usize;
+        let mut prev_word = load_aligned_end_partial(src_aligned, WORD_SIZE - offset);
 
-        while dest_usize < dest_end {
+        while dest_usize.wrapping_add(1) < dest_end {
             src_aligned = src_aligned.wrapping_add(1);
             let cur_word = *src_aligned;
             #[cfg(target_endian = "little")]
-            let resembled = prev_word >> shift | cur_word << (WORD_SIZE * 8 - shift);
+            let reassembled = prev_word >> shift | cur_word << (WORD_SIZE * 8 - shift);
             #[cfg(target_endian = "big")]
-            let resembled = prev_word << shift | cur_word >> (WORD_SIZE * 8 - shift);
+            let reassembled = prev_word << shift | cur_word >> (WORD_SIZE * 8 - shift);
             prev_word = cur_word;
 
-            *dest_usize = resembled;
+            *dest_usize = reassembled;
             dest_usize = dest_usize.wrapping_add(1);
         }
+
+        // There's one more element left to go, and we can't use the loop for that as on the `src` side,
+        // it is partially out-of-bounds.
+        src_aligned = src_aligned.wrapping_add(1);
+        let cur_word = load_aligned_partial(src_aligned, offset);
+        #[cfg(target_endian = "little")]
+        let reassembled = prev_word >> shift | cur_word << (WORD_SIZE * 8 - shift);
+        #[cfg(target_endian = "big")]
+        let reassembled = prev_word << shift | cur_word >> (WORD_SIZE * 8 - shift);
+        // prev_word does not matter any more
+
+        *dest_usize = reassembled;
+        // dest_usize does not matter any more
     }
 
+    /// `n` is in units of bytes, but must be a multiple of the word size and must not be 0.
+    /// `src` *must not* be `usize`-aligned.
     #[cfg(feature = "mem-unaligned")]
     #[inline(always)]
     unsafe fn copy_forward_misaligned_words(dest: *mut u8, src: *const u8, n: usize) {
@@ -164,40 +238,55 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, mut n: usize) {
         }
     }
 
+    /// `n` is in units of bytes, but must be a multiple of the word size and must not be 0.
+    /// `src` *must not* be `usize`-aligned.
     #[cfg(not(feature = "mem-unaligned"))]
     #[inline(always)]
     unsafe fn copy_backward_misaligned_words(dest: *mut u8, src: *const u8, n: usize) {
+        debug_assert!(n > 0 && n % WORD_SIZE == 0);
+        debug_assert!(src.addr() % WORD_SIZE != 0);
+
         let mut dest_usize = dest as *mut usize;
-        let dest_start = dest.wrapping_sub(n) as *mut usize;
+        let dest_start = dest.wrapping_sub(n) as *mut usize; // we're moving towards the start
 
         // Calculate the misalignment offset and shift needed to reassemble value.
+        // Since `src` is definitely not aligned, `offset` is in the range 1..WORD_SIZE.
         let offset = src as usize & WORD_MASK;
         let shift = offset * 8;
 
-        // Realign src_aligned
-        let mut src_aligned = (src as usize & !WORD_MASK) as *mut usize;
-        // This will read (but won't use) bytes out of bound.
-        // cfg needed because not all targets will have atomic loads that can be lowered
-        // (e.g. BPF, MSP430), or provided by an external library (e.g. RV32I)
-        #[cfg(target_has_atomic_load_store = "ptr")]
-        let mut prev_word = core::intrinsics::atomic_load_unordered(src_aligned);
-        #[cfg(not(target_has_atomic_load_store = "ptr"))]
-        let mut prev_word = core::ptr::read_volatile(src_aligned);
+        // Realign src
+        let mut src_aligned = src.byte_sub(offset) as *mut usize;
+        let mut prev_word = load_aligned_partial(src_aligned, offset);
 
-        while dest_start < dest_usize {
+        while dest_start.wrapping_add(1) < dest_usize {
             src_aligned = src_aligned.wrapping_sub(1);
             let cur_word = *src_aligned;
             #[cfg(target_endian = "little")]
-            let resembled = prev_word << (WORD_SIZE * 8 - shift) | cur_word >> shift;
+            let reassembled = prev_word << (WORD_SIZE * 8 - shift) | cur_word >> shift;
             #[cfg(target_endian = "big")]
-            let resembled = prev_word >> (WORD_SIZE * 8 - shift) | cur_word << shift;
+            let reassembled = prev_word >> (WORD_SIZE * 8 - shift) | cur_word << shift;
             prev_word = cur_word;
 
             dest_usize = dest_usize.wrapping_sub(1);
-            *dest_usize = resembled;
+            *dest_usize = reassembled;
         }
+
+        // There's one more element left to go, and we can't use the loop for that as on the `src` side,
+        // it is partially out-of-bounds.
+        src_aligned = src_aligned.wrapping_sub(1);
+        let cur_word = load_aligned_end_partial(src_aligned, WORD_SIZE - offset);
+        #[cfg(target_endian = "little")]
+        let reassembled = prev_word << (WORD_SIZE * 8 - shift) | cur_word >> shift;
+        #[cfg(target_endian = "big")]
+        let reassembled = prev_word >> (WORD_SIZE * 8 - shift) | cur_word << shift;
+        // prev_word does not matter any more
+
+        dest_usize = dest_usize.wrapping_sub(1);
+        *dest_usize = reassembled;
     }
 
+    /// `n` is in units of bytes, but must be a multiple of the word size and must not be 0.
+    /// `src` *must not* be `usize`-aligned.
     #[cfg(feature = "mem-unaligned")]
     #[inline(always)]
     unsafe fn copy_backward_misaligned_words(dest: *mut u8, src: *const u8, n: usize) {
