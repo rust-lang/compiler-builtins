@@ -231,6 +231,23 @@ fn memmove_backward_aligned() {
 }
 
 #[test]
+fn memmove_misaligned_bounds() {
+    // The above test have the downside that the addresses surrounding the range-to-copy are all
+    // still in-bounds, so Miri would not actually complain about OOB accesses. So we also test with
+    // an array that has just the right size. We test a few times to avoid it being accidentally
+    // aligned.
+    for _ in 0..8 {
+        let mut arr1 = [0u8; 17];
+        let mut arr2 = [0u8; 17];
+        unsafe {
+            // Copy both ways so we hit both the forward and backward cases.
+            memmove(arr1.as_mut_ptr(), arr2.as_mut_ptr(), 17);
+            memmove(arr2.as_mut_ptr(), arr1.as_mut_ptr(), 17);
+        }
+    }
+}
+
+#[test]
 fn memset_backward_misaligned_nonaligned_start() {
     let mut arr = gen_arr::<32>();
     let mut reference = arr;

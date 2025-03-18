@@ -56,7 +56,7 @@ unsafe fn load_aligned_partial(src: *const usize, load_sz: usize) -> usize {
             let chunk_sz = core::mem::size_of::<$ty>();
             if (load_sz & chunk_sz) != 0 {
                 // Since we are doing the large reads first, this must still be aligned to `chunk_sz`.
-                *(&raw mut out).byte_add(i).cast::<$ty>() = *src.byte_add(i).cast::<$ty>();
+                *(&raw mut out).wrapping_byte_add(i).cast::<$ty>() = *src.wrapping_byte_add(i).cast::<$ty>();
                 i |= chunk_sz;
             }
         )+};
@@ -69,9 +69,9 @@ unsafe fn load_aligned_partial(src: *const usize, load_sz: usize) -> usize {
     out
 }
 
-/// Load `load_sz` many bytes from `src.byte_add(WORD_SIZE - load_sz)`. `src` must be `usize`-aligned.
-/// The bytes are returned as the *last* bytes of the return value, i.e., this acts as if we had done
-/// a `usize` read from `src`, with the out-of-bounds part filled with 0s.
+/// Load `load_sz` many bytes from `src.wrapping_byte_add(WORD_SIZE - load_sz)`. `src` must be
+/// `usize`-aligned. The bytes are returned as the *last* bytes of the return value, i.e., this acts
+/// as if we had done a `usize` read from `src`, with the out-of-bounds part filled with 0s.
 /// `load_sz` be strictly less than `WORD_SIZE`.
 #[cfg(not(feature = "mem-unaligned"))]
 #[inline(always)]
@@ -87,7 +87,7 @@ unsafe fn load_aligned_end_partial(src: *const usize, load_sz: usize) -> usize {
             if (load_sz & chunk_sz) != 0 {
                 // Since we are doing the small reads first, `start_shift + i` has in the mean
                 // time become aligned to `chunk_sz`.
-                *(&raw mut out).byte_add(start_shift + i).cast::<$ty>() = *src.byte_add(start_shift + i).cast::<$ty>();
+                *(&raw mut out).wrapping_byte_add(start_shift + i).cast::<$ty>() = *src.wrapping_byte_add(start_shift + i).cast::<$ty>();
                 i |= chunk_sz;
             }
         )+};
@@ -142,7 +142,7 @@ pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, mut n: usize) 
         let shift = offset * 8;
 
         // Realign src
-        let mut src_aligned = src.byte_sub(offset) as *mut usize;
+        let mut src_aligned = src.wrapping_byte_sub(offset) as *mut usize;
         let mut prev_word = load_aligned_end_partial(src_aligned, WORD_SIZE - offset);
 
         while dest_usize.wrapping_add(1) < dest_end {
@@ -255,7 +255,7 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, mut n: usize) {
         let shift = offset * 8;
 
         // Realign src
-        let mut src_aligned = src.byte_sub(offset) as *mut usize;
+        let mut src_aligned = src.wrapping_byte_sub(offset) as *mut usize;
         let mut prev_word = load_aligned_partial(src_aligned, offset);
 
         while dest_start.wrapping_add(1) < dest_usize {
