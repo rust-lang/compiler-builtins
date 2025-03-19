@@ -684,15 +684,21 @@ pub fn __aeabi_unwind_cpp_pr0() {}
 #[no_mangle]
 pub fn __aeabi_unwind_cpp_pr1() {}
 
-#[cfg(not(any(windows, target_os = "cygwin")))]
-#[allow(non_snake_case)]
 #[no_mangle]
+#[allow(non_snake_case)]
+#[cfg(not(any(windows, target_os = "cygwin")))]
 pub fn _Unwind_Resume() {}
 
-#[cfg(not(any(windows, target_os = "cygwin")))]
-#[lang = "eh_personality"]
 #[no_mangle]
+#[lang = "eh_personality"]
+#[cfg(not(any(windows, target_os = "cygwin")))]
 pub extern "system" fn eh_personality() {}
+
+#[cfg(windows)]
+#[unsafe(no_mangle)]
+extern "system" fn __CxxFrameHandler3() -> ! {
+    unimplemented!()
+}
 
 #[cfg(any(all(windows, target_env = "gnu"), target_os = "cygwin"))]
 mod mingw_unwinding {
