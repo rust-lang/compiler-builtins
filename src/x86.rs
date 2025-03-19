@@ -14,10 +14,12 @@ intrinsics! {
         not(feature = "no-asm")
     ))]
     pub unsafe extern "C" fn __chkstk() {
-        core::arch::naked_asm!(
-            "jmp __alloca", // Jump to __alloca since fallthrough may be unreliable"
-            options(att_syntax)
-        );
+        unsafe {
+            core::arch::naked_asm!(
+                "jmp __alloca", // Jump to __alloca since fallthrough may be unreliable"
+                options(att_syntax)
+            );
+        }
     }
 
     #[naked]
@@ -26,28 +28,30 @@ intrinsics! {
         not(feature = "no-asm")
     ))]
     pub unsafe extern "C" fn _alloca() {
-        // __chkstk and _alloca are the same function
-        core::arch::naked_asm!(
-            "push   %ecx",
-            "cmp    $0x1000,%eax",
-            "lea    8(%esp),%ecx", // esp before calling this routine -> ecx
-            "jb     1f",
-            "2:",
-            "sub    $0x1000,%ecx",
-            "test   %ecx,(%ecx)",
-            "sub    $0x1000,%eax",
-            "cmp    $0x1000,%eax",
-            "ja     2b",
-            "1:",
-            "sub    %eax,%ecx",
-            "test   %ecx,(%ecx)",
-            "lea    4(%esp),%eax",  // load pointer to the return address into eax
-            "mov    %ecx,%esp",     // install the new top of stack pointer into esp
-            "mov    -4(%eax),%ecx", // restore ecx
-            "push   (%eax)",        // push return address onto the stack
-            "sub    %esp,%eax",     // restore the original value in eax
-            "ret",
-            options(att_syntax)
-        );
+        unsafe {
+            // __chkstk and _alloca are the same function
+            core::arch::naked_asm!(
+                "push   %ecx",
+                "cmp    $0x1000,%eax",
+                "lea    8(%esp),%ecx", // esp before calling this routine -> ecx
+                "jb     1f",
+                "2:",
+                "sub    $0x1000,%ecx",
+                "test   %ecx,(%ecx)",
+                "sub    $0x1000,%eax",
+                "cmp    $0x1000,%eax",
+                "ja     2b",
+                "1:",
+                "sub    %eax,%ecx",
+                "test   %ecx,(%ecx)",
+                "lea    4(%esp),%eax",  // load pointer to the return address into eax
+                "mov    %ecx,%esp",     // install the new top of stack pointer into esp
+                "mov    -4(%eax),%ecx", // restore ecx
+                "push   (%eax)",        // push return address onto the stack
+                "sub    %esp,%eax",     // restore the original value in eax
+                "ret",
+                options(att_syntax)
+            );
+        }
     }
 }
