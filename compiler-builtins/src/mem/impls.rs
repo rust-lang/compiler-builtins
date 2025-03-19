@@ -155,10 +155,11 @@ pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, mut n: usize) 
         while dest_usize.wrapping_add(1) < dest_end {
             src_aligned = src_aligned.wrapping_add(1);
             let cur_word = *src_aligned;
-            #[cfg(target_endian = "little")]
-            let reassembled = prev_word >> shift | cur_word << (WORD_SIZE * 8 - shift);
-            #[cfg(target_endian = "big")]
-            let reassembled = prev_word << shift | cur_word >> (WORD_SIZE * 8 - shift);
+            let reassembled = if cfg!(target_endian = "little") {
+                prev_word >> shift | cur_word << (WORD_SIZE * 8 - shift)
+            } else {
+                prev_word << shift | cur_word >> (WORD_SIZE * 8 - shift)
+            };
             prev_word = cur_word;
 
             *dest_usize = reassembled;
@@ -169,10 +170,11 @@ pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, mut n: usize) 
         // it is partially out-of-bounds.
         src_aligned = src_aligned.wrapping_add(1);
         let cur_word = load_aligned_partial(src_aligned, offset);
-        #[cfg(target_endian = "little")]
-        let reassembled = prev_word >> shift | cur_word << (WORD_SIZE * 8 - shift);
-        #[cfg(target_endian = "big")]
-        let reassembled = prev_word << shift | cur_word >> (WORD_SIZE * 8 - shift);
+        let reassembled = if cfg!(target_endian = "little") {
+            prev_word >> shift | cur_word << (WORD_SIZE * 8 - shift)
+        } else {
+            prev_word << shift | cur_word >> (WORD_SIZE * 8 - shift)
+        };
         // prev_word does not matter any more
 
         *dest_usize = reassembled;
@@ -268,10 +270,11 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, mut n: usize) {
         while dest_start.wrapping_add(1) < dest_usize {
             src_aligned = src_aligned.wrapping_sub(1);
             let cur_word = *src_aligned;
-            #[cfg(target_endian = "little")]
-            let reassembled = prev_word << (WORD_SIZE * 8 - shift) | cur_word >> shift;
-            #[cfg(target_endian = "big")]
-            let reassembled = prev_word >> (WORD_SIZE * 8 - shift) | cur_word << shift;
+            let reassembled = if cfg!(target_endian = "little") {
+                prev_word << (WORD_SIZE * 8 - shift) | cur_word >> shift
+            } else {
+                prev_word >> (WORD_SIZE * 8 - shift) | cur_word << shift
+            };
             prev_word = cur_word;
 
             dest_usize = dest_usize.wrapping_sub(1);
@@ -282,10 +285,11 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, mut n: usize) {
         // it is partially out-of-bounds.
         src_aligned = src_aligned.wrapping_sub(1);
         let cur_word = load_aligned_end_partial(src_aligned, WORD_SIZE - offset);
-        #[cfg(target_endian = "little")]
-        let reassembled = prev_word << (WORD_SIZE * 8 - shift) | cur_word >> shift;
-        #[cfg(target_endian = "big")]
-        let reassembled = prev_word >> (WORD_SIZE * 8 - shift) | cur_word << shift;
+        let reassembled = if cfg!(target_endian = "little") {
+            prev_word << (WORD_SIZE * 8 - shift) | cur_word >> shift
+        } else {
+            prev_word >> (WORD_SIZE * 8 - shift) | cur_word << shift
+        };
         // prev_word does not matter any more
 
         dest_usize = dest_usize.wrapping_sub(1);
