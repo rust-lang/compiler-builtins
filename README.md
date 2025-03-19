@@ -178,6 +178,11 @@ These builtins are needed to support 128-bit integers.
 - [x] udivmodti4.c
 - [x] udivti3.c
 - [x] umodti3.c
+- [ ] os_version_check.c
+   - [x] `__isOSVersionAtLeast` (Darwin)
+   - [x] `__isPlatformVersionAtLeast` (Darwin)
+   - [ ] `__isPlatformOrVariantPlatformVersionAtLeast` (macOS)
+   - [ ] `__isOSVersionAtLeast` (Android)
 
 These builtins are needed to support `f16` and `f128`, which are in the process
 of being added to Rust.
@@ -410,7 +415,6 @@ Miscellaneous functionality that is not used by Rust.
 - ~~i386/fp_mode.c~~
 - ~~int_util.c~~
 - ~~loongarch/fp_mode.c~~
-- ~~os_version_check.c~~
 - ~~riscv/fp_mode.c~~
 - ~~riscv/restore.S~~ (callee-saved registers)
 - ~~riscv/save.S~~ (callee-saved registers)
