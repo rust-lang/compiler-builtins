@@ -630,6 +630,9 @@ fn run() {
     something_with_a_dtor(&|| assert_eq!(bb(1), 1));
 
     // Ensure panic machinery gets linked, but still allow this to run to completion.
+    // FIXME(windows): we should have this on Windows too but it requires a lot more
+    // missing symbols.
+    #[cfg(not(windows))]
     if bb(false) {
         panic!();
     }
