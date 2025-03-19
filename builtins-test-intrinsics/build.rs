@@ -8,4 +8,9 @@ fn main() {
     let target = builtins_configure::Target::from_env();
     builtins_configure::configure_f16_f128(&target);
     builtins_configure::configure_aliases(&target);
+
+    if target.os == "windows" {
+        // Needed for using the `mainCRTStartup` entrypoint
+        println!("cargo::rustc-link-arg=/subsystem:console");
+    }
 }
