@@ -256,6 +256,9 @@ macro_rules! intrinsics {
 
         #[cfg(all(target_vendor = "apple", any(target_arch = "x86", target_arch = "x86_64"), not(feature = "mangled-names")))]
         mod $name {
+            #[allow(unused_imports)]
+            use super::*;
+
             #[no_mangle]
             #[cfg_attr(not(any(all(windows, target_env = "gnu"), target_os = "cygwin")), linkage = "weak")]
             $(#[$($attr)*])*
@@ -292,6 +295,9 @@ macro_rules! intrinsics {
 
         #[cfg(all(target_vendor = "apple", any(target_arch = "x86", target_arch = "x86_64"), not(feature = "mangled-names")))]
         mod $name {
+            #[allow(unused_imports)]
+            use super::*;
+
             #[no_mangle]
             #[cfg_attr(not(any(all(windows, target_env = "gnu"), target_os = "cygwin")), linkage = "weak")]
             $(#[$($attr)*])*
@@ -333,6 +339,9 @@ macro_rules! intrinsics {
 
         #[cfg(all(target_arch = "arm", not(feature = "mangled-names")))]
         mod $name {
+            #[allow(unused_imports)]
+            use super::*;
+
             #[no_mangle]
             #[cfg_attr(not(any(all(windows, target_env = "gnu"), target_os = "cygwin")), linkage = "weak")]
             $(#[$($attr)*])*
@@ -343,6 +352,9 @@ macro_rules! intrinsics {
 
         #[cfg(all(target_arch = "arm", not(feature = "mangled-names")))]
         mod $alias {
+            #[allow(unused_imports)]
+            use super::*;
+
             #[no_mangle]
             #[cfg_attr(not(any(all(windows, target_env = "gnu"), target_os = "cygwin")), linkage = "weak")]
             $(#[$($attr)*])*
@@ -409,6 +421,9 @@ macro_rules! intrinsics {
 
         #[cfg(all(feature = "mem", not(feature = "mangled-names")))]
         mod $name {
+            #[allow(unused_imports)]
+            use super::*;
+
             $(#[$($attr)*])*
             #[no_mangle]
             #[cfg_attr(not(any(all(windows, target_env = "gnu"), target_os = "cygwin")), linkage = "weak")]
@@ -433,40 +448,14 @@ macro_rules! intrinsics {
     ) => (
         // `#[naked]` definitions are referenced by other places, so we can't use `cfg` like the others
         pub mod $name {
+            #[allow(unused_imports)]
+            use super::*;
+
             #[naked]
             $(#[$($attr)*])*
             #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
             #[cfg_attr(not(any(all(windows, target_env = "gnu"), target_os = "cygwin")), linkage = "weak")]
             pub unsafe extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
-                $($body)*
-            }
-        }
-
-        intrinsics!($($rest)*);
-    );
-
-    // For some intrinsics, AVR uses a custom calling convention¹ that does not
-    // match our definitions here. Ideally we would just use hand-written naked
-    // functions, but that's quite a lot of code to port² - so for the time
-    // being we are just ignoring the problematic functions, letting avr-gcc
-    // (which is required to compile to AVR anyway) link them from libgcc.
-    //
-    // ¹ https://gcc.gnu.org/wiki/avr-gcc (see "Exceptions to the Calling
-    //   Convention")
-    // ² https://github.com/gcc-mirror/gcc/blob/31048012db98f5ec9c2ba537bfd850374bdd771f/libgcc/config/avr/lib1funcs.S
-    (
-        #[avr_skip]
-        $(#[$($attr:tt)*])*
-        pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
-            $($body:tt)*
-        }
-
-        $($rest:tt)*
-    ) => (
-        #[cfg(not(target_arch = "avr"))]
-        intrinsics! {
-            $(#[$($attr)*])*
-            pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 $($body)*
             }
         }
@@ -501,6 +490,9 @@ macro_rules! intrinsics {
 
         #[cfg(not(feature = "mangled-names"))]
         mod $name {
+            #[allow(unused_imports)]
+            use super::*;
+
             $(#[$($attr)*])*
             #[no_mangle]
             #[cfg_attr(not(any(all(windows, target_env = "gnu"), target_os = "cygwin")), linkage = "weak")]
