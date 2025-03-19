@@ -41,6 +41,26 @@ unsafe fn read_usize_unaligned(x: *const usize) -> usize {
     core::mem::transmute(x_read)
 }
 
+/// Loads a `T`-sized chunk from `src` into `dst` at offset `offset`, if that does not exceed
+/// `load_sz`. The offset pointers must both be `T`-aligned. Returns the new offset, advanced by the
+/// chunk size if a load happened.
+#[cfg(not(feature = "mem-unaligned"))]
+#[inline(always)]
+unsafe fn load_chunk_aligned<T: Copy>(
+    src: *const usize,
+    dst: *mut usize,
+    load_sz: usize,
+    offset: usize,
+) -> usize {
+    let chunk_sz = core::mem::size_of::<T>();
+    if (load_sz & chunk_sz) != 0 {
+        *dst.wrapping_byte_add(offset).cast::<T>() = *src.wrapping_byte_add(offset).cast::<T>();
+        offset | chunk_sz
+    } else {
+        offset
+    }
+}
+
 /// Load `load_sz` many bytes from `src`, which must be usize-aligned. Acts as if we did a `usize`
 /// read with the out-of-bounds part filled with 0s.
 /// `load_sz` be strictly less than `WORD_SIZE`.
@@ -48,23 +68,16 @@ unsafe fn read_usize_unaligned(x: *const usize) -> usize {
 #[inline(always)]
 unsafe fn load_aligned_partial(src: *const usize, load_sz: usize) -> usize {
     debug_assert!(load_sz < WORD_SIZE);
+    // We can read up to 7 bytes here, which is enough for WORD_SIZE of 8
+    // (since `load_sz < WORD_SIZE`).
+    const { assert!(WORD_SIZE <= 8) };
 
     let mut i = 0;
     let mut out = 0usize;
-    macro_rules! load_prefix {
-        ($($ty:ty)+) => {$(
-            let chunk_sz = core::mem::size_of::<$ty>();
-            if (load_sz & chunk_sz) != 0 {
-                // Since we are doing the large reads first, this must still be aligned to `chunk_sz`.
-                *(&raw mut out).wrapping_byte_add(i).cast::<$ty>() = *src.wrapping_byte_add(i).cast::<$ty>();
-                i |= chunk_sz;
-            }
-        )+};
-    }
-    // We can read up to 7 bytes here, which is enough for WORD_SIZE of 8
-    // (since `load_size < WORD_SIZE`).
-    const { assert!(WORD_SIZE <= 8) };
-    load_prefix!(u32 u16 u8);
+    // We load in decreasing order, so the pointers remain sufficiently aligned for the next step.
+    i = load_chunk_aligned::<u32>(src, &raw mut out, load_sz, i);
+    i = load_chunk_aligned::<u16>(src, &raw mut out, load_sz, i);
+    i = load_chunk_aligned::<u8>(src, &raw mut out, load_sz, i);
     debug_assert!(i == load_sz);
     out
 }
@@ -77,25 +90,19 @@ unsafe fn load_aligned_partial(src: *const usize, load_sz: usize) -> usize {
 #[inline(always)]
 unsafe fn load_aligned_end_partial(src: *const usize, load_sz: usize) -> usize {
     debug_assert!(load_sz < WORD_SIZE);
+    // We can read up to 7 bytes here, which is enough for WORD_SIZE of 8
+    // (since `load_sz < WORD_SIZE`).
+    const { assert!(WORD_SIZE <= 8) };
 
     let mut i = 0;
     let mut out = 0usize;
-    let start_shift = WORD_SIZE - load_sz;
-    macro_rules! load_prefix {
-        ($($ty:ty)+) => {$(
-            let chunk_sz = core::mem::size_of::<$ty>();
-            if (load_sz & chunk_sz) != 0 {
-                // Since we are doing the small reads first, `start_shift + i` has in the mean
-                // time become aligned to `chunk_sz`.
-                *(&raw mut out).wrapping_byte_add(start_shift + i).cast::<$ty>() = *src.wrapping_byte_add(start_shift + i).cast::<$ty>();
-                i |= chunk_sz;
-            }
-        )+};
-    }
-    // We can read up to 7 bytes here, which is enough for WORD_SIZE of 8
-    // (since `load_size < WORD_SIZE`).
-    const { assert!(WORD_SIZE <= 8) };
-    load_prefix!(u8 u16 u32);
+    // Obtain pointers pointing to the beginning of the range we want to load.
+    let src_shifted = src.wrapping_byte_add(WORD_SIZE - load_sz);
+    let out_shifted = (&raw mut out).wrapping_byte_add(WORD_SIZE - load_sz);
+    // We load in increasing order, so by the time we reach `u16` things are 2-aligned etc.
+    i = load_chunk_aligned::<u8>(src_shifted, out_shifted, load_sz, i);
+    i = load_chunk_aligned::<u16>(src_shifted, out_shifted, load_sz, i);
+    i = load_chunk_aligned::<u32>(src_shifted, out_shifted, load_sz, i);
     debug_assert!(i == load_sz);
     out
 }
