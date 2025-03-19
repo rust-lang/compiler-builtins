@@ -9,7 +9,7 @@ compiler_builtins = { path = "../", features = ["compiler-builtins"]}
 panic-handler = { path = '../crates/panic-handler' }
 
 [target.'cfg(target_family = "windows")'.dependencies]
-# enable mem on Windows, required for panic machinery
+# `#![no_std]` on Windows needs `string.h` routines.
 compiler_builtins = { path = "../", features = ["compiler-builtins", "mem"]}
 
 [features]
