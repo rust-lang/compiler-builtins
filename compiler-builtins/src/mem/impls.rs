@@ -142,6 +142,7 @@ pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, mut n: usize) 
 
         let mut dest_usize = dest as *mut usize;
         let dest_end = dest.wrapping_add(n) as *mut usize;
+        let dest_end = dest_end.wrapping_sub(1); // the last loop iteration is handled separately
 
         // Calculate the misalignment offset and shift needed to reassemble value.
         // Since `src` is definitely not aligned, `offset` is in the range 1..WORD_SIZE.
@@ -152,7 +153,7 @@ pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, mut n: usize) 
         let mut src_aligned = src.wrapping_byte_sub(offset) as *mut usize;
         let mut prev_word = load_aligned_end_partial(src_aligned, WORD_SIZE - offset);
 
-        while dest_usize.wrapping_add(1) < dest_end {
+        while dest_usize < dest_end {
             src_aligned = src_aligned.wrapping_add(1);
             let cur_word = *src_aligned;
             let reassembled = if cfg!(target_endian = "little") {
@@ -257,6 +258,7 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, mut n: usize) {
 
         let mut dest_usize = dest as *mut usize;
         let dest_start = dest.wrapping_sub(n) as *mut usize; // we're moving towards the start
+        let dest_start = dest_start.wrapping_add(1); // the last loop iteration is handled separately
 
         // Calculate the misalignment offset and shift needed to reassemble value.
         // Since `src` is definitely not aligned, `offset` is in the range 1..WORD_SIZE.
@@ -267,7 +269,7 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, mut n: usize) {
         let mut src_aligned = src.wrapping_byte_sub(offset) as *mut usize;
         let mut prev_word = load_aligned_partial(src_aligned, offset);
 
-        while dest_start.wrapping_add(1) < dest_usize {
+        while dest_start < dest_usize {
             src_aligned = src_aligned.wrapping_sub(1);
             let cur_word = *src_aligned;
             let reassembled = if cfg!(target_endian = "little") {
