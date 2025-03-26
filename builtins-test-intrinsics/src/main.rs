@@ -13,6 +13,8 @@
 #![no_std]
 #![no_main]
 
+// Ensure this `compiler_builtins` gets used, rather than the version injected from the sysroot.
+extern crate compiler_builtins;
 extern crate panic_handler;
 
 #[cfg(all(not(thumb), not(windows), not(target_arch = "wasm32")))]
@@ -592,7 +594,8 @@ fn run() {
     bb(floatunsitf(bb(2)));
     bb(floatuntidf(bb(2)));
     bb(floatuntisf(bb(2)));
-    #[cfg(f128_enabled)]
+    // FIXME(windows): segfault on Windows
+    #[cfg(all(f128_enabled, not(windows)))]
     bb(floatuntitf(bb(2)));
     #[cfg(f128_enabled)]
     bb(gttf(bb(2.), bb(2.)));
@@ -650,14 +653,14 @@ fn something_with_a_dtor(f: &dyn Fn()) {
 
 #[no_mangle]
 #[cfg(not(thumb))]
-fn main(_argc: core::ffi::c_int, _argv: *const *const u8) -> core::ffi::c_int {
+extern "C" fn main(_argc: core::ffi::c_int, _argv: *const *const u8) -> core::ffi::c_int {
     run();
     0
 }
 
 #[no_mangle]
 #[cfg(thumb)]
-pub fn _start() -> ! {
+extern "C" fn _start() -> ! {
     run();
     loop {}
 }

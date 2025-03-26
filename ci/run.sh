@@ -120,15 +120,21 @@ done
 
 rm -f "${rlib_paths[@]}"
 
-build_intrinsics_test() {
-    cargo build --target "$target" -v --package builtins-test-intrinsics "$@"
+run_intrinsics_test() {
+    if [ "${NO_STD:-}" = "1" ]; then
+        cmd=build
+    else
+        cmd=run
+    fi
+
+    cargo "$cmd" --target "$target" -v --package builtins-test-intrinsics "$@"
 }
 
 # Verify that we haven't dropped any intrinsics/symbols
-build_intrinsics_test
-build_intrinsics_test --release
-build_intrinsics_test --features c
-build_intrinsics_test --features c --release
+run_intrinsics_test
+run_intrinsics_test --release
+run_intrinsics_test --features c
+run_intrinsics_test --features c --release
 
 # Verify that there are no undefined symbols to `panic` within our
 # implementations
