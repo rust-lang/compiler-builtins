@@ -95,15 +95,19 @@ fn configure_libm(target: &Target) {
     println!("cargo:rustc-check-cfg=cfg(intrinsics_enabled)");
     println!("cargo:rustc-check-cfg=cfg(arch_enabled)");
     println!("cargo:rustc-check-cfg=cfg(optimizations_enabled)");
-    println!("cargo:rustc-check-cfg=cfg(feature, values(\"unstable-public-internals\"))");
+    println!("cargo:rustc-check-cfg=cfg(feature, values(\"unstable-public-internals\", \"force-soft-floats\"))");
 
     // Always use intrinsics
     println!("cargo:rustc-cfg=intrinsics_enabled");
 
+    // Codegen backends (e.g. rustc_codegen_gcc) that implement intrinsics like simd_fsqrt by
+    // calling sqrt on every element of the vector ends up with an infinite recursion without this
+    // feature because sqrt would call simd_fsqrt, which in turn calls sqrt on those codegen
+    // backends.
+    println!("cargo:rustc-cfg=feature=\"force-soft-floats\"");
+
     // The arch module may contain assembly.
-    if cfg!(feature = "no-asm") {
-        println!("cargo:rustc-cfg=feature=\"force-soft-floats\"");
-    } else {
+    if !cfg!(feature = "no-asm") {
         println!("cargo:rustc-cfg=arch_enabled");
     }
 
