@@ -166,7 +166,7 @@ intrinsics! {
     // NOTE This function is implemented using assembly because they are using
     // a custom calling convention
     #[naked]
-    #[cfg(all(target_arch = "arm64ec", target_env = "msvc", not(feature = "no-asm")))]
+    #[cfg(all(target_env = "msvc", not(feature = "no-asm")))]
     pub unsafe extern "C" fn __chkstk() {
         core::arch::naked_asm!(
             ".p2align 2",
