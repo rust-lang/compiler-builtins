@@ -43,6 +43,153 @@ intrinsics! {
 
         ((rem as u64) << 32) | (div as u64)
     }
+
+    #[naked]
+    pub unsafe extern "C" fn __udivmodqi4() {
+        // Returns unsigned 8-bit `n / d` and `n % d`.
+        //
+        // Note: GCC implements a [non-standard calling convention](https://gcc.gnu.org/wiki/avr-gcc#Exceptions_to_the_Calling_Convention) for this function.
+        // Derived from: https://github.com/gcc-mirror/gcc/blob/95f10974a9190e345776604480a2df0191104308/libgcc/config/avr/lib1funcs.S#L1365
+        
+        // r25: remainder
+        // r24: dividend, quotient
+        // r22: divisor
+        // r23: loop counter
+        core::arch::naked_asm!(
+            "clr r25",      // clear remainder
+            "ldi r23, 8",   // init loop counter
+            "lsl r24",      // shift dividend
+            "1:",
+            "rol r25",      // shift dividend into remainder
+            "cp r25, r22",  // compare remainder & divisor
+            "brcs 2f",      // REMAINder <= divisor
+            "sub r25, r22", // restore remainder
+            "2:",
+            "rol r24",      // shift dividend (with CARRY)
+            "dec r23",      // decrement loop counter
+            "brne 1b",
+            "com r24",      // complement result (C flag was complemented in loop)
+            "ret",
+        );
+    }
+
+    #[naked]
+    pub unsafe extern "C" fn __divmodqi4() {
+        // Returns signed 8-bit `n / d` and `n % d`.
+        //
+        // Note: GCC implements a [non-standard calling convention](https://gcc.gnu.org/wiki/avr-gcc#Exceptions_to_the_Calling_Convention) for this function.
+        // Derived from: https://github.com/gcc-mirror/gcc/blob/95f10974a9190e345776604480a2df0191104308/libgcc/config/avr/lib1funcs.S#L1385
+
+        // r25: remainder
+        // r24: dividend, quotient
+        // r22: divisor
+        // r23: loop counter
+        core::arch::naked_asm!(
+            "bst r24, 7",           // store sign of dividend
+            "mov r0, r24",
+            "eor r0, r22",          // r0.7 is sign of result
+            "sbrc r24, 7",
+            "neg r24",              // dividend negative : negate
+            "sbrc r22, 7",
+            "neg r22",              // divisor negative : negate
+            // TODO: "call" => instruction requires a CPU feature not currently enabled
+            // TODO: gcc checks for __AVR_HAVE_JMP_CALL__
+            "rcall __udivmodqi4",   // do the unsigned div/mod
+            "brtc 1f",
+            "neg r25",              // correct remainder sign
+            "1:",
+            "sbrc r0, 7",
+            "neg r24",              // correct result sign
+            "ret",
+        );
+    }
+
+    #[naked]
+    pub unsafe extern "C" fn __udivmodhi4() {
+        // Returns unsigned 16-bit `n / d` and `n % d`.
+        //
+        // Note: GCC implements a [non-standard calling convention](https://gcc.gnu.org/wiki/avr-gcc#Exceptions_to_the_Calling_Convention) for this function.
+        // Derived from: https://github.com/gcc-mirror/gcc/blob/95f10974a9190e345776604480a2df0191104308/libgcc/config/avr/lib1funcs.S#L1427
+
+        // r26: remainder (low)
+        // r27: remainder (high)
+        // r24: dividend (low)
+        // r25: dividend (high)
+        // r22: divisor (low)
+        // r23: divisor (high)
+        // r21: loop counter
+        core::arch::naked_asm!(
+            "sub r26, r26",
+            "sub r27, r27",     // clear remainder and carry
+            "ldi r21, 17",      // init loop counter
+            "rjmp 2f",          // jump to entry point
+            "1:",
+            "rol r26",          // shift dividend into remainder
+            "rol r27",
+            "cp r26, r22",      // compare remainder & divisor
+            "cpc r27, r23",     
+            "brcs 2f",          // remainder < divisor
+            "sub r26, r22",     // restore remainder
+            "sbc r27, r23",
+            "2:",
+            "rol r24",          // shift dividend (with CARRY)
+            "rol r25",
+            "dec r21",          // decrement loop counter
+            "brne 1b",
+            "com r24",
+            "com r25",
+            // TODO: "movw" => instruction requires a CPU feature not currently enabled
+            // TODO: gcc checks for __AVR_HAVE_MOVW__
+            "mov r22, r24",
+            "mov r23, r25",
+            "mov r24, r26",
+            "mov r25, r27",
+            "ret",
+        );
+    }
+
+    #[naked]
+    pub unsafe extern "C" fn __divmodhi4() {
+        // Returns signed 16-bit `n / d` and `n % d`.
+        //
+        // Note: GCC implements a [non-standard calling convention](https://gcc.gnu.org/wiki/avr-gcc#Exceptions_to_the_Calling_Convention) for this function.
+        // Derived from: https://github.com/gcc-mirror/gcc/blob/95f10974a9190e345776604480a2df0191104308/libgcc/config/avr/lib1funcs.S#L1457
+
+        // r26: remainder (low)
+        // r27: remainder (high)
+        // r24: dividend (low)
+        // r25: dividend (high)
+        // r22: divisor (low)
+        // r23: divisor (high)
+        // r21: loop counter
+        core::arch::naked_asm!(
+            "bst r25, 7",           // store sign of dividend
+            "mov r0, r23",
+            "brtc 0f",
+            "com r0",               // r0.7 is sign of result
+            "rcall 1f",             // dividend negative : negate
+            "0:",
+            "sbrc r23, 7",
+            "rcall 2f",             // divisor negative : negate
+            // TODO: "call" => instruction requires a CPU feature not currently enabled
+            // TODO: gcc checks for __AVR_HAVE_JMP_CALL__
+            "rcall __udivmodhi4",   // do the unsigned div/mod
+            "sbrc r0, 7",
+            "rcall 2f",             // correct remainder sign
+            "brtc 3f",
+            "1:",
+            "com r25",              // correct dividend/remainder sign
+            "neg r24",
+            "sbci r25, 0xFF",
+            "ret",
+            "2:",
+            "com r23",              // correct divisor/result sign
+            "neg r22",
+            "sbci r23, 0xFF",
+            "3:",
+            "ret",
+        );
+    }
 }
 
 intrinsics! {
