@@ -75,7 +75,7 @@ rely on CI.
 - [x] arm/aeabi_memset.S
 - [x] arm/aeabi_uidivmod.S
 - [x] arm/aeabi_uldivmod.S
-- [ ] arm/chkstk.S
+- [x] arm/chkstk.S
 - [ ] arm/divmodsi4.S (generic version is done)
 - [ ] arm/divsi3.S (generic version is done)
 - [ ] arm/modsi3.S (generic version is done)
