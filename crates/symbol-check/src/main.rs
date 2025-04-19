@@ -117,10 +117,9 @@ fn verify_core_symbols(path: impl AsRef<Path>) {
     let mut undefined = Vec::new();
 
     for_each_symbol(path, |sym, member| {
-        if cfg!(target_family = "wasm") {
-            let info = SymInfo::new(&sym, member);
-            println!("{info:?}");
-        }
+        // REMOVE
+        let info = SymInfo::new(&sym, member);
+        println!("{info:?}");
 
         // Find only symbols from `core`
         if !sym.name().unwrap().contains("_ZN4core") {
