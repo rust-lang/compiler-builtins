@@ -4,16 +4,18 @@
 use object::read::archive::{ArchiveFile, ArchiveMember};
 use object::{Object, ObjectSymbol, Symbol, SymbolKind, SymbolScope, SymbolSection};
 use std::collections::{BTreeMap, BTreeSet};
-use std::fs;
-use std::path::Path;
+use std::{fs, path::Path};
 
 const USAGE: &str = "Usage:
 
-    symbol-check check-duplicates PATHS...
-    symbol-check check-core-syms PATHS...
-";
+    symbol-check check-duplicates ARCHIVE ...
+    symbol-check check-core-syms ARCHIVE ...
+
+Note that multiple archives may be specified but they are checked independently
+rather than as a group.";
 
 fn main() {
+    // Create a `&str` vec so we can match on it.
     let args = std::env::args().collect::<Vec<_>>();
     let args_ref = args.iter().map(String::as_str).collect::<Vec<_>>();
 
@@ -73,8 +75,8 @@ fn verify_no_duplicates(path: impl AsRef<Path>) {
     let mut dups = Vec::new();
 
     for_each_symbol(path, |sym, member| {
+        // Only check defined globals
         if !sym.is_global() || sym.is_undefined() {
-            // Only check defined globals
             return;
         }
 
@@ -91,18 +93,20 @@ fn verify_no_duplicates(path: impl AsRef<Path>) {
     });
 
     if cfg!(windows) {
+        // Ignore literal constants
         let allowed_dup_pfx = ["__real@", "__xmm@"];
         dups.retain(|sym| !allowed_dup_pfx.iter().any(|pfx| sym.name.starts_with(pfx)));
     }
 
     if !dups.is_empty() {
         dups.sort_unstable_by(|a, b| a.name.cmp(&b.name));
-        panic!("Found duplicate symbols: {dups:#?}");
+        panic!("found duplicate symbols: {dups:#?}");
     }
 
     println!("success: no duplicate symbols found");
 }
 
+/// Ensure that there are no references to symbols from `core` that aren't also (somehow) defined.
 fn verify_core_symbols(path: impl AsRef<Path>) {
     println!(
         "Checking for references to core at {}",
@@ -113,6 +117,7 @@ fn verify_core_symbols(path: impl AsRef<Path>) {
     let mut undefined = Vec::new();
 
     for_each_symbol(path, |sym, member| {
+        // Find only symbols from `core`
         if !sym.name().unwrap().contains("_ZN4core") {
             return;
         }
@@ -125,11 +130,12 @@ fn verify_core_symbols(path: impl AsRef<Path>) {
         }
     });
 
+    // Discard any symbols that are defined somewhere in the archive
     undefined.retain(|sym| !defined.contains(&sym.name));
 
     if !undefined.is_empty() {
         undefined.sort_unstable_by(|a, b| a.name.cmp(&b.name));
-        panic!("Found undefined symbols from `core`: {undefined:#?}");
+        panic!("found undefined symbols from core: {undefined:#?}");
     }
 
     println!("success: no undefined references to core found");
@@ -137,15 +143,12 @@ fn verify_core_symbols(path: impl AsRef<Path>) {
 
 /// For a given archive path, do something with each symbol.
 fn for_each_symbol(path: impl AsRef<Path>, mut f: impl FnMut(Symbol, &ArchiveMember)) {
-    let archive_data = fs::read(path).expect("reading file failed");
-    let x = ArchiveFile::parse(archive_data.as_slice()).expect("archive parse failed");
-    for member in x.members() {
-        let member = member.unwrap();
-        let data = member.data(&*archive_data).unwrap();
-        let obj = object::File::parse(data).expect("object parse failed");
-
-        for sym in obj.symbols() {
-            f(sym, &member);
-        }
+    let data = fs::read(path).expect("reading file failed");
+    let archive = ArchiveFile::parse(data.as_slice()).expect("archive parse failed");
+    for member in archive.members() {
+        let member = member.expect("failed to access member");
+        let obj_data = member.data(&*data).expect("failed to access object");
+        let obj = object::File::parse(obj_data).expect("failed to parse object");
+        obj.symbols().for_each(|sym| f(sym, &member));
     }
 }
