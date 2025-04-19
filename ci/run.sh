@@ -172,4 +172,7 @@ for rlib in "${rlib_paths[@]}"; do
     fi
 done
 
+
+cargo run -p symbol-check -- check-core-syms"${rlib_paths[@]}"
+
 true
