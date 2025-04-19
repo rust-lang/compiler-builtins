@@ -45,6 +45,25 @@ fi
 
 
 ## REMOVE
+build_intrinsics_test() {
+    cargo build --target "$target" -v --package builtins-test-intrinsics "$@"
+}
+
+# Verify that we haven't dropped any intrinsics/symbols
+build_intrinsics_test
+build_intrinsics_test --release
+build_intrinsics_test --features c
+build_intrinsics_test --features c --release
+
+# Verify that there are no undefined symbols to `panic` within our
+# implementations
+CARGO_PROFILE_DEV_LTO=true \
+    cargo build --target "$target" --package builtins-test-intrinsics
+CARGO_PROFILE_RELEASE_LTO=true \
+    cargo build --target "$target" --package builtins-test-intrinsics --release
+
+for_each_rlib nm -A
+
 declare -a rlib_paths
 
 # Set the `rlib_paths` global array to a list of all compiler-builtins rlibs
