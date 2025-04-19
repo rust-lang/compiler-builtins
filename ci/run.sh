@@ -122,7 +122,48 @@ CARGO_PROFILE_DEV_LTO=true \
 CARGO_PROFILE_RELEASE_LTO=true \
     cargo build --target "$target" --package builtins-test-intrinsics --release
 
-for_each_rlib nm
+for_each_rlib nm -A
 
 # Ensure no references to any symbols from core
 for_each_rlib "${symcheck[@]}" -- check-core-syms
+
+
+declare -a rlib_paths
+
+# Set the `rlib_paths` global array to a list of all compiler-builtins rlibs
+update_rlib_paths() {
+    if [ -d /builtins-target ]; then
+        rlib_paths=( /builtins-target/"${target}"/debug/deps/libcompiler_builtins-*.rlib )
+    else
+        rlib_paths=( target/"${target}"/debug/deps/libcompiler_builtins-*.rlib )
+    fi
+}
+
+
+update_rlib_paths
+for rlib in "${rlib_paths[@]}"; do
+    set +x
+    echo "================================================================"
+    echo "checking $rlib for references to core"
+    echo "================================================================"
+    set -x
+
+    tmpdir="${CARGO_TARGET_DIR:-target}/tmp"
+    test -d "$tmpdir" || mkdir "$tmpdir"
+    defined="$tmpdir/defined_symbols.txt"
+    undefined="$tmpdir/defined_symbols.txt"
+
+    $NM --quiet -U "$rlib" | grep 'T _ZN4core' | awk '{print $3}' | sort | uniq > "$defined"
+    $NM --quiet -u "$rlib" | grep 'U _ZN4core' | awk '{print $2}' | sort | uniq > "$undefined"
+    grep_has_results=0
+    grep -v -F -x -f "$defined" "$undefined" && grep_has_results=1
+
+    if [ "$target" = "powerpc64-unknown-linux-gnu" ]; then
+        echo "FIXME: powerpc64 fails these tests"
+    elif [ "$grep_has_results" != 0 ]; then
+        echo "error: found unexpected references to core"
+        exit 1
+    else
+        echo "success; no references to core found"
+    fi
+done
