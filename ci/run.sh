@@ -45,6 +45,31 @@ fi
 
 
 ## REMOVE
+PREFIX=${target//unknown-/}-
+case "$target" in
+    armv7-*)
+        PREFIX=arm-linux-gnueabihf-
+        ;;
+    thumb*)
+        PREFIX=arm-none-eabi-
+        ;;
+    *86*-*)
+        PREFIX=
+        ;;
+esac
+
+NM=$(find "$(rustc --print sysroot)" \( -name llvm-nm -o -name llvm-nm.exe \) )
+if [ "$NM" = "" ]; then
+  NM="${PREFIX}nm"
+fi
+
+# i686-pc-windows-gnu tools have a dependency on some DLLs, so run it with
+# rustup run to ensure that those are in PATH.
+TOOLCHAIN="$(rustup show active-toolchain | sed 's/ (default)//')"
+if [[ "$TOOLCHAIN" == *i686-pc-windows-gnu ]]; then
+  NM="rustup run $TOOLCHAIN $NM"
+fi
+
 build_intrinsics_test() {
     cargo build --target "$target" -v --package builtins-test-intrinsics "$@"
 }
@@ -125,32 +150,6 @@ for_each_rlib() {
     "$@" "${rlib_paths[@]}"
 }
 
-
-PREFIX=${target//unknown-/}-
-case "$target" in
-    armv7-*)
-        PREFIX=arm-linux-gnueabihf-
-        ;;
-    thumb*)
-        PREFIX=arm-none-eabi-
-        ;;
-    *86*-*)
-        PREFIX=
-        ;;
-esac
-
-NM=$(find "$(rustc --print sysroot)" \( -name llvm-nm -o -name llvm-nm.exe \) )
-if [ "$NM" = "" ]; then
-  NM="${PREFIX}nm"
-fi
-
-# i686-pc-windows-gnu tools have a dependency on some DLLs, so run it with
-# rustup run to ensure that those are in PATH.
-TOOLCHAIN="$(rustup show active-toolchain | sed 's/ (default)//')"
-if [[ "$TOOLCHAIN" == *i686-pc-windows-gnu ]]; then
-  NM="rustup run $TOOLCHAIN $NM"
-fi
-
 # Remove any existing artifacts from previous tests that don't set #![compiler_builtins]
 for_each_rlib rm -f
 
@@ -188,7 +187,7 @@ CARGO_PROFILE_DEV_LTO=true \
 CARGO_PROFILE_RELEASE_LTO=true \
     cargo build --target "$target" --package builtins-test-intrinsics --release
 
-for_each_rlib nm -A
+for_each_rlib $NM -A
 
 # Ensure no references to any symbols from core
 for_each_rlib "${symcheck[@]}" -- check-core-syms
