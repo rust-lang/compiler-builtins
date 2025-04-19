@@ -117,7 +117,7 @@ fn verify_core_symbols(path: impl AsRef<Path>) {
     let mut undefined = Vec::new();
 
     for_each_symbol(path, |sym, member| {
-        if cfg!(wasm) {
+        if cfg!(target_family = "wasm") {
             let info = SymInfo::new(&sym, member);
             println!("{info:?}");
         }
