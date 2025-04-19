@@ -120,7 +120,7 @@ for rlib in "${rlib_paths[@]}"; do
     fi
 done
 
-nm -AUg "${rlib_paths[@]}"
+$NM -AUg "${rlib_paths[@]}"
 
 cargo run -p symbol-check -- check-duplicates "${rlib_paths[@]}"
 
