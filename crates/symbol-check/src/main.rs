@@ -69,14 +69,14 @@ impl SymInfo {
 
 /// Ensure that the same global symbol isn't defined in multiple object files within an archive.
 fn verify_no_duplicates(path: impl AsRef<Path>) {
-    println!("Checking for duplicates at {}", path.as_ref().display());
+    println!("Checking `{}` for duplicates", path.as_ref().display());
 
     let mut syms = BTreeMap::<String, SymInfo>::new();
     let mut dups = Vec::new();
 
     for_each_symbol(path, |sym, member| {
         // Only check defined globals
-        if !sym.is_global() || sym.is_undefined() {
+        if !sym.is_global() || sym.is_undefined() || sym.kind() == SymbolKind::File {
             return;
         }
 
@@ -109,7 +109,7 @@ fn verify_no_duplicates(path: impl AsRef<Path>) {
 /// Ensure that there are no references to symbols from `core` that aren't also (somehow) defined.
 fn verify_core_symbols(path: impl AsRef<Path>) {
     println!(
-        "Checking for references to core at {}",
+        "Checking `{}` for references to core",
         path.as_ref().display()
     );
 

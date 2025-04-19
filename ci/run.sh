@@ -43,7 +43,7 @@ if [ "${TEST_VERBATIM:-}" = "1" ]; then
         --target "$target" --target-dir "$verb_path" --features c
 fi
 
-# Set the `rlib_paths` global array to a list of all compiler-builtins rlibs
+# Run a command for each `compiler_builtins` rlib file
 for_each_rlib() {
     if [ -d /builtins-target ]; then
         rlib_paths=( /builtins-target/"${target}"/debug/deps/libcompiler_builtins-*.rlib )
@@ -60,8 +60,6 @@ for_each_rlib() {
 }
 
 # Remove any existing artifacts from previous tests that don't set #![compiler_builtins]
-# update_rlib_paths
-# rm -f "${rlib_paths[@]}"
 for_each_rlib rm -f
 
 cargo build --target "$target"
@@ -73,9 +71,9 @@ cargo build --target "$target" --release --features no-asm
 cargo build --target "$target" --features no-f16-f128
 cargo build --target "$target" --release --features no-f16-f128
 
-
+# The 
 symcheck=(cargo run -p symbol-check)
-[[ "$target" = *"wasm"* ]] && symcheck+=(--features wasm)
+[[ "$target" = "wasm"* ]] && symcheck+=(--features wasm)
 
 # Look out for duplicated symbols when we include the compiler-rt (C) implementation
 for_each_rlib "${symcheck[@]}" -- check-duplicates
