@@ -1,3 +1,6 @@
+//! Tool used by CI to inspect compiler-builtins archives and help ensure we won't run into any
+//! linking errors.
+
 use object::read::archive::{ArchiveFile, ArchiveMember};
 use object::{Object, ObjectSymbol, Symbol, SymbolKind, SymbolScope, SymbolSection};
 use std::collections::{BTreeMap, BTreeSet};
