@@ -157,9 +157,7 @@ for rlib in "${rlib_paths[@]}"; do
     grep_has_results=0
     grep -v -F -x -f "$defined" "$undefined" && grep_has_results=1
 
-    if [ "$target" = "powerpc64-unknown-linux-gnu" ]; then
-        echo "FIXME: powerpc64 fails these tests"
-    elif [ "$grep_has_results" != 0 ]; then
+    if [ "$grep_has_results" != 0 ]; then
         echo "error: found unexpected references to core"
         exit 1
     else
