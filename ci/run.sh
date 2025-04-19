@@ -62,7 +62,7 @@ CARGO_PROFILE_DEV_LTO=true \
 CARGO_PROFILE_RELEASE_LTO=true \
     cargo build --target "$target" --package builtins-test-intrinsics --release
 
-for_each_rlib nm -A
+# for_each_rlib nm -A
 
 declare -a rlib_paths
 
