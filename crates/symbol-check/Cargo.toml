@@ -1,0 +1,10 @@
+[package]
+name = "symbol-check"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+object = "0.36.7"
+
+[features]
+wasm = ["object/wasm"]
