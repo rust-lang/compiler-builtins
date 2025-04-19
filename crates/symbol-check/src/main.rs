@@ -3,7 +3,7 @@
 // use ar::Archive;
 use object::read::archive::{ArchiveFile, ArchiveMember};
 use object::read::elf::FileHeader;
-use object::{Object, ObjectSection, ObjectSymbol, Symbol, SymbolKind, SymbolScope};
+use object::{Object, ObjectSection, ObjectSymbol, Symbol, SymbolKind, SymbolScope, SymbolSection};
 use std::collections::{BTreeMap, HashSet};
 use std::error::Error;
 use std::fs;
@@ -37,13 +37,18 @@ fn main() {
     // Raise an error if the same symbol is present in multiple object files
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 struct SymInfo {
     name: String,
     kind: SymbolKind,
     scope: SymbolScope,
-    address: u64,
+    section: SymbolSection,
+    is_undefined: bool,
+    is_global: bool,
+    is_local: bool,
     is_weak: bool,
+    is_common: bool,
+    address: u64,
     object: String,
 }
 
@@ -53,8 +58,13 @@ impl SymInfo {
             name: sym.name().expect("missing name").to_owned(),
             kind: sym.kind(),
             scope: sym.scope(),
-            address: sym.address(),
+            section: sym.section(),
+            is_undefined: sym.is_undefined(),
+            is_global: sym.is_global(),
+            is_local: sym.is_local(),
             is_weak: sym.is_weak(),
+            is_common: sym.is_common(),
+            address: sym.address(),
             object: String::from_utf8_lossy(member.name()).into_owned(),
         }
     }

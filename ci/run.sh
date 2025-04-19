@@ -95,7 +95,6 @@ fi
 # Look out for duplicated symbols when we include the compiler-rt (C) implementation
 update_rlib_paths
 
-
 for rlib in "${rlib_paths[@]}"; do
     set +x
     echo "================================================================"
