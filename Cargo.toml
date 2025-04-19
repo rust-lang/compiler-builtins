@@ -2,20 +2,47 @@
 resolver = "3"
 members = [
     # Note that builtins-test-intrinsics cannot be a default member because it
-    # needs the `mangled-names` feature disabled, while `testcrate` needs it
-    # enabled.
+    # needs the `mangled-names` feature disabled, while `builtins-test` needs
+    # it enabled.
+    "builtins-test",
     "builtins-test-intrinsics",
     "compiler-builtins",
-    "testcrate",
+    "crates/libm-macros",
+    "crates/musl-math-sys",
+    "crates/util",
+    "libm",
+    "libm-test",
 ]
 
 default-members = [
+    "builtins-test",
     "compiler-builtins",
-    "testcrate",
+    "crates/libm-macros",
+    "libm",
+    "libm-test"
 ]
 
-[profile.release]
-panic = 'abort'
+# [profile.release]
+# panic = 'abort'
 
-[profile.dev]
-panic = 'abort'
+# [profile.dev]
+# panic = 'abort'
+
+# The default release profile is unchanged.
+
+# Release mode with debug assertions
+[profile.release-checked]
+inherits = "release"
+debug-assertions = true
+overflow-checks = true
+
+# Release with maximum optimizations, which is very slow to build. This is also
+# what is needed to check `no-panic`.
+[profile.release-opt]
+inherits = "release"
+codegen-units = 1
+lto = "fat"
+
+[profile.bench]
+# Required for iai-callgrind
+debug = true
