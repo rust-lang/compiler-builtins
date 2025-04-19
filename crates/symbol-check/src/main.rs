@@ -37,6 +37,7 @@ fn main() {
 #[derive(Clone, Debug)]
 struct SymInfo {
     name: String,
+    name_bytes: Vec<u8>, // TODO remove
     kind: SymbolKind,
     scope: SymbolScope,
     section: SymbolSection,
@@ -53,6 +54,7 @@ impl SymInfo {
     fn new(sym: &Symbol, member: &ArchiveMember) -> Self {
         Self {
             name: sym.name().expect("missing name").to_owned(),
+            name_bytes: sym.name_bytes().expect("name bytes").to_owned(),
             kind: sym.kind(),
             scope: sym.scope(),
             section: sym.section(),
