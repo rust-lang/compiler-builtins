@@ -43,22 +43,17 @@ if [ "${TEST_VERBATIM:-}" = "1" ]; then
         --target "$target" --target-dir "$verb_path" --features c
 fi
 
-declare -a rlib_paths
-
 # Set the `rlib_paths` global array to a list of all compiler-builtins rlibs
-update_rlib_paths() {
+for_each_rlib() {
     if [ -d /builtins-target ]; then
         rlib_paths=( /builtins-target/"${target}"/debug/deps/libcompiler_builtins-*.rlib )
     else
         rlib_paths=( target/"${target}"/debug/deps/libcompiler_builtins-*.rlib )
     fi
-}
 
-run_with_rlibs() {
-    if [ -d /builtins-target ]; then
-        rlib_paths=( /builtins-target/"${target}"/debug/deps/libcompiler_builtins-*.rlib )
-    else
-        rlib_paths=( target/"${target}"/debug/deps/libcompiler_builtins-*.rlib )
+    if [ "${#rlib_paths[@]}" -lt 1 ]; then
+        echo "rlibs expected but not found"
+        exit 1
     fi
 
     "$@" "${rlib_paths[@]}"
@@ -67,7 +62,7 @@ run_with_rlibs() {
 # Remove any existing artifacts from previous tests that don't set #![compiler_builtins]
 # update_rlib_paths
 # rm -f "${rlib_paths[@]}"
-run_with_rlibs rm -f
+for_each_rlib rm -f
 
 cargo build --target "$target"
 cargo build --target "$target" --release
@@ -78,9 +73,13 @@ cargo build --target "$target" --release --features no-asm
 cargo build --target "$target" --features no-f16-f128
 cargo build --target "$target" --release --features no-f16-f128
 
+
+symcheck=(cargo run -p symbol-check)
+[[ "$target" = *"wasm"* ]] && symcheck+=(--features wasm)
+
 # Look out for duplicated symbols when we include the compiler-rt (C) implementation
-run_with_rlibs cargo run -p symbol-check -- check-duplicates
-run_with_rlibs rm -f
+for_each_rlib "${symcheck[@]}" -- check-duplicates
+for_each_rlib rm -f
 
 build_intrinsics_test() {
     cargo build --target "$target" -v --package builtins-test-intrinsics "$@"
@@ -100,4 +99,4 @@ CARGO_PROFILE_RELEASE_LTO=true \
     cargo build --target "$target" --package builtins-test-intrinsics --release
 
 # Ensure no references to any symbols from core
-run_with_rlibs cargo run -p symbol-check -- check-core-syms
+for_each_rlib "${symcheck[@]}" -- check-core-syms
