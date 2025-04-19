@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.156](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.155...compiler_builtins-v0.1.156) - 2025-04-19
+
+### Other
+
+- Rename `testcrate` to `builtins-test`
+
 ## [0.1.155](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.154...compiler_builtins-v0.1.155) - 2025-04-17
 
 ### Other
