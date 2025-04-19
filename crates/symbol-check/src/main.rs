@@ -75,7 +75,7 @@ fn verify_no_duplicates(path: impl AsRef<Path>) {
     let mut dups = Vec::new();
 
     for_each_symbol(path, |sym, member| {
-        // Only check defined globals
+        // Only check defined globals, exclude wasm file symbols
         if !sym.is_global() || sym.is_undefined() || sym.kind() == SymbolKind::File {
             return;
         }
