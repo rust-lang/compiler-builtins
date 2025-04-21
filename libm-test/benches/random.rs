@@ -57,7 +57,7 @@ where
     let name = Op::NAME;
 
     let ctx = CheckCtx::new(Op::IDENTIFIER, CheckBasis::Musl, GeneratorKind::Random);
-    let benchvec: Vec<_> = random::get_test_cases::<Op::RustArgs>(&ctx)
+    let benchvec: Vec<_> = random::get_test_cases::<Op>(ctx.clone())
         .0
         .take(BENCH_ITER_ITEMS)
         .collect();
