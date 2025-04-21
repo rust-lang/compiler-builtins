@@ -162,4 +162,25 @@ intrinsics! {
     pub unsafe extern "aapcs" fn __aeabi_memclr8(dest: *mut u8, n: usize) {
         __aeabi_memset4(dest, n, 0);
     }
+
+    // NOTE This function is implemented using assembly because they are using
+    // a custom calling convention
+    #[naked]
+    #[cfg(all(target_env = "msvc", not(feature = "no-asm")))]
+    pub unsafe extern "C" fn __chkstk() {
+        core::arch::naked_asm!(
+            ".p2align 2",
+            "lsl     r4,  r4, #2",
+            "mov     r12, sp",
+            "push {{ r5,  r6 }}",
+            "mov     r5,  r4",
+            "1:",
+            "sub     r12, r12, 4096",
+            "subs    r5,  r5,  4096",
+            "ldr     r6,  [r12]",
+            "bgt     1b",
+            "pop  {{ r5, r6 }}",
+            "bx      lr",
+        );
+    }
 }
