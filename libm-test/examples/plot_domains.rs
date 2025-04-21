@@ -61,7 +61,7 @@ where
         &ctx,
         "logspace",
         config,
-        spaced::get_test_cases::<Op>(&ctx).0,
+        spaced::get_test_cases::<Op>(ctx.clone()).0,
     );
     ctx.gen_kind = GeneratorKind::EdgeCases;
     plot_one_generator(
@@ -69,7 +69,7 @@ where
         &ctx,
         "edge_cases",
         config,
-        edge_cases::get_test_cases::<Op>(&ctx).0,
+        edge_cases::get_test_cases::<Op>(ctx.clone()).0,
     );
 }
 
