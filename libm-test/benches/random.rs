@@ -137,6 +137,7 @@ libm_macros::for_each_function! {
         | floorf128
         | floorf16
         | fmaf128
+        | fmaf16
         | fmaxf128
         | fmaxf16
         | fmaximum

@@ -6,6 +6,8 @@
 //!
 //! This is useful for adding regression tests or expected failures.
 
+#[cfg(f16_enabled)]
+use libm::hf16;
 use libm::hf64;
 #[cfg(f128_enabled)]
 use libm::hf128;
@@ -254,6 +256,24 @@ fn floorf128_cases() -> Vec<TestCase<op::floorf128::Routine>> {
 #[cfg(f16_enabled)]
 fn floorf16_cases() -> Vec<TestCase<op::floorf16::Routine>> {
     vec![]
+}
+
+#[cfg(f16_enabled)]
+fn fmaf16_cases() -> Vec<TestCase<op::fmaf16::Routine>> {
+    let mut v = vec![];
+    TestCase::append_pairs(
+        &mut v,
+        &[(
+            // Failed during extensive tests
+            (
+                hf16!("-0x1.c4p-12"),
+                hf16!("0x1.22p-14"),
+                hf16!("-0x1.f4p-15"),
+            ),
+            Some(hf16!("-0x1.f48p-15")),
+        )],
+    );
+    v
 }
 
 fn fma_cases() -> Vec<TestCase<op::fma::Routine>> {
