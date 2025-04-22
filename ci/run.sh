@@ -66,7 +66,6 @@ for_each_rlib() {
 
 
 # Remove any existing artifacts from previous tests that don't set #![compiler_builtins]
-update_rlib_paths
 for_each_rlib rm -f
 
 cargo build -p compiler_builtins --target "$target"
