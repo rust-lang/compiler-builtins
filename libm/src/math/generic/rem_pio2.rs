@@ -4,14 +4,21 @@ use core::f64::consts;
 
 use crate::support::{CastFrom, CastInto, DInt, Float, HInt, HalfRep, Int, MinInt};
 
-pub(crate) trait RemFracPi2Support: Float<Int: DInt<H: Int>> {
+pub(crate) trait RemPio2Support: Float<Int: DInt<H: Int>> {
     const TO_INT: Self;
+    /// 53 bits of 2/pi
     const INV_PIO2: Self;
+    /// first 33 bits of pi/2
     const PIO2_1: Self;
+    /// pi/2 - PIO2_1
     const PIO2_1T: Self;
+    /// second 33 bits of pi/2
     const PIO2_2: Self;
+    /// pi/2 - (PIO2_1+PIO2_2)
     const PIO2_2T: Self;
+    /// third 33 bits of pi/2
     const PIO2_3: Self;
+    /// pi/2 - (PIO2_1+PIO2_2+PIO2_3)
     const PIO2_3T: Self;
 
     const FRAC_5PI_4_HI: HalfRep<Self>;
@@ -31,42 +38,12 @@ pub(crate) trait RemFracPi2Support: Float<Int: DInt<H: Int>> {
     fn large(x: &[Self], y: &mut [Self], e0: i32, prec: usize) -> i32;
 }
 
-const EPS: f64 = 2.2204460492503131e-16;
-
-impl RemFracPi2Support for f64 {
-    const TO_INT: Self = 1.5 / EPS;
-    const INV_PIO2: Self = 6.36619772367581382433e-01;
-    const PIO2_1: Self = 1.57079632673412561417e+00;
-    const PIO2_1T: Self = 6.07710050650619224932e-11;
-    const PIO2_2: Self = 6.07710050630396597660e-11;
-    const PIO2_2T: Self = 2.02226624879595063154e-21;
-    const PIO2_3: Self = 2.02226624871116645580e-21;
-    const PIO2_3T: Self = 8.47842766036889956997e-32;
-    const FRAC_5PI_4_HI: HalfRep<Self> = 0x400f6a7a;
-    const FRAC_3PI_4_HI: HalfRep<Self> = 0x4002d97c;
-    const FRAC_9PI_4_HI: HalfRep<Self> = 0x401c463b;
-    const FRAC_7PI_4_HI: HalfRep<Self> = 0x4015fdbc;
-    const FRAC_3PI_2_HI: HalfRep<Self> = 0x4012d97c;
-    const TAU_HI: HalfRep<Self> = 0x401921fb;
-    const FRAC_PI_2_HI: HalfRep<Self> = 0x921fb;
-    const FRAC_2_POW_20_PI_2: HalfRep<Self> = 0x413921fb;
-
-    const MAGIC_F: Self = hf64!("0x1p24");
-
-    fn large(x: &[Self], y: &mut [Self], e0: i32, prec: usize) -> i32 {
-        super::super::rem_pio2_large(x, y, e0, prec)
-    }
-}
-
-pub(crate) fn rem_frac_pi_2<F>(x: F) -> (i32, F, F)
+pub(crate) fn rem_pio2<F>(x: F) -> (i32, F, F)
 where
-    F: RemFracPi2Support,
+    F: RemPio2Support,
     F: CastInto<i32>,
     HalfRep<F>: Int + MinInt<Unsigned: Int<OtherSign: Int>>,
-    // <HalfRep<F> as Int>::Unsigned: Int,
 {
-    // let sign = x.is_sign_positive()
-
     let ix: HalfRep<F> = x.abs().to_bits().hi();
     let pos = x.is_sign_positive();
 
@@ -148,9 +125,8 @@ where
         return medium(x, ix);
     }
     /*
-
-    * all other (large) arguments
-    */
+     * all other (large) arguments
+     */
     if ix >= F::EXP_MASK.hi() {
         /* x is inf or NaN */
         let y0 = x - x;
@@ -161,7 +137,6 @@ where
     /* set z = scalbn(|x|,-ilogb(x)+23) */
     let mut ui = x.to_bits();
     ui &= F::SIG_MASK;
-    // ui |= F::Int::cast_from((F::EXP_BIAS + F::MAGIC) << F::SIG_BITS);
     ui |= F::Int::cast_from(F::EXP_BIAS + F::MAGIC) << F::SIG_BITS;
 
     let mut z = F::from_bits(ui);
@@ -195,7 +170,7 @@ where
 
 pub fn medium<F>(x: F, ix: HalfRep<F>) -> (i32, F, F)
 where
-    F: RemFracPi2Support,
+    F: RemPio2Support,
     F: CastInto<i32>,
     HalfRep<F>: Int,
 {
