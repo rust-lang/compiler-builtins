@@ -42,6 +42,9 @@ where
     fn large(x: &[Self], y: &mut [Self], e0: i32, prec: usize) -> i32;
 }
 
+/// Return `x % pi/2` as `y[0] + y[1]`.
+///
+/// Caller must handle the case when reduction is not needed: `|x| ~<= pi/4`.
 pub(crate) fn rem_pio2<F>(x: F) -> (i32, F, F)
 where
     F: RemPio2Support,
@@ -56,14 +59,14 @@ where
     if ix <= F::FRAC_5PI_4_HI {
         /* |x| ~<= 5pi/4 */
         if (ix & F::SIG_MASK.hi()) == F::FRAC_PI_2_HI {
-            /* |x| ~= pi/2 or 2pi/2 */
-            return medium(x, ix); /* cancellation -- use medium case */
+            // |x| ~= pi/2 or 2pi/2
+            return medium(x, ix); // cancellation -- use medium case
         }
 
         if ix <= F::FRAC_3PI_4_HI {
-            /* |x| ~<= 3pi/4 */
+            // |x| ~<= 3pi/4
             if pos {
-                let z = x - F::PIO2_1; /* one round good to 85 bits */
+                let z = x - F::PIO2_1; // one round good to 85 bits for f64
                 let y0 = z - F::PIO2_1T;
                 let y1 = (z - y0) - F::PIO2_1T;
                 return (1, y0, y1);
