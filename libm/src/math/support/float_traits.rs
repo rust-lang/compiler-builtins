@@ -1,6 +1,9 @@
 use core::{fmt, mem, ops};
 
-use super::int_traits::{CastFrom, Int, MinInt};
+use super::int_traits::{CastFrom, DInt, Int, MinInt};
+
+/// Wrapper to extract the integer type half of the float's size
+pub type HalfRep<F> = <<F as Float>::Int as DInt>::H;
 
 /// Trait for some basic operations on floats
 // #[allow(dead_code)]
@@ -38,6 +41,9 @@ pub trait Float:
     const MAX: Self;
     const MIN: Self;
     const EPSILON: Self;
+    const TWO: Self;
+    const THREE: Self;
+    const FOUR: Self;
     const PI: Self;
     const NEG_PI: Self;
     const FRAC_PI_2: Self;
@@ -222,6 +228,9 @@ macro_rules! float_impl {
             // Sign bit set, saturated mantissa, saturated exponent with last bit zeroed
             const MIN: Self = $from_bits(Self::Int::MAX & !(1 << Self::SIG_BITS));
             const EPSILON: Self = <$ty>::EPSILON;
+            const TWO: Self = 2.0;
+            const THREE: Self = 3.0;
+            const FOUR: Self = 4.0;
 
             // Exponent is a 1 in the LSB
             const MIN_POSITIVE_NORMAL: Self = $from_bits(1 << Self::SIG_BITS);
