@@ -1,6 +1,5 @@
-use crate::support::HalfRep;
 use super::super::rem_pio2::RemPio2Support;
-use crate::support::f64_to_bits;
+use crate::support::{HalfRep, f64_to_bits};
 
 impl RemPio2Support for f64 {
     const TO_INT: Self = 1.5 / f64::EPSILON;
@@ -19,7 +18,8 @@ impl RemPio2Support for f64 {
     const FRAC_3PI_2_HI: HalfRep<Self> = (f64_to_bits(hf64!("0x4.b65f1fccc8748p+0")) >> 32) as u32;
     const TAU_HI: HalfRep<Self> = (f64_to_bits(hf64!("0x6.487ed5110b46p+0")) >> 32) as u32;
     const FRAC_PI_2_HI: HalfRep<Self> = 0x921fb;
-    const FRAC_2_POW_20_PI_2: HalfRep<Self> = (f64_to_bits(hf64!("0x1.921fb54442d18p+20")) >> 32) as u32;
+    const FRAC_2_POW_20_PI_2: HalfRep<Self> =
+        (f64_to_bits(hf64!("0x1.921fb54442d18p+20")) >> 32) as u32;
 
     const MAGIC_F: Self = hf64!("0x1p24");
 

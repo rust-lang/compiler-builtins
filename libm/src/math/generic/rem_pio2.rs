@@ -4,7 +4,11 @@ use core::f64::consts;
 
 use crate::support::{CastFrom, CastInto, DInt, Float, HInt, HalfRep, Int, MinInt};
 
-pub(crate) trait RemPio2Support: Float<Int: DInt<H: Int>> {
+pub(crate) trait RemPio2Support: Float
+where
+    Self::Int: DInt,
+    <Self::Int as DInt>::H: Int,
+{
     const TO_INT: Self;
     /// 53 bits of 2/pi
     const INV_PIO2: Self;
@@ -43,6 +47,8 @@ where
     F: RemPio2Support,
     F: CastInto<i32>,
     HalfRep<F>: Int + MinInt<Unsigned: Int<OtherSign: Int>>,
+    F::Int: DInt,
+    <F::Int as DInt>::H: Int,
 {
     let ix: HalfRep<F> = x.abs().to_bits().hi();
     let pos = x.is_sign_positive();
@@ -173,6 +179,8 @@ where
     F: RemPio2Support,
     F: CastInto<i32>,
     HalfRep<F>: Int,
+    F::Int: DInt,
+    <F::Int as DInt>::H: Int,
 {
     /* rint(x/(pi/2)), Assume round-to-nearest. */
     let tmp = x * F::INV_PIO2 + F::TO_INT;
