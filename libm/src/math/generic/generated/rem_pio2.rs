@@ -3,7 +3,7 @@ use crate::support::{HalfRep, f64_to_bits};
 
 impl RemPio2Support for f64 {
     const TO_INT: Self = 1.5 / f64::EPSILON;
-    const INV_PIO2: Self = 6.36619772367581382433e-01;
+    const INV_PIO2: Self = hf64!("0xa.2f9836e4e4418p-4");
     const PIO2_1: Self = 1.57079632673412561417e+00;
     const PIO2_1T: Self = 6.07710050650619224932e-11;
     const PIO2_2: Self = 6.07710050630396597660e-11;

@@ -75,14 +75,15 @@ function update_rem_pio2(cfg::Config)::String
             to_bits = "$ty_name::to_bits"
         end
 
-        hi_int(x::BigFloat) = @sprintf "(%s(hf%d!(\"%a\")) >> %d) as u%d" to_bits info.bits x halfbits halfbits
+        bigf_hi(x::BigFloat) = @sprintf "(%s(hf%d!(\"%a\")) >> %d) as u%d" to_bits info.bits x halfbits halfbits
+        bigf_hex(x::BigFloat) = @sprintf "hf%d!(\"%a\")" info.bits x
         
         setprecision(ty_info(fty).sig_bits + 1)
         
         ty_impl = """
             impl RemPio2Support for $ty_name {
                 const TO_INT: Self = 1.5 / $ty_name::EPSILON;
-                const INV_PIO2: Self = 6.36619772367581382433e-01;
+                const INV_PIO2: Self = $(bigf_hex(2 / big(pi)));
                 const PIO2_1: Self = 1.57079632673412561417e+00;
                 const PIO2_1T: Self = 6.07710050650619224932e-11;
                 const PIO2_2: Self = 6.07710050630396597660e-11;
@@ -90,16 +91,16 @@ function update_rem_pio2(cfg::Config)::String
                 const PIO2_3: Self = 2.02226624871116645580e-21;
                 const PIO2_3T: Self = 8.47842766036889956997e-32;
 
-                const FRAC_5PI_4_HI: HalfRep<Self> = $(hi_int(big(pi)*5/4));
-                const FRAC_3PI_4_HI: HalfRep<Self> = $(hi_int(big(pi)*3/4));
-                const FRAC_9PI_4_HI: HalfRep<Self> = $(hi_int(big(pi)*9/4));
-                const FRAC_7PI_4_HI: HalfRep<Self> = $(hi_int(big(pi)*7/4));
-                const FRAC_3PI_2_HI: HalfRep<Self> = $(hi_int(big(pi)*3/2));
-                const TAU_HI: HalfRep<Self> = $(hi_int(big(pi)*2));
+                const FRAC_5PI_4_HI: HalfRep<Self> = $(bigf_hi(5 * big(pi) / 4));
+                const FRAC_3PI_4_HI: HalfRep<Self> = $(bigf_hi(3 * big(pi) / 4));
+                const FRAC_9PI_4_HI: HalfRep<Self> = $(bigf_hi(9 * big(pi) / 4));
+                const FRAC_7PI_4_HI: HalfRep<Self> = $(bigf_hi(7 * big(pi) / 4));
+                const FRAC_3PI_2_HI: HalfRep<Self> = $(bigf_hi(3 * big(pi) / 2));
+                const TAU_HI: HalfRep<Self> = $(bigf_hi(2 * big(pi)));
                 const FRAC_PI_2_HI: HalfRep<Self> = 0x921fb;
-                const FRAC_2_POW_20_PI_2: HalfRep<Self> = $(hi_int((big(2)^20) * pi / 2));
+                const FRAC_2_POW_20_PI_2: HalfRep<Self> = $(bigf_hi((big(2)^20) * pi / 2));
 
-                const MAGIC_F: Self = hf64!("0x1p24");
+                const MAGIC_F: Self = hf$(info.bits)!("0x1p24");
 
                 fn large(x: &[Self], y: &mut [Self], e0: i32, prec: usize) -> i32 {
                     super::super::super::rem_pio2_large(x, y, e0, prec)
