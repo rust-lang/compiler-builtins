@@ -23,7 +23,11 @@ pub fn fmaf(x: f32, y: f32, z: f32) -> f32 {
         args: x, y, z,
     }
 
-    fma_wide_round(x, y, z, Round::Nearest).val
+    if cfg!(f32_no_widen) {
+        super::fma::fma_round(x, y, z, Round::Nearest).val
+    } else {
+        fma_wide_round(x, y, z, Round::Nearest).val
+    }
 }
 
 /// Fma implementation when a hardware-backed larger float type is available. For `f32` and `f64`,

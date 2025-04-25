@@ -184,6 +184,8 @@ fi
 
 mflags=()
 
+nowiden_tests=$(grep -vE '^#' etc/has-nowiden-impl.txt | tr '\n' ' ')
+
 # We enumerate features manually.
 mflags+=(--no-default-features)
 
@@ -283,6 +285,7 @@ else
     # Test the same in release mode, which also increases coverage. Also ensure
     # the soft float routines are checked.
     "${cmd[@]}" "$profile_flag" release-checked
+    [ -n "${nowiden_tests:-}" ] && LIBM_F32_NO_WIDEN=1 "${cmd[@]}" "$profile_flag" release-checked -- $nowiden_tests
     "${cmd[@]}" "$profile_flag" release-checked --features force-soft-floats
     "${cmd[@]}" "$profile_flag" release-checked --features unstable-intrinsics
     "${cmd[@]}" "$profile_flag" release-checked --features unstable-intrinsics --benches
