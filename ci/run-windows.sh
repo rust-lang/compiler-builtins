@@ -7,8 +7,14 @@ target="$1"
 m4 --help
 make --help
 
-rustup update nightly-x86_64-gnu
-rustup default nightly-x86_64-gnu
-rustup target add "$target"
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs |
+    sh --default-toolchain nightly-x86_64-gnu \
+    --target "$target" \
+
+cargo -vV
+
+# rustup update nightly-x86_64-gnu
+# rustup default nightly-x86_64-gnu
+# rustup target add "$target"
 
 ./ci/run.sh ${{ matrix.target }}
