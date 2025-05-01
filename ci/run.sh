@@ -218,9 +218,8 @@ esac
 case "$target" in
     # MSVC cannot link MPFR
     *windows-msvc*) ;;
-    # FIXME: MinGW should be able to build MPFR, but setup in CI is nontrivial.
-    *windows-gnu*) ;;
     # Targets that aren't cross compiled in CI work fine
+    *windows-gnu*) mflags+=(--features libm-test/build-mpfr) ;;
     aarch64*apple*) mflags+=(--features libm-test/build-mpfr) ;;
     aarch64*linux*) mflags+=(--features libm-test/build-mpfr) ;;
     i586*) mflags+=(--features libm-test/build-mpfr --features gmp-mpfr-sys/force-cross) ;;
