@@ -1,5 +1,8 @@
 use core::{cmp, fmt, ops};
 
+mod mod_mul;
+pub(crate) use mod_mul::Reducer;
+
 /// Minimal integer implementations needed on all integer types, including wide integers.
 pub trait MinInt:
     Copy
