@@ -157,14 +157,13 @@ jobs:
       with:
         msystem: UCRT64
         update: true
-        install: diffutils m4 make rustup
+        install: diffutils m4 make mingw-w64-rustup
 
     - name: Run on Windows
       if: matrix.os == 'windows-2025'
       shell: msys2 {0}
       run: |
-        ./ci/setup-windows.sh ${{ matrix.target }}
-        ./ci/run.sh ${{ matrix.target }}
+        ./ci/run-windows.sh ${{ matrix.target }}
 
     # # Non-linux tests just use our raw script
     # - name: Run locally
