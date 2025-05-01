@@ -164,6 +164,7 @@ jobs:
       shell: msys2 {0}
       run: |
         ./ci/run-windows.sh ${{ matrix.target }}
+        ./ci/run.sh ${{ matrix.target }}
 
     # # Non-linux tests just use our raw script
     # - name: Run locally
