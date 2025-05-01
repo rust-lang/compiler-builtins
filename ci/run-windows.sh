@@ -11,7 +11,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- \
     --default-toolchain nightly-x86_64-gnu \
     --target "$target" -y
 
-cargo -vV
+# cargo -vV
 
 # rustup update nightly-x86_64-gnu
 # rustup default nightly-x86_64-gnu
