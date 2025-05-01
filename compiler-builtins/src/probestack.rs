@@ -52,11 +52,13 @@
 // Our goal here is to touch each page between %rsp+8 and %rsp+8-%rax,
 // ensuring that if any pages are unmapped we'll make a page fault.
 //
+// This function is unsafe because it uses a custom ABI, it does not actually match `extern "C"`.
+//
 // The ABI here is that the stack frame size is located in `%rax`. Upon
 // return we're not supposed to modify `%rsp` or `%rax`.
 #[cfg(target_arch = "x86_64")]
 #[unsafe(naked)]
-#[no_mangle]
+#[rustc_std_internal_symbol]
 pub unsafe extern "C" fn __rust_probestack() {
     #[cfg(not(all(target_env = "sgx", target_vendor = "fortanix")))]
     macro_rules! ret {
@@ -141,9 +143,11 @@ pub unsafe extern "C" fn __rust_probestack() {
 // that on Unix we're expected to restore everything as it was, this
 // function basically can't tamper with anything.
 //
+// This function is unsafe because it uses a custom ABI, it does not actually match `extern "C"`.
+//
 // The ABI here is the same as x86_64, except everything is 32-bits large.
 #[unsafe(naked)]
-#[no_mangle]
+#[rustc_std_internal_symbol]
 pub unsafe extern "C" fn __rust_probestack() {
     core::arch::naked_asm!(
         "
@@ -186,6 +190,8 @@ pub unsafe extern "C" fn __rust_probestack() {
 // probestack function will also do things like _chkstk in MSVC.
 // So we need to sub %ax %sp in probestack when arch is x86.
 //
+// This function is unsafe because it uses a custom ABI, it does not actually match `extern "C"`.
+//
 // REF: Rust commit(74e80468347)
 // rust\src\llvm-project\llvm\lib\Target\X86\X86FrameLowering.cpp: 805
 // Comments in LLVM:
@@ -193,7 +199,7 @@ pub unsafe extern "C" fn __rust_probestack() {
 //   MSVC x64's __chkstk and cygwin/mingw's ___chkstk_ms do not adjust %rsp
 //   themselves.
 #[unsafe(naked)]
-#[no_mangle]
+#[rustc_std_internal_symbol]
 pub unsafe extern "C" fn __rust_probestack() {
     core::arch::naked_asm!(
         "
