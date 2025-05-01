@@ -152,6 +152,11 @@ jobs:
       if: matrix.os == 'ubuntu-24.04'
       run: python3 etc/update-api-list.py --check
 
+    - name: Windows CI setup
+      if: matrix.os == 'windows-2025'
+      shell: bash
+      run: ./ci/setup-windows.sh ${{ matrix.target }}
+
     # Non-linux tests just use our raw script
     - name: Run locally
       if: matrix.os != 'ubuntu-24.04'
