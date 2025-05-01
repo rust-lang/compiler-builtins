@@ -162,7 +162,7 @@ jobs:
     - name: Run on Windows
       if: matrix.os == 'windows-2025'
       shell: msys2 {0}
-      run:
+      run: |
         ./ci/setup-windows.sh ${{ matrix.target }}
         ./ci/run.sh ${{ matrix.target }}
 
