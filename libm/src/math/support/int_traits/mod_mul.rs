@@ -2,14 +2,11 @@ use super::{DInt, HInt, Int};
 
 /// Barrett reduction using the constant `R == (1 << K) == (1 << U::BITS)`
 ///
-/// More specifically, implements single-word [Barrett multiplication]
-/// (https://en.wikipedia.org/wiki/Barrett_reduction#Single-word_Barrett_multiplication)
-/// and [division]
-/// (https://en.wikipedia.org/wiki/Barrett_reduction#Barrett_Division)
-/// for unsigned integers.
+/// For a more detailed description, see
+/// <https://en.wikipedia.org/wiki/Barrett_reduction>.
 ///
 /// After constructing as `Reducer::new(b, n)`,
-/// provides operations to efficiently compute
+/// has operations to efficiently compute
 ///  - `(a * b) / n` and `(a * b) % n`
 ///  - `Reducer::new((a * b * b) % n, n)`, as long as `a * (n - 1) < R`
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -103,7 +100,7 @@ where
             let ar_ns = a.widen_mul(self.rem) + _s.widen_mul(self.div);
             assert!(ab_tn.hi().is_zero());
             assert!(ar_ns.lo().is_zero());
-            assert_eq!(ab_tn.lo(), ar_ns.hi());
+            assert!(ab_tn.lo() == ar_ns.hi());
         }
         // Since `s < R` and `r < n`,
         // ```
@@ -124,7 +121,7 @@ where
     /// Requires `r * ab == ra * b`, where `r = bR % n`.
     #[inline(always)]
     fn with_scaled_num_rem(&self, ab: U, ra: U) -> Self {
-        debug_assert_eq!(ab.widen_mul(self.rem), ra.widen_mul(self.num));
+        debug_assert!(ab.widen_mul(self.rem) == ra.widen_mul(self.num));
         // The new factor `v = abb mod n`:
         let (_, v) = self.mul_into_div_rem(ab);
 
