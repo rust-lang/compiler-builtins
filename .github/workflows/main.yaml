@@ -157,7 +157,7 @@ jobs:
       with:
         msystem: UCRT64
         update: true
-        install: m4
+        install: diffutils m4 make
 
     - name: Run on Windows
       if: matrix.os == 'windows-2025'
