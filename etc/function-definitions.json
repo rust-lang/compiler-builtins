@@ -98,6 +98,7 @@
     },
     "ceil": {
         "sources": [
+            "libm/src/math/arch/aarch64.rs",
             "libm/src/math/arch/i586.rs",
             "libm/src/math/arch/wasm32.rs",
             "libm/src/math/ceil.rs",
@@ -107,6 +108,7 @@
     },
     "ceilf": {
         "sources": [
+            "libm/src/math/arch/aarch64.rs",
             "libm/src/math/arch/wasm32.rs",
             "libm/src/math/ceil.rs",
             "libm/src/math/generic/ceil.rs"
@@ -122,6 +124,7 @@
     },
     "ceilf16": {
         "sources": [
+            "libm/src/math/arch/aarch64.rs",
             "libm/src/math/ceil.rs",
             "libm/src/math/generic/ceil.rs"
         ],
@@ -311,6 +314,7 @@
     },
     "floor": {
         "sources": [
+            "libm/src/math/arch/aarch64.rs",
             "libm/src/math/arch/i586.rs",
             "libm/src/math/arch/wasm32.rs",
             "libm/src/math/floor.rs",
@@ -320,6 +324,7 @@
     },
     "floorf": {
         "sources": [
+            "libm/src/math/arch/aarch64.rs",
             "libm/src/math/arch/wasm32.rs",
             "libm/src/math/floor.rs",
             "libm/src/math/generic/floor.rs"
@@ -335,6 +340,7 @@
     },
     "floorf16": {
         "sources": [
+            "libm/src/math/arch/aarch64.rs",
             "libm/src/math/floor.rs",
             "libm/src/math/generic/floor.rs"
         ],
@@ -815,6 +821,7 @@
     },
     "round": {
         "sources": [
+            "libm/src/math/arch/aarch64.rs",
             "libm/src/math/generic/round.rs",
             "libm/src/math/round.rs"
         ],
@@ -822,12 +829,14 @@
     },
     "roundeven": {
         "sources": [
+            "libm/src/math/arch/aarch64.rs",
             "libm/src/math/roundeven.rs"
         ],
         "type": "f64"
     },
     "roundevenf": {
         "sources": [
+            "libm/src/math/arch/aarch64.rs",
             "libm/src/math/roundeven.rs"
         ],
         "type": "f32"
@@ -840,12 +849,14 @@
     },
     "roundevenf16": {
         "sources": [
+            "libm/src/math/arch/aarch64.rs",
             "libm/src/math/roundeven.rs"
         ],
         "type": "f16"
     },
     "roundf": {
         "sources": [
+            "libm/src/math/arch/aarch64.rs",
             "libm/src/math/generic/round.rs",
             "libm/src/math/round.rs"
         ],
@@ -860,6 +871,7 @@
     },
     "roundf16": {
         "sources": [
+            "libm/src/math/arch/aarch64.rs",
             "libm/src/math/generic/round.rs",
             "libm/src/math/round.rs"
         ],
@@ -1002,6 +1014,7 @@
     },
     "trunc": {
         "sources": [
+            "libm/src/math/arch/aarch64.rs",
             "libm/src/math/arch/wasm32.rs",
             "libm/src/math/generic/trunc.rs",
             "libm/src/math/trunc.rs"
@@ -1010,6 +1023,7 @@
     },
     "truncf": {
         "sources": [
+            "libm/src/math/arch/aarch64.rs",
             "libm/src/math/arch/wasm32.rs",
             "libm/src/math/generic/trunc.rs",
             "libm/src/math/trunc.rs"
@@ -1025,6 +1039,7 @@
     },
     "truncf16": {
         "sources": [
+            "libm/src/math/arch/aarch64.rs",
             "libm/src/math/generic/trunc.rs",
             "libm/src/math/trunc.rs"
         ],

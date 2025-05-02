@@ -16,7 +16,7 @@ pub fn roundf16(x: f16) -> f16 {
 pub fn roundf(x: f32) -> f32 {
     select_implementation! {
         name: roundf,
-        use_arch: all(target_arch = "aarch64", target_feature = "fp16"),
+        use_arch: all(target_arch = "aarch64", target_feature = "neon"),
         args: x,
     }
 
@@ -28,7 +28,7 @@ pub fn roundf(x: f32) -> f32 {
 pub fn round(x: f64) -> f64 {
     select_implementation! {
         name: round,
-        use_arch: all(target_arch = "aarch64", target_feature = "fp16"),
+        use_arch: all(target_arch = "aarch64", target_feature = "neon"),
         args: x,
     }
 

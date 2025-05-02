@@ -20,7 +20,7 @@ pub fn roundevenf16(x: f16) -> f16 {
 pub fn roundevenf(x: f32) -> f32 {
     select_implementation! {
         name: roundevenf,
-        use_arch: all(target_arch = "aarch64", target_feature = "fp16"),
+        use_arch: all(target_arch = "aarch64", target_feature = "neon"),
         args: x,
     }
 
@@ -33,7 +33,7 @@ pub fn roundevenf(x: f32) -> f32 {
 pub fn roundeven(x: f64) -> f64 {
     select_implementation! {
         name: roundeven,
-        use_arch: all(target_arch = "aarch64", target_feature = "fp16"),
+        use_arch: all(target_arch = "aarch64", target_feature = "neon"),
         args: x,
     }
 
