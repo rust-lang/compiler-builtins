@@ -36,8 +36,8 @@ cfg_if! {
             rintf,
             roundeven,
             roundevenf,
-            trun,
-            truncf
+            trunc,
+            truncf,
             sqrt,
             sqrtf,
         };
@@ -49,7 +49,7 @@ cfg_if! {
             roundf16,
             rintf16,
             roundevenf16,
-            truncf16
+            truncf16,
             sqrtf16,
         };
     }
