@@ -26,15 +26,30 @@ cfg_if! {
         pub use aarch64::{
             fma,
             fmaf,
+            ceil,
+            ceilf,
+            floor,
+            floorf,
+            round,
+            roundf,
             rint,
             rintf,
+            roundeven,
+            roundevenf,
+            trun,
+            truncf
             sqrt,
             sqrtf,
         };
 
         #[cfg(all(f16_enabled, target_feature = "fp16"))]
         pub use aarch64::{
+            ceilf16,
+            floorf16,
+            roundf16,
             rintf16,
+            roundevenf16,
+            truncf16
             sqrtf16,
         };
     }

@@ -5,6 +5,12 @@ use super::support::{Float, Round};
 #[cfg(f16_enabled)]
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn roundevenf16(x: f16) -> f16 {
+    select_implementation! {
+        name: roundevenf16,
+        use_arch: all(target_arch = "aarch64", target_feature = "fp16"),
+        args: x,
+    }
+
     roundeven_impl(x)
 }
 
@@ -12,6 +18,12 @@ pub fn roundevenf16(x: f16) -> f16 {
 /// `roundToIntegralTiesToEven`.
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn roundevenf(x: f32) -> f32 {
+    select_implementation! {
+        name: roundevenf,
+        use_arch: all(target_arch = "aarch64", target_feature = "fp16"),
+        args: x,
+    }
+
     roundeven_impl(x)
 }
 
@@ -19,6 +31,12 @@ pub fn roundevenf(x: f32) -> f32 {
 /// `roundToIntegralTiesToEven`.
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn roundeven(x: f64) -> f64 {
+    select_implementation! {
+        name: roundeven,
+        use_arch: all(target_arch = "aarch64", target_feature = "fp16"),
+        args: x,
+    }
+
     roundeven_impl(x)
 }
 
