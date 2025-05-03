@@ -24,6 +24,9 @@ impl Float for f8 {
     const ZERO: Self = Self(0b0_0000_000);
     const NEG_ZERO: Self = Self(0b1_0000_000);
     const ONE: Self = Self(0b0_0111_000);
+    const TWO: Self = Self(0b0_1000_000);
+    const THREE: Self = Self(0b0_1000_100);
+    const FOUR: Self = Self(0b0_1001_000);
     const NEG_ONE: Self = Self(0b1_0111_000);
     const MAX: Self = Self(0b0_1110_111);
     const MIN: Self = Self(0b1_1110_111);
