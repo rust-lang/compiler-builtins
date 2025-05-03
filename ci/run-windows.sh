@@ -14,6 +14,9 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- \
     --target "$target" \
     --profile minimal -y
 
+# Wrapper to ease managerment of environments
+pacman -S pactoys
+# Install C toolchain according to `MSYSTEM`
 pacboy -S toolchain
 
 ls ~/
