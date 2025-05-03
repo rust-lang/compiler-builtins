@@ -2,6 +2,10 @@
 
 set -eux
 
+echo PATH_DBG
+echo $PATH
+ls /c/Users/$USERNAME/.cargo/bin
+
 export RUST_BACKTRACE="${RUST_BACKTRACE:-full}"
 export NEXTEST_STATUS_LEVEL=all
 
