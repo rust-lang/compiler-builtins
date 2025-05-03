@@ -158,6 +158,7 @@ jobs:
         msystem: UCRT64
         update: true
         install: diffutils m4 make # mingw-w64-rustup
+        path-type: inherit
 
     - name: Setup windows
       if: matrix.os == 'windows-2025'
