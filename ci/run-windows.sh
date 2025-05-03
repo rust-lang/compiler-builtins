@@ -14,6 +14,6 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- \
     --target "$target" \
     --profile minimal -y
 
-export PATH="/c/Users/$USERNAME/.cargo/bin:$PATH"
+echo 'export PATH="/c/Users/$USERNAME/.cargo/bin:$PATH"' >> ~/.bashrc
 
 echo "$PATH"
