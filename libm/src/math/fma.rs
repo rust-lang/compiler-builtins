@@ -20,7 +20,7 @@ pub fn fmaf(x: f32, y: f32, z: f32) -> f32 {
     select_implementation! {
         name: fmaf,
         use_arch: any(
-            all(target_arch = "aarch64", target_feature = "neon"),
+            all(target_arch = "aarch64", target_feature = "neon", not(target_abi = "softfloat")),
             target_feature = "sse2",
         ),
         args: x, y, z,
@@ -37,7 +37,7 @@ pub fn fma(x: f64, y: f64, z: f64) -> f64 {
     select_implementation! {
         name: fma,
         use_arch: any(
-            all(target_arch = "aarch64", target_feature = "neon"),
+            all(target_arch = "aarch64", target_feature = "neon", not(target_abi = "softfloat")),
             target_feature = "sse2",
         ),
         args: x, y, z,
