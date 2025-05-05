@@ -21,9 +21,9 @@ pacboy --noconfirm -S toolchain
 
 pacman --noconfirm -S mingw-w64-x86_64-toolchain
 
+# maybe only need mingw-w64-x86_64-gcc?
+
 ls ~/
 echo 'export PATH="/c/Users/$USERNAME/.cargo/bin:$PATH"' >> ~/.bash_profile
 
 echo "$PATH"
-
-rustc -vV

@@ -169,6 +169,8 @@ jobs:
       if: matrix.os == 'windows-2025'
       shell: msys2 {0}
       run: |
+        rustc -vV
+        rustup show
         ./ci/run.sh ${{ matrix.target }}
 
     # # Non-linux tests just use our raw script
