@@ -30,14 +30,14 @@ intrinsics! {
             "push   ecx",
             "cmp    eax, 0x1000",
             "lea    ecx, [esp + 8]", // esp before calling this routine -> ecx
-            "jb     1f",
+            "jb     3f",
             "2:",
             "sub    ecx, 0x1000",
             "test   [ecx], ecx",
             "sub    eax, 0x1000",
             "cmp    eax, 0x1000",
             "ja     2b",
-            "1:",
+            "3:",
             "sub    ecx, eax",
             "test   [ecx], ecx",
             "lea    eax, [esp + 4]",  // load pointer to the return address into eax
