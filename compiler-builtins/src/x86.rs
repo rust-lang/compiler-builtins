@@ -16,7 +16,6 @@ intrinsics! {
     pub unsafe extern "C" fn __chkstk() {
         core::arch::naked_asm!(
             "jmp __alloca", // Jump to __alloca since fallthrough may be unreliable"
-            options(att_syntax)
         );
     }
 
@@ -28,26 +27,25 @@ intrinsics! {
     pub unsafe extern "C" fn _alloca() {
         // __chkstk and _alloca are the same function
         core::arch::naked_asm!(
-            "push   %ecx",
-            "cmp    $0x1000,%eax",
-            "lea    8(%esp),%ecx", // esp before calling this routine -> ecx
+            "push   ecx",
+            "cmp    eax, 0x1000",
+            "lea    ecx, [esp + 8]", // esp before calling this routine -> ecx
             "jb     1f",
             "2:",
-            "sub    $0x1000,%ecx",
-            "test   %ecx,(%ecx)",
-            "sub    $0x1000,%eax",
-            "cmp    $0x1000,%eax",
+            "sub    ecx, 0x1000",
+            "test   [ecx], ecx",
+            "sub    eax, 0x1000",
+            "cmp    eax, 0x1000",
             "ja     2b",
             "1:",
-            "sub    %eax,%ecx",
-            "test   %ecx,(%ecx)",
-            "lea    4(%esp),%eax",  // load pointer to the return address into eax
-            "mov    %ecx,%esp",     // install the new top of stack pointer into esp
-            "mov    -4(%eax),%ecx", // restore ecx
-            "push   (%eax)",        // push return address onto the stack
-            "sub    %esp,%eax",     // restore the original value in eax
+            "sub    ecx, eax",
+            "test   [ecx], ecx",
+            "lea    eax, [esp + 4]",  // load pointer to the return address into eax
+            "mov    esp, ecx",     // install the new top of stack pointer into esp
+            "mov    ecx, [eax - 4]", // restore ecx
+            "push   [eax]",        // push return address onto the stack
+            "sub    eax, esp",     // restore the original value in eax
             "ret",
-            options(att_syntax)
         );
     }
 }

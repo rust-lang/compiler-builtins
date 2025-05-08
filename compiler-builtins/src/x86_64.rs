@@ -19,24 +19,23 @@ intrinsics! {
     ))]
     pub unsafe extern "C" fn ___chkstk_ms() {
         core::arch::naked_asm!(
-            "push   %rcx",
-            "push   %rax",
-            "cmp    $0x1000,%rax",
-            "lea    24(%rsp),%rcx",
+            "push   rcx",
+            "push   rax",
+            "cmp    rax, 0x1000",
+            "lea    rcx, [rsp + 24]",
             "jb     1f",
             "2:",
-            "sub    $0x1000,%rcx",
-            "test   %rcx,(%rcx)",
-            "sub    $0x1000,%rax",
-            "cmp    $0x1000,%rax",
+            "sub    rcx, 0x1000",
+            "test   [rcx], rcx",
+            "sub    rax, 0x1000",
+            "cmp    rax, 0x1000",
             "ja     2b",
             "1:",
-            "sub    %rax,%rcx",
-            "test   %rcx,(%rcx)",
-            "pop    %rax",
-            "pop    %rcx",
+            "sub    rcx, rax",
+            "test   [rcx], rcx",
+            "pop    rax",
+            "pop    rcx",
             "ret",
-            options(att_syntax)
         );
     }
 }
