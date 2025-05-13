@@ -4,6 +4,12 @@
 #[cfg(f16_enabled)]
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn floorf16(x: f16) -> f16 {
+    select_implementation! {
+        name: floorf16,
+        use_arch: all(target_arch = "aarch64", target_feature = "fp16"),
+        args: x,
+    }
+
     return super::generic::floor(x);
 }
 
@@ -14,7 +20,10 @@ pub fn floorf16(x: f16) -> f16 {
 pub fn floor(x: f64) -> f64 {
     select_implementation! {
         name: floor,
-        use_arch: all(target_arch = "wasm32", intrinsics_enabled),
+        use_arch: any(
+            all(target_arch = "aarch64", target_feature = "neon"),
+            all(target_arch = "wasm32", intrinsics_enabled),
+        ),
         use_arch_required: all(target_arch = "x86", not(target_feature = "sse2")),
         args: x,
     }
@@ -29,7 +38,10 @@ pub fn floor(x: f64) -> f64 {
 pub fn floorf(x: f32) -> f32 {
     select_implementation! {
         name: floorf,
-        use_arch: all(target_arch = "wasm32", intrinsics_enabled),
+        use_arch: any(
+            all(target_arch = "aarch64", target_feature = "neon"),
+            all(target_arch = "wasm32", intrinsics_enabled),
+        ),
         args: x,
     }
 
