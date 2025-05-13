@@ -1,0 +1,11 @@
+[package]
+name = "symbol-check"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# object = "0.36.7"
+object = { git = "https://github.com/philipc/object.git", branch = "issue-471" }
+
+[features]
+wasm = ["object/wasm"]
