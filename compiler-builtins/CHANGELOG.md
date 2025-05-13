@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.160](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.159...compiler_builtins-v0.1.160) - 2025-05-13
+
+### Other
+
+- Fix `i256::MAX`
+
 ## [0.1.159](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.158...compiler_builtins-v0.1.159) - 2025-05-12
 
 ### Other
