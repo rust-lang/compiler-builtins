@@ -4,6 +4,12 @@
 #[cfg(f16_enabled)]
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn truncf16(x: f16) -> f16 {
+    select_implementation! {
+        name: truncf16,
+        use_arch: all(target_arch = "aarch64", target_feature = "fp16"),
+        args: x,
+    }
+
     super::generic::trunc(x)
 }
 
@@ -14,7 +20,10 @@ pub fn truncf16(x: f16) -> f16 {
 pub fn truncf(x: f32) -> f32 {
     select_implementation! {
         name: truncf,
-        use_arch: all(target_arch = "wasm32", intrinsics_enabled),
+        use_arch: any(
+            all(target_arch = "aarch64", target_feature = "neon"),
+            all(target_arch = "wasm32", intrinsics_enabled),
+        ),
         args: x,
     }
 
@@ -28,7 +37,10 @@ pub fn truncf(x: f32) -> f32 {
 pub fn trunc(x: f64) -> f64 {
     select_implementation! {
         name: trunc,
-        use_arch: all(target_arch = "wasm32", intrinsics_enabled),
+        use_arch: any(
+            all(target_arch = "aarch64", target_feature = "neon"),
+            all(target_arch = "wasm32", intrinsics_enabled),
+        ),
         args: x,
     }
 
