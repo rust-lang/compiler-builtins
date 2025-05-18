@@ -410,26 +410,38 @@ macro_rules! cast_into {
     )*};
 }
 
-macro_rules! cast_into_float {
-    ($ty:ty) => {
+macro_rules! cast_int_float {
+    ($ity:ty) => {
         #[cfg(f16_enabled)]
-        cast_into_float!($ty; f16);
+        cast_int_float!($ity; f16);
 
-        cast_into_float!($ty; f32, f64);
+        cast_int_float!($ity; f32, f64);
 
         #[cfg(f128_enabled)]
-        cast_into_float!($ty; f128);
+        cast_int_float!($ity; f128);
     };
-    ($ty:ty; $($into:ty),*) => {$(
-        impl CastInto<$into> for $ty {
-            fn cast(self) -> $into {
+    ($ity:ty; $($fty:ty),*) => {$(
+        impl CastInto<$ity> for $fty {
+            fn cast(self) -> $ity {
                 #[cfg(not(feature = "compiler-builtins"))]
-                debug_assert_eq!(self as $into as $ty, self, "inexact float cast");
-                self as $into
+                debug_assert_eq!(self as $ity as $fty, self, "inexact float->int cast");
+                self as $ity
             }
 
-            fn cast_lossy(self) -> $into {
-                self as $into
+            fn cast_lossy(self) -> $ity {
+                self as $ity
+            }
+        }
+
+        impl CastInto<$fty> for $ity {
+            fn cast(self) -> $fty {
+                #[cfg(not(feature = "compiler-builtins"))]
+                debug_assert_eq!(self as $fty as $ity, self, "inexact int->float cast");
+                self as $fty
+            }
+
+            fn cast_lossy(self) -> $fty {
+                self as $fty
             }
         }
     )*};
@@ -448,8 +460,8 @@ cast_into!(i64);
 cast_into!(u128);
 cast_into!(i128);
 
-cast_into_float!(i8);
-cast_into_float!(i16);
-cast_into_float!(i32);
-cast_into_float!(i64);
-cast_into_float!(i128);
+cast_int_float!(i8);
+cast_int_float!(i16);
+cast_int_float!(i32);
+cast_int_float!(i64);
+cast_int_float!(i128);
