@@ -47,3 +47,5 @@ unexpected_cfgs = { level = "warn", check-cfg = [
   # compiler-builtins sets this feature, but we use it in `libm`
   'cfg(feature, values("compiler-builtins"))',
 ] }
+
+# TODO drop this line, it's just to poke CI that runs on libm changes
