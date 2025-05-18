@@ -48,20 +48,25 @@ else
 fi
 
 
-declare -a rlib_paths
-
-# Set the `rlib_paths` global array to a list of all compiler-builtins rlibs
-update_rlib_paths() {
+# Run a command for each `compiler_builtins` rlib file
+for_each_rlib() {
     if [ -d /builtins-target ]; then
         rlib_paths=( /builtins-target/"${target}"/debug/deps/libcompiler_builtins-*.rlib )
     else
         rlib_paths=( target/"${target}"/debug/deps/libcompiler_builtins-*.rlib )
     fi
+
+    if [ "${#rlib_paths[@]}" -lt 1 ]; then
+        echo "rlibs expected but not found"
+        exit 1
+    fi
+
+    "$@" "${rlib_paths[@]}"
 }
 
+
 # Remove any existing artifacts from previous tests that don't set #![compiler_builtins]
-update_rlib_paths
-rm -f "${rlib_paths[@]}"
+for_each_rlib rm -f
 
 cargo build -p compiler_builtins --target "$target"
 cargo build -p compiler_builtins --target "$target" --release
@@ -72,57 +77,64 @@ cargo build -p compiler_builtins --target "$target" --features no-asm --release
 cargo build -p compiler_builtins --target "$target" --features no-f16-f128
 cargo build -p compiler_builtins --target "$target" --features no-f16-f128 --release
 
-PREFIX=${target//unknown-/}-
-case "$target" in
-    armv7-*)
-        PREFIX=arm-linux-gnueabihf-
-        ;;
-    thumb*)
-        PREFIX=arm-none-eabi-
-        ;;
-    *86*-*)
-        PREFIX=
-        ;;
-esac
-
-NM=$(find "$(rustc --print sysroot)" \( -name llvm-nm -o -name llvm-nm.exe \) )
-if [ "$NM" = "" ]; then
-  NM="${PREFIX}nm"
-fi
-
-# i686-pc-windows-gnu tools have a dependency on some DLLs, so run it with
-# rustup run to ensure that those are in PATH.
-TOOLCHAIN="$(rustup show active-toolchain | sed 's/ (default)//')"
-if [[ "$TOOLCHAIN" == *i686-pc-windows-gnu ]]; then
-  NM="rustup run $TOOLCHAIN $NM"
-fi
+symcheck=(cargo run -p symbol-check)
+[[ "$target" = "wasm"* ]] && symcheck+=(--features wasm)
 
 # Look out for duplicated symbols when we include the compiler-rt (C) implementation
-update_rlib_paths
-for rlib in "${rlib_paths[@]}"; do
-    set +x
-    echo "================================================================"
-    echo "checking $rlib for duplicate symbols"
-    echo "================================================================"
-    set -x
+for_each_rlib "${symcheck[@]}" -- check-duplicates
+for_each_rlib rm -f
+
+# PREFIX=${target//unknown-/}-
+# case "$target" in
+#     armv7-*)
+#         PREFIX=arm-linux-gnueabihf-
+#         ;;
+#     thumb*)
+#         PREFIX=arm-none-eabi-
+#         ;;
+#     *86*-*)
+#         PREFIX=
+#         ;;
+# esac
+
+# NM=$(find "$(rustc --print sysroot)" \( -name llvm-nm -o -name llvm-nm.exe \) )
+# if [ "$NM" = "" ]; then
+#   NM="${PREFIX}nm"
+# fi
+
+# # i686-pc-windows-gnu tools have a dependency on some DLLs, so run it with
+# # rustup run to ensure that those are in PATH.
+# TOOLCHAIN="$(rustup show active-toolchain | sed 's/ (default)//')"
+# if [[ "$TOOLCHAIN" == *i686-pc-windows-gnu ]]; then
+#   NM="rustup run $TOOLCHAIN $NM"
+# fi
+
+# # Look out for duplicated symbols when we include the compiler-rt (C) implementation
+# update_rlib_paths
+# for rlib in "${rlib_paths[@]}"; do
+#     set +x
+#     echo "================================================================"
+#     echo "checking $rlib for duplicate symbols"
+#     echo "================================================================"
+#     set -x
     
-    duplicates_found=0
+#     duplicates_found=0
 
-    # NOTE On i586, It's normal that the get_pc_thunk symbol appears several
-    # times so ignore it
-    $NM -g --defined-only "$rlib" 2>&1 |
-      sort |
-      uniq -d |
-      grep -v __x86.get_pc_thunk --quiet |
-      grep 'T __' && duplicates_found=1
+#     # NOTE On i586, It's normal that the get_pc_thunk symbol appears several
+#     # times so ignore it
+#     $NM -g --defined-only "$rlib" 2>&1 |
+#       sort |
+#       uniq -d |
+#       grep -v __x86.get_pc_thunk --quiet |
+#       grep 'T __' && duplicates_found=1
 
-    if [ "$duplicates_found" != 0 ]; then
-        echo "error: found duplicate symbols"
-        exit 1
-    else
-        echo "success; no duplicate symbols found"
-    fi
-done
+#     if [ "$duplicates_found" != 0 ]; then
+#         echo "error: found duplicate symbols"
+#         exit 1
+#     else
+#         echo "success; no duplicate symbols found"
+#     fi
+# done
 
 rm -f "${rlib_paths[@]}"
 
@@ -143,34 +155,38 @@ build_intrinsics_test --features c --release
 CARGO_PROFILE_DEV_LTO=true build_intrinsics_test
 CARGO_PROFILE_RELEASE_LTO=true build_intrinsics_test --release
 
-# Ensure no references to any symbols from core
-update_rlib_paths
-for rlib in "${rlib_paths[@]}"; do
-    set +x
-    echo "================================================================"
-    echo "checking $rlib for references to core"
-    echo "================================================================"
-    set -x
+for_each_rlib "${symcheck[@]}" -- check-core-syms
 
-    tmpdir="${CARGO_TARGET_DIR:-target}/tmp"
-    test -d "$tmpdir" || mkdir "$tmpdir"
-    defined="$tmpdir/defined_symbols.txt"
-    undefined="$tmpdir/defined_symbols.txt"
+# # Ensure no references to any symbols from core
+# update_rlib_paths
+# for rlib in "${rlib_paths[@]}"; do
+#     set +x
+#     echo "================================================================"
+#     echo "checking $rlib for references to core"
+#     echo "================================================================"
+#     set -x
 
-    $NM --quiet -U "$rlib" | grep 'T _ZN4core' | awk '{print $3}' | sort | uniq > "$defined"
-    $NM --quiet -u "$rlib" | grep 'U _ZN4core' | awk '{print $2}' | sort | uniq > "$undefined"
-    grep_has_results=0
-    grep -v -F -x -f "$defined" "$undefined" && grep_has_results=1
+#     tmpdir="${CARGO_TARGET_DIR:-target}/tmp"
+#     test -d "$tmpdir" || mkdir "$tmpdir"
+#     defined="$tmpdir/defined_symbols.txt"
+#     undefined="$tmpdir/defined_symbols.txt"
 
-    if [ "$target" = "powerpc64-unknown-linux-gnu" ]; then
-        echo "FIXME: powerpc64 fails these tests"
-    elif [ "$grep_has_results" != 0 ]; then
-        echo "error: found unexpected references to core"
-        exit 1
-    else
-        echo "success; no references to core found"
-    fi
-done
+#     $NM --quiet -U "$rlib" | grep 'T _ZN4core' | awk '{print $3}' | sort | uniq > "$defined"
+#     $NM --quiet -u "$rlib" | grep 'U _ZN4core' | awk '{print $2}' | sort | uniq > "$undefined"
+#     grep_has_results=0
+#     grep -v -F -x -f "$defined" "$undefined" && grep_has_results=1
+
+#     if [ "$target" = "powerpc64-unknown-linux-gnu" ]; then
+#         echo "FIXME: powerpc64 fails these tests"
+#     elif [ "$grep_has_results" != 0 ]; then
+#         echo "error: found unexpected references to core"
+#         exit 1
+#     else
+#         echo "success; no references to core found"
+#     fi
+# done
+
+
 
 # Test libm
 
