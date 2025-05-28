@@ -50,7 +50,7 @@ fi
 # Run a command for each `compiler_builtins` rlib file
 for_each_rlib() {
     shopt -s nullglob
-    if [ -d /builtins-target ]; then
+    if [ -d /builtins-target ] && [ -z "$SUBDIR" ]; then
         rlib_paths=( /builtins-target/"${target}"/debug/deps/libcompiler_builtins-*.rlib )
     else
         rlib_paths=( "${SUBDIR:-}"target/"${target}"/debug/deps/libcompiler_builtins-*.rlib )
