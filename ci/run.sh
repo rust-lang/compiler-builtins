@@ -47,21 +47,27 @@ else
     fi
 fi
 
-
-declare -a rlib_paths
-
-# Set the `rlib_paths` global array to a list of all compiler-builtins rlibs
-update_rlib_paths() {
+# Run a command for each `compiler_builtins` rlib file
+for_each_rlib() {
+    shopt -s nullglob
     if [ -d /builtins-target ]; then
         rlib_paths=( /builtins-target/"${target}"/debug/deps/libcompiler_builtins-*.rlib )
     else
-        rlib_paths=( target/"${target}"/debug/deps/libcompiler_builtins-*.rlib )
+        rlib_paths=( "${SUBDIR:-}"target/"${target}"/debug/deps/libcompiler_builtins-*.rlib )
     fi
+
+    if [ "${#rlib_paths[@]}" -lt 1 ]; then
+        echo "rlibs expected but not found"
+        exit 1
+    fi
+
+    for rlib in "${rlib_paths[@]}"; do
+        "$@" "$rlib"
+    done
 }
 
 # Remove any existing artifacts from previous tests that don't set #![compiler_builtins]
-update_rlib_paths
-rm -f "${rlib_paths[@]}"
+for_each_rlib rm
 
 cargo build -p compiler_builtins --target "$target"
 cargo build -p compiler_builtins --target "$target" --release
@@ -98,9 +104,9 @@ if [[ "$TOOLCHAIN" == *i686-pc-windows-gnu ]]; then
 fi
 
 # Look out for duplicated symbols when we include the compiler-rt (C) implementation
-update_rlib_paths
-for rlib in "${rlib_paths[@]}"; do
+check_duplicate_symbols() {
     set +x
+    rlib="$1"
     echo "================================================================"
     echo "checking $rlib for duplicate symbols"
     echo "================================================================"
@@ -122,9 +128,10 @@ for rlib in "${rlib_paths[@]}"; do
     else
         echo "success; no duplicate symbols found"
     fi
-done
+}
 
-rm -f "${rlib_paths[@]}"
+for_each_rlib check_duplicate_symbols
+for_each_rlib rm
 
 build_intrinsics_test() {
     cargo build \
@@ -144,9 +151,9 @@ CARGO_PROFILE_DEV_LTO=true build_intrinsics_test
 CARGO_PROFILE_RELEASE_LTO=true build_intrinsics_test --release
 
 # Ensure no references to any symbols from core
-update_rlib_paths
-for rlib in "${rlib_paths[@]}"; do
+check_core_symbols() {
     set +x
+    rlib="$1"
     echo "================================================================"
     echo "checking $rlib for references to core"
     echo "================================================================"
@@ -170,7 +177,9 @@ for rlib in "${rlib_paths[@]}"; do
     else
         echo "success; no references to core found"
     fi
-done
+}
+
+SUBDIR="builtins-test-intrinsics/" for_each_rlib check_core_symbols
 
 # Test libm
 
