@@ -307,6 +307,7 @@ jobs:
         include: ${{ fromJSON(needs.calculate_vars.outputs.extensive_matrix).extensive_matrix }}
     env:
       TO_TEST: ${{ matrix.to_test }}
+    if: ${{ matrix.to_test }} # skip if empty
     steps:
       - uses: actions/checkout@v4
         with:
