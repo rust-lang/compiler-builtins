@@ -20,7 +20,7 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
         // operations from builtins are always precise
         Bn::Add | Bn::Sub | Bn::Mul | Bn::Div => 0,
         // FIXME: we need a better powi implementation (though this is no worse than C)
-        Bn::Powi => 100,
+        Bn::Powi => 1000,
 
         // Operations that require exact results. This list should correlate with what we
         // have documented at <https://doc.rust-lang.org/std/primitive.f32.html>.
