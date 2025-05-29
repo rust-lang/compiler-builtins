@@ -13,7 +13,7 @@ macro_rules! basic {
         RustFn: $RustFn:ty,
         RustArgs: $RustArgs:ty,
         RustRet: $RustRet:ty,
-        public: $public:expr,
+        path: $path:path,
         attrs: [$($attr:meta),*],
         extra: [$($extra_tt:tt)*],
         fn_extra: $fn_extra:expr,
@@ -26,7 +26,7 @@ macro_rules! basic {
             type RustFnTy = $RustFn;
             type RustArgsTy = $RustArgs;
             type RustRetTy = $RustRet;
-            const PUBLIC: bool = $public;
+            const PATH: &str = stringify!($path);
             const A: &[&str] = &[$($extra_tt)*];
             fn foo(a: f32) -> f32 {
                 $fn_extra(a)

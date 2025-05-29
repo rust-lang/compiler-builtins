@@ -29,6 +29,7 @@ short-benchmarks = []
 
 [dependencies]
 anyhow = "1.0.98"
+compiler_builtins = { path = "../compiler-builtins", default-features = false, features = ["unstable-public-internals"] }
 # This is not directly used but is required so we can enable `gmp-mpfr-sys/force-cross`.
 gmp-mpfr-sys = { version = "1.6.5", optional = true, default-features = false }
 iai-callgrind = { version = "0.15.2", optional = true }
