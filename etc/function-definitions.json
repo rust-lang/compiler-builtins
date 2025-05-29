@@ -343,6 +343,7 @@
     "fma": {
         "sources": [
             "libm/src/math/arch/aarch64.rs",
+            "libm/src/math/arch/x86/fma.rs",
             "libm/src/math/fma.rs"
         ],
         "type": "f64"
@@ -350,6 +351,7 @@
     "fmaf": {
         "sources": [
             "libm/src/math/arch/aarch64.rs",
+            "libm/src/math/arch/x86/fma.rs",
             "libm/src/math/fma.rs"
         ],
         "type": "f32"
@@ -932,8 +934,8 @@
     "sqrt": {
         "sources": [
             "libm/src/math/arch/aarch64.rs",
-            "libm/src/math/arch/i686.rs",
             "libm/src/math/arch/wasm32.rs",
+            "libm/src/math/arch/x86.rs",
             "libm/src/math/generic/sqrt.rs",
             "libm/src/math/sqrt.rs"
         ],
@@ -942,8 +944,8 @@
     "sqrtf": {
         "sources": [
             "libm/src/math/arch/aarch64.rs",
-            "libm/src/math/arch/i686.rs",
             "libm/src/math/arch/wasm32.rs",
+            "libm/src/math/arch/x86.rs",
             "libm/src/math/generic/sqrt.rs",
             "libm/src/math/sqrt.rs"
         ],

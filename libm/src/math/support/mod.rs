@@ -2,12 +2,17 @@
 pub mod macros;
 mod big;
 mod env;
+// Runtime feature detection requires atomics.
+#[cfg(target_has_atomic = "ptr")]
+pub(crate) mod feature_detect;
 mod float_traits;
 pub mod hex_float;
 mod int_traits;
 
 #[allow(unused_imports)]
 pub use big::{i256, u256};
+#[allow(unused_imports)]
+pub(crate) use cfg_if;
 pub use env::{FpResult, Round, Status};
 #[allow(unused_imports)]
 pub use float_traits::{DFloat, Float, HFloat, IntTy};
