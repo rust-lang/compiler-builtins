@@ -6,7 +6,7 @@ on:
 
 concurrency:
   # Make sure that new pushes cancel running jobs
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
@@ -128,6 +128,7 @@ jobs:
       JOB_HOST_TOOLCHAIN: ${{ matrix.host_toolchain }}
       MAY_SKIP_LIBM_CI: ${{ needs.calculate_vars.outputs.may_skip_libm_ci }}
       RUN_IN_DOCKER: ${{ matrix.os == 'ubuntu-26.04' }}
+      CFLAGS: --std=c17
     steps:
     - name: Print runner information
       run: |
@@ -191,6 +192,27 @@ jobs:
         python3 etc/update-api-list.py --check
         cargo test -p update-api-list
 
+    - uses: msys2/setup-msys2@v2
+      if: matrix.os == 'windows-2025'
+      with:
+        msystem: UCRT64
+        update: true
+        install: diffutils m4 make # mingw-w64-rustup
+
+    - name: Setup windows
+      if: matrix.os == 'windows-2025'
+      shell: msys2 {0}
+      run: |
+        ./ci/run-windows.sh ${{ matrix.target }}
+
+    - name: Run on Windows
+      if: matrix.os == 'windows-2025'
+      shell: msys2 {0}
+      run: |
+        rustc -vV
+        rustup show
+        ./ci/run.sh ${{ matrix.target }}
+
     # Non-linux tests just use our raw script
     - name: Run locally
       if: ${{ env.RUN_IN_DOCKER != 'true' }}
@@ -203,7 +225,9 @@ jobs:
 
     - name: Print test logs if available
       if: always()
-      run: if [ -f "target/test-log.txt" ]; then cat target/test-log.txt; fi
+      run: |
+        if [ -f "target/test-log.txt" ]; then cat target/test-log.txt; fi
+        find . -name 'config.log' -exec cat {} ';'
 
     # Workaround to keep Docker cache smaller
     # https://github.com/docker/build-push-action/issues/252

@@ -15,6 +15,8 @@ if [ "$target" = "i686-pc-windows-gnu" ]; then
     echo "PATH=$PATH" >> "$GITHUB_ENV"
 fi
 
+
+
 # Some runners (native ppc and s390x, self-hosted) don't have all the dependencies
 # we need, so we need to install them.
 
@@ -46,3 +48,6 @@ fi
 rustup update "$channel" --no-self-update
 rustup default "$channel"
 rustup target add "$target"
+
+# TODO
+rustup component add llvm-tools-preview
