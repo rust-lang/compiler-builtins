@@ -104,6 +104,7 @@ jobs:
       BUILD_ONLY: ${{ matrix.build_only }}
       TEST_VERBATIM: ${{ matrix.test_verbatim }}
       MAY_SKIP_LIBM_CI: ${{ needs.calculate_vars.outputs.may_skip_libm_ci }}
+      CFLAGS: --std=c17
     steps:
     - name: Print runner information
       run: uname -a
