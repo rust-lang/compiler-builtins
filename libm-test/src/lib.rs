@@ -2,6 +2,7 @@
 #![cfg_attr(f128_enabled, feature(f128))]
 #![allow(clippy::unusual_byte_groupings)] // sometimes we group by sign_exp_sig
 
+pub mod builtins_wrapper;
 pub mod domain;
 mod f8_impl;
 pub mod generate;

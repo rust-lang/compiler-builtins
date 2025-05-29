@@ -8,13 +8,14 @@ use parse::{Invocation, StructuredInput};
 use proc_macro as pm;
 use proc_macro2::{self as pm2, Span};
 use quote::{ToTokens, quote};
+use shared::OpScope;
 pub(crate) use shared::{ALL_OPERATIONS, FloatTy, MathOpInfo, Ty};
 use syn::spanned::Spanned;
 use syn::visit_mut::VisitMut;
-use syn::{Ident, ItemEnum};
+use syn::{Ident, ItemEnum, PathArguments, PathSegment};
 
 const KNOWN_TYPES: &[&str] = &[
-    "FTy", "CFn", "CArgs", "CRet", "RustFn", "RustArgs", "RustRet", "public",
+    "FTy", "CFn", "CArgs", "CRet", "RustFn", "RustArgs", "RustRet", "path",
 ];
 
 /// Populate an enum with a variant representing function. Names are in upper camel case.
@@ -82,8 +83,8 @@ pub fn base_name_enum(attributes: pm::TokenStream, tokens: pm::TokenStream) -> p
 ///         RustArgs: $RustArgs:ty,
 ///         // The Rust version's return type (e.g. `(f32, f32)`)
 ///         RustRet: $RustRet:ty,
-///         // True if this is part of `libm`'s public API
-///         public: $public:expr,
+///         // True if this is part of `libm`'s path API
+///         path: $path:path,
 ///         // Attributes for the current function, if any
 ///         attrs: [$($attr:meta),*],
 ///         // Extra tokens passed directly (if any)
@@ -162,6 +163,18 @@ fn validate(input: &mut StructuredInput) -> syn::Result<Vec<&'static MathOpInfo>
                 map.insert(Ident::new(op.name, key.span()), val.clone());
             }
         }
+
+        if let Some(k) = map.keys().find(|key| *key == "ALL_BUILTINS") {
+            let key = k.clone();
+            let val = map.remove(&key).unwrap();
+
+            for op in ALL_OPERATIONS
+                .iter()
+                .filter(|op| op.scope == OpScope::BuiltinsPublic)
+            {
+                map.insert(Ident::new(op.name, key.span()), val.clone());
+            }
+        }
     }
 
     // Collect lists of all functions that are provied as macro inputs in various fields (only,
@@ -224,6 +237,10 @@ fn validate(input: &mut StructuredInput) -> syn::Result<Vec<&'static MathOpInfo>
         // Omit f16 and f128 functions if requested
         if input.skip_f16_f128 && (func.float_ty == FloatTy::F16 || func.float_ty == FloatTy::F128)
         {
+            continue;
+        }
+
+        if input.skip_builtins && func.scope == OpScope::BuiltinsPublic {
             continue;
         }
 
@@ -363,7 +380,17 @@ fn expand(input: StructuredInput, fn_list: &[&MathOpInfo]) -> syn::Result<pm2::T
         let c_ret = &func.c_sig.returns;
         let rust_args = &func.rust_sig.args;
         let rust_ret = &func.rust_sig.returns;
-        let public = func.public;
+        let path = syn::Path {
+            leading_colon: None,
+            segments: func
+                .path
+                .split("::")
+                .map(|pseg| PathSegment {
+                    ident: Ident::new(pseg, Span::call_site()),
+                    arguments: PathArguments::None,
+                })
+                .collect(),
+        };
 
         let mut ty_fields = Vec::new();
         for ty in &input.emit_types {
@@ -375,8 +402,8 @@ fn expand(input: StructuredInput, fn_list: &[&MathOpInfo]) -> syn::Result<pm2::T
                 "RustFn" => quote! { RustFn: fn( #(#rust_args),* ,) -> ( #(#rust_ret),* ), },
                 "RustArgs" => quote! { RustArgs: ( #(#rust_args),* ,), },
                 "RustRet" => quote! { RustRet: ( #(#rust_ret),* ), },
-                "public" => quote! { public: #public, },
-                _ => unreachable!("checked in validation"),
+                "path" => quote! { path: #path, },
+                _ => unreachable!("fields should be checked in validation"),
             };
             ty_fields.push(field);
         }
@@ -465,6 +492,8 @@ fn base_name(name: &str) -> &str {
         None => name
             .strip_suffix("f")
             .or_else(|| name.strip_suffix("f16"))
+            .or_else(|| name.strip_suffix("f32"))
+            .or_else(|| name.strip_suffix("f64"))
             .or_else(|| name.strip_suffix("f128"))
             .unwrap_or(name),
     }

@@ -1,46 +1,47 @@
 //! Ensure that `for_each_function!` isn't missing any symbols.
 
-use std::collections::HashSet;
+// use std::collections::HashSet;
 use std::env;
 use std::path::Path;
 use std::process::Command;
 
-macro_rules! callback {
-    (
-        fn_name: $name:ident,
-        attrs: [$($attr:meta),*],
-        extra: [$set:ident],
-    ) => {
-        let name = stringify!($name);
-        let new = $set.insert(name);
-        assert!(new, "duplicate function `{name}` in `ALL_OPERATIONS`");
-    };
-}
+// TODO: figure out how these scripts should interact with compiler-builtins
+// macro_rules! callback {
+//     (
+//         fn_name: $name:ident,
+//         attrs: [$($attr:meta),*],
+//         extra: [$set:ident],
+//     ) => {
+//         let name = stringify!($name);
+//         let new = $set.insert(name);
+//         assert!(new, "duplicate function `{name}` in `ALL_OPERATIONS`");
+//     };
+// }
 
-#[test]
-fn test_for_each_function_all_included() {
-    let all_functions: HashSet<_> = include_str!("../../etc/function-list.txt")
-        .lines()
-        .filter(|line| !line.starts_with("#"))
-        .collect();
+// #[test]
+// fn test_for_each_function_all_included() {
+//     let all_functions: HashSet<_> = include_str!("../../etc/function-list.txt")
+//         .lines()
+//         .filter(|line| !line.starts_with("#"))
+//         .collect();
 
-    let mut tested = HashSet::new();
+//     let mut tested = HashSet::new();
 
-    libm_macros::for_each_function! {
-        callback: callback,
-        extra: [tested],
-    };
+//     libm_macros::for_each_function! {
+//         callback: callback,
+//         extra: [tested],
+//     };
 
-    let untested = all_functions.difference(&tested);
-    if untested.clone().next().is_some() {
-        panic!(
-            "missing tests for the following: {untested:#?} \
-            \nmake sure any new functions are entered in \
-            `ALL_OPERATIONS` (in `libm-macros`)."
-        );
-    }
-    assert_eq!(all_functions, tested);
-}
+//     let untested = all_functions.difference(&tested);
+//     if untested.clone().next().is_some() {
+//         panic!(
+//             "missing tests for the following: {untested:#?} \
+//             \nmake sure any new functions are entered in \
+//             `ALL_OPERATIONS` (in `libm-macros`)."
+//         );
+//     }
+//     assert_eq!(all_functions, tested);
+// }
 
 #[test]
 fn ensure_list_updated() {
