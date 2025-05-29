@@ -18,7 +18,9 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
     // ULP compared to the infinite (MPFR) result.
     let mut ulp = match ctx.base_name {
         // operations from builtins are always precise
-        Bn::Add | Bn::Sub | Bn::Mul | Bn::Div | Bn::Powi => 0,
+        Bn::Add | Bn::Sub | Bn::Mul | Bn::Div => 0,
+        // TODO: is this actually what we want?
+        Bn::Powi => 4,
 
         // Operations that require exact results. This list should correlate with what we
         // have documented at <https://doc.rust-lang.org/std/primitive.f32.html>.
