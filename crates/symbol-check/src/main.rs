@@ -9,8 +9,8 @@ use std::process::{Command, Stdio};
 
 use object::read::archive::ArchiveFile;
 use object::{
-    File as ObjFile, Object, ObjectSection, ObjectSymbol, Result as ObjResult, Symbol, SymbolKind,
-    SymbolScope,
+    BinaryFormat, File as ObjFile, Object, ObjectSection, ObjectSymbol, Result as ObjResult,
+    SectionFlags, Symbol, SymbolKind, SymbolScope, elf,
 };
 use serde_json::Value;
 
@@ -77,6 +77,7 @@ fn check_paths<P: AsRef<Path>>(paths: &[P]) {
 
         verify_no_duplicates(&archive);
         verify_core_symbols(&archive);
+        verify_no_exec_stack(&archive);
     }
 }
 
@@ -299,6 +300,66 @@ fn verify_core_symbols(archive: &BinFile) {
     println!("    success: no undefined references to core found");
 }
 
+/// Check that all object files contain a section named `.note.GNU-stack`, indicating a
+/// nonexecutable stack.
+///
+/// Paraphrased from <https://www.man7.org/linux/man-pages/man1/ld.1.html>:
+///
+/// - A `.note.GNU-stack` section with the exe flag means this needs an executable stack
+/// - A `.note.GNU-stack` section without the exe flag means there is no executable stack needed
+/// - Without the section, behavior is target-specific and on some targets means an executable
+///   stack is required.
+///
+/// Now says
+/// deprecated <https://sourceware.org/git/gitweb.cgi?p=binutils-gdb.git;h=0d38576a34ec64a1b4500c9277a8e9d0f07e6774>.
+fn verify_no_exec_stack(archive: &BinFile) {
+    let mut problem_objfiles = Vec::new();
+
+    archive.for_each_object(|obj, obj_path| {
+        if obj_requires_exe_stack(&obj) {
+            problem_objfiles.push(obj_path.to_owned());
+        }
+    });
+
+    if !problem_objfiles.is_empty() {
+        panic!("the following archive members require an executable stack: {problem_objfiles:#?}");
+    }
+
+    println!("    success: no writeable-executable sections found");
+}
+
+fn obj_requires_exe_stack(obj: &ObjFile) -> bool {
+    // Files other than elf likely do not use the same convention.
+    if obj.format() != BinaryFormat::Elf {
+        return false;
+    }
+
+    let mut has_exe_sections = false;
+    for sec in obj.sections() {
+        let SectionFlags::Elf { sh_flags } = sec.flags() else {
+            unreachable!("only elf files are being checked");
+        };
+
+        let exe = (sh_flags & elf::SHF_EXECINSTR as u64) != 0;
+
+        // If the magic section is present, its exe bit tells us whether or not the object
+        // file requires an executable stack.
+        if sec.name().unwrap_or_default() == ".note.GNU-stack" {
+            return exe;
+        }
+
+        // Otherwise, just keep track of whether or not we have exeuctable sections
+        has_exe_sections |= exe;
+    }
+
+    // Ignore object files that have no executable sections, like rmeta
+    if !has_exe_sections {
+        return false;
+    }
+
+    true
+}
+
 /// Thin wrapper for owning data used by `object`.
 struct BinFile {
     path: PathBuf,
@@ -359,4 +420,44 @@ impl BinFile {
             obj.symbols().for_each(|sym| f(sym, &obj, obj_path));
         });
     }
+}
+
+/// Check with a binary that has no `.note.GNU-stack` section, indicating platform-default stack
+/// writeability.
+#[test]
+fn check_no_gnu_stack_obj() {
+    // Should be supported on all Unix platforms
+    let p = env!("NO_GNU_STACK_OBJ");
+    let f = fs::read(p).unwrap();
+    let obj = ObjFile::parse(f.as_slice()).unwrap();
+    dbg!(
+        obj.format(),
+        obj.architecture(),
+        obj.sub_architecture(),
+        obj.is_64()
+    );
+    let has_exe_stack = obj_requires_exe_stack(&obj);
+
+    let obj_target = env!("OBJ_TARGET");
+    if obj_target.contains("-windows-") || obj_target.contains("-apple-") {
+        // Non-ELF targets don't have executable stacks marked in the same way
+        assert!(!has_exe_stack);
+    } else {
+        assert!(has_exe_stack);
+    }
+}
+
+#[test]
+#[cfg_attr(not(target_env = "gnu"), ignore = "requires a gnu toolchain to build")]
+fn check_obj() {
+    let p = option_env!("HAS_EXE_STACK_OBJ").expect("has_exe_stack.o not present");
+    let f = fs::read(p).unwrap();
+    let obj = ObjFile::parse(f.as_slice()).unwrap();
+    dbg!(
+        obj.format(),
+        obj.architecture(),
+        obj.sub_architecture(),
+        obj.is_64()
+    );
+    assert!(obj_requires_exe_stack(&obj));
 }
