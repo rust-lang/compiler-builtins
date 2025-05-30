@@ -7,8 +7,12 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
+use object::elf::SHF_EXECINSTR;
 use object::read::archive::{ArchiveFile, ArchiveMember};
-use object::{Object, ObjectSymbol, Symbol, SymbolKind, SymbolScope, SymbolSection};
+use object::{
+    Object, ObjectSection, ObjectSymbol, SectionFlags, Symbol, SymbolKind, SymbolScope,
+    SymbolSection,
+};
 use serde_json::Value;
 
 const CHECK_LIBRARIES: &[&str] = &["compiler_builtins", "builtins_test_intrinsics"];
@@ -32,8 +36,11 @@ fn main() {
             let paths = exec_cargo_with_args(rest);
             for path in paths {
                 println!("Checking {}", path.display());
-                verify_no_duplicates(&path);
-                verify_core_symbols(&path);
+                let archive = Archive::from_path(&path);
+
+                verify_no_duplicates(&archive);
+                verify_core_symbols(&archive);
+                verify_no_exec_stack(&archive);
             }
         }
         _ => {
@@ -133,12 +140,12 @@ impl SymInfo {
 /// Note that this will also locate cases where a symbol is weakly defined in more than one place.
 /// Technically there are no linker errors that will come from this, but it keeps our binary more
 /// straightforward and saves some distribution size.
-fn verify_no_duplicates(path: &Path) {
+fn verify_no_duplicates(archive: &Archive) {
     let mut syms = BTreeMap::<String, SymInfo>::new();
     let mut dups = Vec::new();
     let mut found_any = false;
 
-    for_each_symbol(path, |symbol, member| {
+    archive.for_each_symbol(|symbol, member| {
         // Only check defined globals
         if !symbol.is_global() || symbol.is_undefined() {
             return;
@@ -185,12 +192,12 @@ fn verify_no_duplicates(path: &Path) {
 }
 
 /// Ensure that there are no references to symbols from `core` that aren't also (somehow) defined.
-fn verify_core_symbols(path: &Path) {
+fn verify_core_symbols(archive: &Archive) {
     let mut defined = BTreeSet::new();
     let mut undefined = Vec::new();
     let mut has_symbols = false;
 
-    for_each_symbol(path, |symbol, member| {
+    archive.for_each_symbol(|symbol, member| {
         has_symbols = true;
 
         // Find only symbols from `core`
@@ -219,14 +226,84 @@ fn verify_core_symbols(path: &Path) {
     println!("    success: no undefined references to core found");
 }
 
-/// For a given archive path, do something with each symbol.
-fn for_each_symbol(path: &Path, mut f: impl FnMut(Symbol, &ArchiveMember)) {
-    let data = fs::read(path).expect("reading file failed");
-    let archive = ArchiveFile::parse(data.as_slice()).expect("archive parse failed");
-    for member in archive.members() {
-        let member = member.expect("failed to access member");
-        let obj_data = member.data(&*data).expect("failed to access object");
-        let obj = object::File::parse(obj_data).expect("failed to parse object");
-        obj.symbols().for_each(|sym| f(sym, &member));
+/// Check that all object files contain a section named `.note.GNU-stack`, indicating a
+/// nonexecutable stack.
+fn verify_no_exec_stack(archive: &Archive) {
+    let mut problem_objfiles = Vec::new();
+
+    archive.for_each_object(|obj, member| {
+        // Files other than elf likely do not use the same convention.
+        if !matches!(obj, object::File::Elf32(_) | object::File::Elf64(_)) {
+            return;
+        }
+
+        let mut has_exe_sections = false;
+        for sec in obj.sections() {
+            let SectionFlags::Elf { sh_flags } = sec.flags() else {
+                unreachable!("only elf files are being checked");
+            };
+
+            let exe = (sh_flags & SHF_EXECINSTR as u64) != 0;
+            has_exe_sections |= exe;
+
+            // Located a GNU-stack section, nothing else to do
+            if sec.name().unwrap_or_default() == ".note.GNU-stack" {
+                return;
+            }
+        }
+
+        // Ignore object files that have no executable sections, like rmeta
+        if !has_exe_sections {
+            return;
+        }
+
+        problem_objfiles.push(String::from_utf8_lossy(member.name()).into_owned());
+    });
+
+    if !problem_objfiles.is_empty() {
+        panic!(
+            "the following archive members have executable sections but no \
+            `.note.GNU-stack` section: {problem_objfiles:#?}"
+        );
+    }
+
+    println!("    success: no writeable-executable sections found");
+}
+
+/// Thin wrapper for owning data used by `object`.
+struct Archive {
+    data: Vec<u8>,
+}
+
+impl Archive {
+    fn from_path(path: &Path) -> Self {
+        Self {
+            data: fs::read(path).expect("reading file failed"),
+        }
+    }
+
+    fn file(&self) -> ArchiveFile {
+        ArchiveFile::parse(self.data.as_slice()).expect("archive parse failed")
+    }
+
+    /// For a given archive, do something with each object file.
+    fn for_each_object(&self, mut f: impl FnMut(object::File, &ArchiveMember)) {
+        let archive = self.file();
+
+        for member in archive.members() {
+            let member = member.expect("failed to access member");
+            let obj_data = member
+                .data(self.data.as_slice())
+                .expect("failed to access object");
+            let obj = object::File::parse(obj_data).expect("failed to parse object");
+            f(obj, &member);
+        }
+    }
+
+    /// For a given archive, do something with each symbol.
+    fn for_each_symbol(&self, mut f: impl FnMut(Symbol, &ArchiveMember)) {
+        self.for_each_object(|obj, member| {
+            obj.symbols().for_each(|sym| f(sym, member));
+        });
     }
 }
