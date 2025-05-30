@@ -207,7 +207,7 @@ case "$target" in
     *thumb*) mflags+=(--exclude musl-math-sys) ;;
 
     # We can build musl on MinGW but running tests gets a stack overflow
-    *windows-gnu*) ;;
+    *windows-gnu*) mflags+=(--exclude musl-math-sys) ;;
     # FIXME(#309): LE PPC crashes calling the musl version of some functions. It
     # seems like a qemu bug but should be investigated further at some point.
     # See <https://github.com/rust-lang/libm/issues/309>.
@@ -223,7 +223,7 @@ case "$target" in
     # MSVC cannot link MPFR
     *windows-msvc*) ;;
     # Targets that aren't cross compiled in CI work fine
-    i686-pc-windows-gnu) mflags+=(--features libm-test/build-mpfr --features gmp-mpfr-sys/force-cross) ;;
+    i686-pc-windows-gnu) mflags+=(--features libm-test/build-mpfr --features gmp-mpfr-sys/force-cross,gmp-mpfr-sys/c-no-tests) ;;
     *windows-gnu*) mflags+=(--features libm-test/build-mpfr) ;;
     aarch64*apple*) mflags+=(--features libm-test/build-mpfr) ;;
     aarch64*linux*) mflags+=(--features libm-test/build-mpfr) ;;
