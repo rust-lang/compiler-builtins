@@ -10,8 +10,8 @@ use std::process::{Command, Stdio};
 use object::elf::SHF_EXECINSTR;
 use object::read::archive::{ArchiveFile, ArchiveMember};
 use object::{
-    Object, ObjectSection, ObjectSymbol, SectionFlags, Symbol, SymbolKind, SymbolScope,
-    SymbolSection,
+    File as ObjFile, Object, ObjectSection, ObjectSymbol, SectionFlags, Symbol, SymbolKind,
+    SymbolScope, SymbolSection,
 };
 use serde_json::Value;
 
@@ -32,16 +32,11 @@ fn main() {
     let args_ref = args.iter().map(String::as_str).collect::<Vec<_>>();
 
     match &args_ref[1..] {
-        ["build-and-check", rest @ ..] if !rest.is_empty() => {
-            let paths = exec_cargo_with_args(rest);
-            for path in paths {
-                println!("Checking {}", path.display());
-                let archive = Archive::from_path(&path);
-
-                verify_no_duplicates(&archive);
-                verify_core_symbols(&archive);
-                verify_no_exec_stack(&archive);
-            }
+        ["build-and-check", "--target", target, args @ ..] if !args.is_empty() => {
+            run_build_and_check(Some(target), args);
+        }
+        ["build-and-check", args @ ..] if !args.is_empty() => {
+            run_build_and_check(None, args);
         }
         _ => {
             println!("{USAGE}");
@@ -50,12 +45,43 @@ fn main() {
     }
 }
 
+fn run_build_and_check(target: Option<&str>, args: &[&str]) {
+    let paths = exec_cargo_with_args(target, args);
+    for path in paths {
+        println!("Checking {}", path.display());
+        let archive = Archive::from_path(&path);
+
+        verify_no_duplicates(&archive);
+        verify_core_symbols(&archive);
+        verify_no_exec_stack(&archive);
+    }
+}
+
+fn host_target() -> String {
+    let out = Command::new("rustc")
+        .arg("--version")
+        .arg("--verbose")
+        .output()
+        .unwrap();
+    assert!(out.status.success());
+    let out = String::from_utf8(out.stdout).unwrap();
+    out.lines()
+        .find_map(|s| s.strip_prefix("host: "))
+        .unwrap()
+        .to_owned()
+}
+
 /// Run `cargo build` with the provided additional arguments, collecting the list of created
 /// libraries.
-fn exec_cargo_with_args(args: &[&str]) -> Vec<PathBuf> {
+fn exec_cargo_with_args(target: Option<&str>, args: &[&str]) -> Vec<PathBuf> {
+    let mut host = String::new();
+    let target = target.unwrap_or_else(|| {
+        host = host_target();
+        host.as_str()
+    });
+
     let mut cmd = Command::new("cargo");
-    cmd.arg("build")
-        .arg("--message-format=json")
+    cmd.args(["build", "--target", &target, "--message-format=json"])
         .args(args)
         .stdout(Stdio::piped());
 
@@ -232,32 +258,9 @@ fn verify_no_exec_stack(archive: &Archive) {
     let mut problem_objfiles = Vec::new();
 
     archive.for_each_object(|obj, member| {
-        // Files other than elf likely do not use the same convention.
-        if !matches!(obj, object::File::Elf32(_) | object::File::Elf64(_)) {
-            return;
+        if obj_has_exe_stack(&obj) {
+            problem_objfiles.push(String::from_utf8_lossy(member.name()).into_owned());
         }
-
-        let mut has_exe_sections = false;
-        for sec in obj.sections() {
-            let SectionFlags::Elf { sh_flags } = sec.flags() else {
-                unreachable!("only elf files are being checked");
-            };
-
-            let exe = (sh_flags & SHF_EXECINSTR as u64) != 0;
-            has_exe_sections |= exe;
-
-            // Located a GNU-stack section, nothing else to do
-            if sec.name().unwrap_or_default() == ".note.GNU-stack" {
-                return;
-            }
-        }
-
-        // Ignore object files that have no executable sections, like rmeta
-        if !has_exe_sections {
-            return;
-        }
-
-        problem_objfiles.push(String::from_utf8_lossy(member.name()).into_owned());
     });
 
     if !problem_objfiles.is_empty() {
@@ -268,6 +271,35 @@ fn verify_no_exec_stack(archive: &Archive) {
     }
 
     println!("    success: no writeable-executable sections found");
+}
+
+fn obj_has_exe_stack(obj: &ObjFile) -> bool {
+    // Files other than elf likely do not use the same convention.
+    if !matches!(obj, ObjFile::Elf32(_) | ObjFile::Elf64(_)) {
+        return false;
+    }
+
+    let mut has_exe_sections = false;
+    for sec in obj.sections() {
+        let SectionFlags::Elf { sh_flags } = sec.flags() else {
+            unreachable!("only elf files are being checked");
+        };
+
+        let exe = (sh_flags & SHF_EXECINSTR as u64) != 0;
+        has_exe_sections |= exe;
+
+        // Located a GNU-stack section, nothing else to do
+        if sec.name().unwrap_or_default() == ".note.GNU-stack" {
+            return false;
+        }
+    }
+
+    // Ignore object files that have no executable sections, like rmeta
+    if !has_exe_sections {
+        return false;
+    }
+
+    true
 }
 
 /// Thin wrapper for owning data used by `object`.
@@ -287,7 +319,7 @@ impl Archive {
     }
 
     /// For a given archive, do something with each object file.
-    fn for_each_object(&self, mut f: impl FnMut(object::File, &ArchiveMember)) {
+    fn for_each_object(&self, mut f: impl FnMut(ObjFile, &ArchiveMember)) {
         let archive = self.file();
 
         for member in archive.members() {
@@ -295,7 +327,7 @@ impl Archive {
             let obj_data = member
                 .data(self.data.as_slice())
                 .expect("failed to access object");
-            let obj = object::File::parse(obj_data).expect("failed to parse object");
+            let obj = ObjFile::parse(obj_data).expect("failed to parse object");
             f(obj, &member);
         }
     }
@@ -306,4 +338,15 @@ impl Archive {
             obj.symbols().for_each(|sym| f(sym, member));
         });
     }
+}
+
+#[test]
+fn check_obj() {
+    let Some(p) = option_env!("HAS_WX_OBJ") else {
+        return;
+    };
+
+    let f = fs::read(p).unwrap();
+    let obj = ObjFile::parse(f.as_slice()).unwrap();
+    assert!(obj_has_exe_stack(&obj));
 }
