@@ -41,84 +41,84 @@ unsafe fn read_usize_unaligned(x: *const usize) -> usize {
     usize::from_ne_bytes(x_read)
 }
 
-/// Loads a `T`-sized chunk from `src` into `dst` at offset `offset`, if that does not exceed
-/// `load_sz`. The offset pointers must both be `T`-aligned. Returns the new offset, advanced by the
-/// chunk size if a load happened.
-#[cfg(not(feature = "mem-unaligned"))]
 #[inline(always)]
-unsafe fn load_chunk_aligned<T: Copy>(
-    src: *const usize,
-    dst: *mut usize,
-    load_sz: usize,
-    offset: usize,
-) -> usize {
-    let chunk_sz = core::mem::size_of::<T>();
-    if (load_sz & chunk_sz) != 0 {
-        *dst.wrapping_byte_add(offset).cast::<T>() = *src.wrapping_byte_add(offset).cast::<T>();
-        offset | chunk_sz
-    } else {
-        offset
+unsafe fn copy_forward_bytes(mut dest: *mut u8, mut src: *const u8, n: usize) {
+    let dest_end = dest.wrapping_add(n);
+    while dest < dest_end {
+        *dest = *src;
+        dest = dest.wrapping_add(1);
+        src = src.wrapping_add(1);
     }
 }
 
-/// Load `load_sz` many bytes from `src`, which must be usize-aligned. Acts as if we did a `usize`
-/// read with the out-of-bounds part filled with 0s.
-/// `load_sz` be strictly less than `WORD_SIZE`.
+/// Load `load_sz` many bytes from `src`, which must be usize-aligned.
+/// `load_sz` must be strictly less than `WORD_SIZE`.
+///
+/// The remaining bytes are filled non-deterministically.
 #[cfg(not(feature = "mem-unaligned"))]
 #[inline(always)]
 unsafe fn load_aligned_partial(src: *const usize, load_sz: usize) -> usize {
     debug_assert!(load_sz < WORD_SIZE);
-    // We can read up to 7 bytes here, which is enough for WORD_SIZE of 8
-    // (since `load_sz < WORD_SIZE`).
-    const { assert!(WORD_SIZE <= 8) };
+    debug_assert!(src.addr() % WORD_SIZE == 0);
 
-    let mut i = 0;
-    let mut out = 0usize;
-    // We load in decreasing order, so the pointers remain sufficiently aligned for the next step.
-    i = load_chunk_aligned::<u32>(src, &raw mut out, load_sz, i);
-    i = load_chunk_aligned::<u16>(src, &raw mut out, load_sz, i);
-    i = load_chunk_aligned::<u8>(src, &raw mut out, load_sz, i);
-    debug_assert!(i == load_sz);
+    let mut out: usize;
+    core::cfg_match! {
+        // We don't need an x86 path here as `feature = "mem-unaligned"` is always set there.
+        all(not(miri), any(target_arch = "arm", target_arch = "aarch64", target_arch = "arm64ec")) => {
+            core::arch::asm!(
+                "ldr {out}, [{src}]",
+                src = in(reg) src,
+                out = lateout(reg) out,
+                options(nostack, readonly, preserves_flags),
+            );
+        }
+        _ => {
+            out = 0;
+            copy_forward_bytes(&raw mut out as *mut u8, src as *mut u8, load_sz);
+        }
+
+    }
+
     out
 }
 
 /// Load `load_sz` many bytes from `src.wrapping_byte_add(WORD_SIZE - load_sz)`. `src` must be
-/// `usize`-aligned. The bytes are returned as the *last* bytes of the return value, i.e., this acts
-/// as if we had done a `usize` read from `src`, with the out-of-bounds part filled with 0s.
-/// `load_sz` be strictly less than `WORD_SIZE`.
+/// `usize`-aligned. `load_sz` must be strictly less than `WORD_SIZE`.
+///
+/// The bytes are returned as the *last* bytes of the return value, i.e., this acts as if we had
+/// done a `usize` read from `src`, with the out-of-bounds part filled non-deterministically.
 #[cfg(not(feature = "mem-unaligned"))]
 #[inline(always)]
 unsafe fn load_aligned_end_partial(src: *const usize, load_sz: usize) -> usize {
     debug_assert!(load_sz < WORD_SIZE);
-    // We can read up to 7 bytes here, which is enough for WORD_SIZE of 8
-    // (since `load_sz < WORD_SIZE`).
-    const { assert!(WORD_SIZE <= 8) };
+    debug_assert!(src.addr() % WORD_SIZE == 0);
 
-    let mut i = 0;
-    let mut out = 0usize;
-    // Obtain pointers pointing to the beginning of the range we want to load.
-    let src_shifted = src.wrapping_byte_add(WORD_SIZE - load_sz);
-    let out_shifted = (&raw mut out).wrapping_byte_add(WORD_SIZE - load_sz);
-    // We load in increasing order, so by the time we reach `u16` things are 2-aligned etc.
-    i = load_chunk_aligned::<u8>(src_shifted, out_shifted, load_sz, i);
-    i = load_chunk_aligned::<u16>(src_shifted, out_shifted, load_sz, i);
-    i = load_chunk_aligned::<u32>(src_shifted, out_shifted, load_sz, i);
-    debug_assert!(i == load_sz);
+    let mut out: usize;
+    core::cfg_match! {
+        // We don't need an x86 path here as `feature = "mem-unaligned"` is always set there.
+        all(not(miri), any(target_arch = "arm", target_arch = "aarch64", target_arch = "arm64ec")) => {
+            core::arch::asm!(
+                "ldr {out}, [{src}]",
+                src = in(reg) src,
+                out = lateout(reg) out,
+                options(nostack, readonly, preserves_flags),
+            );
+        }
+        _ => {
+            out = 0;
+            // Obtain pointers pointing to the beginning of the range we want to load.
+            let src_shifted = src.wrapping_byte_add(WORD_SIZE - load_sz);
+            let out_shifted = (&raw mut out).wrapping_byte_add(WORD_SIZE - load_sz);
+            copy_forward_bytes(out_shifted as *mut u8, src_shifted as *mut u8, load_sz);
+        }
+
+    }
+
     out
 }
 
 #[inline(always)]
 pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, mut n: usize) {
-    #[inline(always)]
-    unsafe fn copy_forward_bytes(mut dest: *mut u8, mut src: *const u8, n: usize) {
-        let dest_end = dest.wrapping_add(n);
-        while dest < dest_end {
-            *dest = *src;
-            dest = dest.wrapping_add(1);
-            src = src.wrapping_add(1);
-        }
-    }
-
     #[inline(always)]
     unsafe fn copy_forward_aligned_words(dest: *mut u8, src: *const u8, n: usize) {
         let mut dest_usize = dest as *mut usize;
@@ -142,6 +142,7 @@ pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, mut n: usize) 
 
         let mut dest_usize = dest as *mut usize;
         let dest_end = dest.wrapping_add(n) as *mut usize;
+        let dest_end = dest_end.wrapping_sub(1); // the last loop iteration is handled separately
 
         // Calculate the misalignment offset and shift needed to reassemble value.
         // Since `src` is definitely not aligned, `offset` is in the range 1..WORD_SIZE.
@@ -152,7 +153,7 @@ pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, mut n: usize) 
         let mut src_aligned = src.wrapping_byte_sub(offset) as *mut usize;
         let mut prev_word = load_aligned_end_partial(src_aligned, WORD_SIZE - offset);
 
-        while dest_usize.wrapping_add(1) < dest_end {
+        while dest_usize < dest_end {
             src_aligned = src_aligned.wrapping_add(1);
             let cur_word = *src_aligned;
             let reassembled = if cfg!(target_endian = "little") {
@@ -257,6 +258,7 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, mut n: usize) {
 
         let mut dest_usize = dest as *mut usize;
         let dest_start = dest.wrapping_sub(n) as *mut usize; // we're moving towards the start
+        let dest_start = dest_start.wrapping_add(1); // the last loop iteration is handled separately
 
         // Calculate the misalignment offset and shift needed to reassemble value.
         // Since `src` is definitely not aligned, `offset` is in the range 1..WORD_SIZE.
@@ -267,7 +269,7 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, mut n: usize) {
         let mut src_aligned = src.wrapping_byte_sub(offset) as *mut usize;
         let mut prev_word = load_aligned_partial(src_aligned, offset);
 
-        while dest_start.wrapping_add(1) < dest_usize {
+        while dest_start < dest_usize {
             src_aligned = src_aligned.wrapping_sub(1);
             let cur_word = *src_aligned;
             let reassembled = if cfg!(target_endian = "little") {
