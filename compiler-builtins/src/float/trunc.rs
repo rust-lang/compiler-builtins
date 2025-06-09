@@ -24,7 +24,7 @@ where
     let round_mask = (src_one << (F::SIG_BITS - R::SIG_BITS)) - src_one;
     let halfway = src_one << (F::SIG_BITS - R::SIG_BITS - 1);
     let src_qnan = src_one << (F::SIG_BITS - 1);
-    let src_nan_code = src_qnan - src_one;
+    let src_nan_code = (src_qnan << 1) - src_one;
 
     let dst_zero = R::Int::ZERO;
     let dst_one = R::Int::ONE;
@@ -38,7 +38,7 @@ where
     let overflow: F::Int = overflow_exponent << F::SIG_BITS;
 
     let dst_qnan = R::Int::ONE << (R::SIG_BITS - 1);
-    let dst_nan_code = dst_qnan - dst_one;
+    let dst_nan_code = (dst_qnan << 1) - dst_one;
 
     let sig_bits_delta = F::SIG_BITS - R::SIG_BITS;
     // Break a into a sign and representation of the absolute value.
@@ -71,7 +71,6 @@ where
         // Cast before shifting to prevent overflow.
         let dst_inf_exp: R::Int = dst_inf_exp.cast();
         abs_result = dst_inf_exp << R::SIG_BITS;
-        abs_result |= dst_qnan;
         abs_result |= dst_nan_code & ((a_abs & src_nan_code) >> (F::SIG_BITS - R::SIG_BITS)).cast();
     } else if a_abs >= overflow {
         // a overflows to infinity.
