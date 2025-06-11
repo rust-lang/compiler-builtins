@@ -285,36 +285,43 @@ macro_rules! foreach_bytes {
         foreach_ordering!( $macro, 8, ${concat(__aarch64_, $name, "8")} );
     };
 }
+#[macro_export]
 macro_rules! foreach_cas {
     ($macro:path) => {
         foreach_bytes!($macro, cas);
     };
 }
+#[macro_export]
 macro_rules! foreach_cas16 {
     ($macro:path) => {
         foreach_ordering!($macro, __aarch64_cas16);
     };
 }
+#[macro_export]
 macro_rules! foreach_swp {
     ($macro:path) => {
         foreach_bytes!($macro, swp);
     };
 }
+#[macro_export]
 macro_rules! foreach_ldadd {
     ($macro:path) => {
         foreach_bytes!($macro, ldadd);
     };
 }
+#[macro_export]
 macro_rules! foreach_ldclr {
     ($macro:path) => {
         foreach_bytes!($macro, ldclr);
     };
 }
+#[macro_export]
 macro_rules! foreach_ldeor {
     ($macro:path) => {
         foreach_bytes!($macro, ldeor);
     };
 }
+#[macro_export]
 macro_rules! foreach_ldset {
     ($macro:path) => {
         foreach_bytes!($macro, ldset);
