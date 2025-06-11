@@ -287,12 +287,16 @@ macro_rules! foreach_bytes {
         foreach_ordering!( $macro, 8, ${concat(__aarch64_, $name, "8")} );
     };
 }
+
+/// Generate different macros for cas/swp/add/clr/eor/set so that we can test them separately.
 #[macro_export]
 macro_rules! foreach_cas {
     ($macro:path) => {
         foreach_bytes!($macro, cas);
     };
 }
+
+/// Only CAS supports 16 bytes, and it has a different implementation that uses a different macro.
 #[macro_export]
 macro_rules! foreach_cas16 {
     ($macro:path) => {
