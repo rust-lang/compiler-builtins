@@ -262,6 +262,7 @@ macro_rules! or {
     };
 }
 
+#[macro_export]
 macro_rules! foreach_ordering {
     ($macro:path, $bytes:tt, $name:ident) => {
         $macro!( Relaxed, $bytes, ${concat($name,_relax)} );
@@ -277,6 +278,7 @@ macro_rules! foreach_ordering {
     };
 }
 
+#[macro_export]
 macro_rules! foreach_bytes {
     ($macro:path, $name:ident) => {
         foreach_ordering!( $macro, 1, ${concat(__aarch64_, $name, "1")} );
