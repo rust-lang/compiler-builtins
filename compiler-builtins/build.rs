@@ -82,7 +82,6 @@ fn main() {
     {
         println!("cargo:rustc-cfg=kernel_user_helpers")
     }
-
 }
 
 /// Run configuration for `libm` since it is included directly.
