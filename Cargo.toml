@@ -10,7 +10,7 @@ members = [
     "crates/symbol-check",
     "crates/util",
     "libm",
-    "libm-test",
+    "libm-test"
 ]
 
 default-members = [
@@ -26,6 +26,7 @@ exclude = [
     # and `mangled-names` disabled, which is the opposite of what is needed for
     # other tests, so it makes sense to keep it out of the workspace.
     "builtins-test-intrinsics",
+    "rustc-std-workspace-compiler-builtins",
 ]
 
 [profile.release]
