@@ -10,6 +10,8 @@ unsafe extern "C" {
 
 // SAFETY: these are defined in compiler-builtins
 unsafe extern "custom" {
+    // AAPCS is not always the correct ABI for these intrinsics, but we only use this to
+    // forward another `__aeabi_` call so it doesn't matter.
     fn __aeabi_idiv();
 }
 
