@@ -21,7 +21,7 @@ intrinsics! {
     // custom calling convention which can't be implemented using a normal Rust function.
     #[unsafe(naked)]
     #[cfg(not(target_env = "msvc"))]
-    pub unsafe extern "C" fn __aeabi_uidivmod() {
+    pub unsafe extern "custom" fn __aeabi_uidivmod() {
         core::arch::naked_asm!(
             "push {{lr}}",
             "sub sp, sp, #4",
@@ -35,7 +35,7 @@ intrinsics! {
     }
 
     #[unsafe(naked)]
-    pub unsafe extern "C" fn __aeabi_uldivmod() {
+    pub unsafe extern "custom" fn __aeabi_uldivmod() {
         core::arch::naked_asm!(
             "push {{r4, lr}}",
             "sub sp, sp, #16",
@@ -51,7 +51,7 @@ intrinsics! {
     }
 
     #[unsafe(naked)]
-    pub unsafe extern "C" fn __aeabi_idivmod() {
+    pub unsafe extern "custom" fn __aeabi_idivmod() {
         core::arch::naked_asm!(
             "push {{r0, r1, r4, lr}}",
             "bl {trampoline}",
@@ -64,7 +64,7 @@ intrinsics! {
     }
 
     #[unsafe(naked)]
-    pub unsafe extern "C" fn __aeabi_ldivmod() {
+    pub unsafe extern "custom" fn __aeabi_ldivmod() {
         core::arch::naked_asm!(
             "push {{r4, lr}}",
             "sub sp, sp, #16",
