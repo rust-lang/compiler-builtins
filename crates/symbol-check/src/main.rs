@@ -7,9 +7,11 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
+use object::elf::SHF_EXECINSTR;
 use object::read::archive::{ArchiveFile, ArchiveMember};
 use object::{
-    File as ObjFile, Object, ObjectSymbol, Symbol, SymbolKind, SymbolScope, SymbolSection,
+    File as ObjFile, Object, ObjectSection, ObjectSymbol, SectionFlags, Symbol, SymbolKind,
+    SymbolScope, SymbolSection,
 };
 use serde_json::Value;
 
@@ -51,6 +53,7 @@ fn run_build_and_check(target: Option<&str>, args: &[&str]) {
 
         verify_no_duplicates(&archive);
         verify_core_symbols(&archive);
+        verify_no_exec_stack(&archive);
     }
 }
 
@@ -249,6 +252,56 @@ fn verify_core_symbols(archive: &Archive) {
     println!("    success: no undefined references to core found");
 }
 
+/// Check that all object files contain a section named `.note.GNU-stack`, indicating a
+/// nonexecutable stack.
+fn verify_no_exec_stack(archive: &Archive) {
+    let mut problem_objfiles = Vec::new();
+
+    archive.for_each_object(|obj, member| {
+        if obj_has_exe_stack(&obj) {
+            problem_objfiles.push(String::from_utf8_lossy(member.name()).into_owned());
+        }
+    });
+
+    if !problem_objfiles.is_empty() {
+        panic!(
+            "the following archive members have executable sections but no \
+            `.note.GNU-stack` section: {problem_objfiles:#?}"
+        );
+    }
+
+    println!("    success: no writeable-executable sections found");
+}
+
+fn obj_has_exe_stack(obj: &ObjFile) -> bool {
+    // Files other than elf likely do not use the same convention.
+    if !matches!(obj, ObjFile::Elf32(_) | ObjFile::Elf64(_)) {
+        return false;
+    }
+
+    let mut has_exe_sections = false;
+    for sec in obj.sections() {
+        let SectionFlags::Elf { sh_flags } = sec.flags() else {
+            unreachable!("only elf files are being checked");
+        };
+
+        let exe = (sh_flags & SHF_EXECINSTR as u64) != 0;
+        has_exe_sections |= exe;
+
+        // Located a GNU-stack section, nothing else to do
+        if sec.name().unwrap_or_default() == ".note.GNU-stack" {
+            return false;
+        }
+    }
+
+    // Ignore object files that have no executable sections, like rmeta
+    if !has_exe_sections {
+        return false;
+    }
+
+    true
+}
+
 /// Thin wrapper for owning data used by `object`.
 struct Archive {
     data: Vec<u8>,
@@ -285,4 +338,15 @@ impl Archive {
             obj.symbols().for_each(|sym| f(sym, member));
         });
     }
+}
+
+#[test]
+fn check_obj() {
+    let Some(p) = option_env!("HAS_WX_OBJ") else {
+        return;
+    };
+
+    let f = fs::read(p).unwrap();
+    let obj = ObjFile::parse(f.as_slice()).unwrap();
+    assert!(obj_has_exe_stack(&obj));
 }
