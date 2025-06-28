@@ -111,7 +111,13 @@ fn mp_u256_add() {
         let y = random_u256(&mut rng);
         assign_bigint(&mut bx, x);
         assign_bigint(&mut by, y);
-        let actual = x + y;
+        let actual = if u256::MAX - x >= y {
+            x + y
+        } else {
+            // otherwise (u256::MAX - x) < y, so the wrapped result is
+            // (x + y) - (u256::MAX + 1) == y - (u256::MAX - x) - 1
+            y - (u256::MAX - x) - 1_u128.widen()
+        };
         bx += &by;
         check_one(|| hexu(x), || Some(hexu(y)), actual, &mut bx);
     }
