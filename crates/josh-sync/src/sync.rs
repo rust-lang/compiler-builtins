@@ -81,6 +81,10 @@ impl GitSync {
         ]);
         let new_summary = check_output(["git", "log", "-1", "--format=%h %s", &new_upstream_base]);
         let new_summary = replace_references(&new_summary, &self.upstream_repo);
+        let new_timestamp = check_output_cfg("git", |c| {
+            c.env("TZ", "UTC")
+                .args(["log", "-1", "--format=%cd", "--date=iso-local"])
+        });
 
         // Update rust-version file. As a separate commit, since making it part of
         // the merge has confused the heck out of josh in the past.
@@ -93,7 +97,8 @@ impl GitSync {
         let prep_message = format!(
             "Update the upstream Rust version\n\n\
             To prepare for merging from {upstream_repo}, set the version file to:\n\n    \
-            {new_summary}\n\
+            {new_summary}\n\n\
+            (committed at {new_timestamp})\n\
             ",
         );
         run([
