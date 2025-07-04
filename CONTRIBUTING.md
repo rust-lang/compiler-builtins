@@ -165,3 +165,7 @@ cargo bench --no-default-features \
 
 [`iai-callgrind-runner`]: https://crates.io/crates/iai-callgrind-runner
 [Valgrind]: https://valgrind.org/
+
+## Subtree synchronization
+
+`compiler-builtins` is included as a [Josh subtree](https://rustc-dev-guide.rust-lang.org/external-repos.html#josh-subtrees) in the main compiler repository (`rust-lang/rust`). You can find a guide on how to create synchronization (pull and push) PRs [here](https://rustc-dev-guide.rust-lang.org/external-repos.html#synchronizing-a-josh-subtree).
