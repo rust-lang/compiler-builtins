@@ -8,6 +8,7 @@
 )]
 #![cfg_attr(f128_enabled, feature(f128))]
 #![cfg_attr(f16_enabled, feature(f16))]
+#![allow(internal_features)]
 #![allow(clippy::assign_op_pattern)]
 #![allow(clippy::deprecated_cfg_attr)]
 #![allow(clippy::eq_op)]
