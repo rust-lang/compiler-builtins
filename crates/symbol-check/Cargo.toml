@@ -11,3 +11,6 @@ serde_json = "1.0.140"
 
 [features]
 wasm = ["object/wasm"]
+
+[build-dependencies]
+cc = "1.2.25"
