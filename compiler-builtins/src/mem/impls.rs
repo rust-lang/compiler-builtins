@@ -384,13 +384,13 @@ pub unsafe fn set_bytes(mut s: *mut u8, c: u8, mut n: usize) {
 }
 
 #[inline(always)]
-pub unsafe fn compare_bytes(s1: *const u8, s2: *const u8, n: usize) -> crate::mem::c_int {
+pub unsafe fn compare_bytes(s1: *const u8, s2: *const u8, n: usize) -> core::ffi::c_int {
     let mut i = 0;
     while i < n {
         let a = *s1.wrapping_add(i);
         let b = *s2.wrapping_add(i);
         if a != b {
-            return a as crate::mem::c_int - b as crate::mem::c_int;
+            return a as core::ffi::c_int - b as core::ffi::c_int;
         }
         i += 1;
     }
