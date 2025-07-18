@@ -15,6 +15,7 @@
 // this use. Of course this is not a guarantee that such use will work, it just means that this
 // crate doing wrapping pointer arithmetic with a method that must not wrap won't be the problem if
 // something does go wrong at runtime.
+use core::ffi::c_int;
 use core::intrinsics::likely;
 
 const WORD_SIZE: usize = core::mem::size_of::<usize>();
@@ -384,13 +385,13 @@ pub unsafe fn set_bytes(mut s: *mut u8, c: u8, mut n: usize) {
 }
 
 #[inline(always)]
-pub unsafe fn compare_bytes(s1: *const u8, s2: *const u8, n: usize) -> core::ffi::c_int {
+pub unsafe fn compare_bytes(s1: *const u8, s2: *const u8, n: usize) -> c_int {
     let mut i = 0;
     while i < n {
         let a = *s1.wrapping_add(i);
         let b = *s2.wrapping_add(i);
         if a != b {
-            return core::ffi::c_int::from(a) - core::ffi::c_int::from(b);
+            return c_int::from(a) - c_int::from(b);
         }
         i += 1;
     }
