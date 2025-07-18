@@ -8,6 +8,27 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.2.16](https://github.com/rust-lang/compiler-builtins/compare/libm-v0.2.15...libm-v0.2.16) - 2025-07-18
+
+### Other
+
+- Allow a new lint failure in nightly
+- Test building custom targets and resolve an issue probing `rustc`
+- Use the compiler to determine whether or not to enable `f16` and `f128`
+- Improved integer utilities, implement shifts and bug fixes for i256 and u256
+- Clean up and sort manifest keys
+- Fix incorrect result and add tests
+- Fix unintentional skips in `binop_common`
+- Use `x.biteq(y)` rather than `x.to_bits() == y.to_bits()`
+- Fix new `dead_code` warnings from recent nightlies
+- Reuse `libm`'s `Caat` and `CastFrom` in `compiler-builtins`
+- Reuse `MinInt` and `Int` from `libm` in `compiler-builtins`
+- Add a note saying why we use `frintx` rather than `frintn`
+- Typo in README.md
+- Update `CmpResult` to use a pointer-sized return type
+- Clean up unused files
+- Fix `i256::MAX`
+
 ## [0.2.15](https://github.com/rust-lang/compiler-builtins/compare/libm-v0.2.14...libm-v0.2.15) - 2025-05-06
 
 ### Other
