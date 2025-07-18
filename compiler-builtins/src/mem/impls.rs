@@ -390,7 +390,7 @@ pub unsafe fn compare_bytes(s1: *const u8, s2: *const u8, n: usize) -> core::ffi
         let a = *s1.wrapping_add(i);
         let b = *s2.wrapping_add(i);
         if a != b {
-            return a as core::ffi::c_int - b as core::ffi::c_int;
+            return core::ffi::c_int::from(a) - core::ffi::c_int::from(b);
         }
         i += 1;
     }
