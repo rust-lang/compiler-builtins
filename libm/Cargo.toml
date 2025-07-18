@@ -1,6 +1,6 @@
 [package]
 name = "libm"
-version = "0.2.15"
+version = "0.2.16"
 authors = ["Jorge Aparicio <jorge@japaric.io>"]
 description = "libm in pure Rust"
 categories = ["no-std"]
