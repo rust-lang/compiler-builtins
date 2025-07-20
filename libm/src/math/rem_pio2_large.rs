@@ -271,8 +271,10 @@ pub(crate) fn rem_pio2_large(x: &[f64], y: &mut [f64], e0: i32, prec: usize) -> 
         fw = 0f64;
         for j in 0..=jx {
             fw += i!(x, j) * i!(f, jx + i - j);
+            debug_assert!(x[j].is_sign_positive());
         }
         i!(q, i, =, fw);
+        debug_assert!(q[i].is_sign_positive());
     }
 
     let mut jz = jk;
@@ -290,6 +292,7 @@ pub(crate) fn rem_pio2_large(x: &[f64], y: &mut [f64], e0: i32, prec: usize) -> 
 
         /* compute n */
         z = scalbn(z, q0); /* actual value of z */
+        debug_assert!(z.is_sign_positive());
         z -= 8.0 * trunc(z * 0.125); /* trim off integer >= 8 */
         n = z as i32;
         z -= n as f64;
