@@ -111,6 +111,12 @@ jobs:
     steps:
     - name: Print runner information
       run: uname -a
+
+    # Native runners don't have rustup by default
+    - name: Install rustup
+      if: matrix.os == 'ubuntu-24.04-ppc64le' || matrix.os == 'ubuntu-24.04-s390x'
+      run: sudo apt-get install -y rustup
+
     - uses: actions/checkout@v4
     - name: Install Rust (rustup)
       shell: bash
