@@ -109,6 +109,8 @@ jobs:
       TEST_VERBATIM: ${{ matrix.test_verbatim }}
       MAY_SKIP_LIBM_CI: ${{ needs.calculate_vars.outputs.may_skip_libm_ci }}
     steps:
+    - name: Print $HOME
+      run: echo "${HOME:-not found}"
     - name: Print runner information
       run: uname -a
 
