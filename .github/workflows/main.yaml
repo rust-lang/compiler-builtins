@@ -119,13 +119,6 @@ jobs:
     - name: Print runner information
       run: uname -a
 
-    # # ppc/s390x runners don't have HOME set
-    # - name: Set $HOME
-    #   if: matrix.os == 'ubuntu-24.04-ppc64le' || matrix.os == 'ubuntu-24.04-s390x'
-    #   run: |
-    #     set -x
-    #     echo "HOME=$(realpath ~)" >> "$GITHUB_ENV"
-
     # Native runners don't have rustup by default
     - name: Install rustup
       if: matrix.os == 'ubuntu-24.04-ppc64le' || matrix.os == 'ubuntu-24.04-s390x'
@@ -141,8 +134,12 @@ jobs:
         rustup update "$channel" --no-self-update
         rustup default "$channel"
         rustup target add "${{ matrix.target }}"
+
+    # Our scripts use nextest if possible. This is skipped on  the native ppc
+    # and s390x runners since install-action doesn't support them.
     - uses: taiki-e/install-action@nextest
       if: "!(matrix.os == 'ubuntu-24.04-ppc64le' || matrix.os == 'ubuntu-24.04-s390x')"
+
     - uses: Swatinem/rust-cache@v2
       with:
         key: ${{ matrix.target }}
