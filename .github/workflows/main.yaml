@@ -142,6 +142,7 @@ jobs:
         rustup default "$channel"
         rustup target add "${{ matrix.target }}"
     - uses: taiki-e/install-action@nextest
+      if: "!(matrix.os == 'ubuntu-24.04-ppc64le' || matrix.os == 'ubuntu-24.04-s390x')"
     - uses: Swatinem/rust-cache@v2
       with:
         key: ${{ matrix.target }}
@@ -335,8 +336,8 @@ jobs:
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v4
-    - name: Install nightly `rustfmt`
-      run: rustup set profile minimal && rustup default nightly && rustup component add rustfmt
+    - name: Install stable `rustfmt`
+      run: rustup set profile minimal && rustup default stable && rustup component add rustfmt
     - run: cargo fmt -- --check
 
   extensive:
