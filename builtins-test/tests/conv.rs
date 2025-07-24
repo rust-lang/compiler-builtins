@@ -59,33 +59,24 @@ mod i_to_f {
                                 || ((error_minus == error || error_plus == error)
                                     && ((f0.to_bits() & 1) != 0))
                             {
-                                if !cfg!(any(
-                                    target_arch = "powerpc",
-                                    target_arch = "powerpc64"
-                                )) {
-                                    panic!(
-                                        "incorrect rounding by {}({}): {}, ({}, {}, {}), errors ({}, {}, {})",
-                                        stringify!($fn),
-                                        x,
-                                        f1.to_bits(),
-                                        y_minus_ulp,
-                                        y,
-                                        y_plus_ulp,
-                                        error_minus,
-                                        error,
-                                        error_plus,
-                                    );
-                                }
+                                panic!(
+                                    "incorrect rounding by {}({}): {}, ({}, {}, {}), errors ({}, {}, {})",
+                                    stringify!($fn),
+                                    x,
+                                    f1.to_bits(),
+                                    y_minus_ulp,
+                                    y,
+                                    y_plus_ulp,
+                                    error_minus,
+                                    error,
+                                    error_plus,
+                                );
                             }
                         }
 
                         // Test against native conversion. We disable testing on all `x86` because of
-                        // rounding bugs with `i686`. `powerpc` also has the same rounding bug.
-                        if !Float::eq_repr(f0, f1) && !cfg!(any(
-                            target_arch = "x86",
-                            target_arch = "powerpc",
-                            target_arch = "powerpc64"
-                        )) {
+                        // rounding bugs with `i686`.
+                        if !Float::eq_repr(f0, f1) && !cfg!(target_arch = "x86") {
                             panic!(
                                 "{}({}): std: {:?}, builtins: {:?}",
                                 stringify!($fn),
