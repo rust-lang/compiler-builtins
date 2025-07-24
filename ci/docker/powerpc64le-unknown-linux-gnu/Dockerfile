@@ -1,5 +1,4 @@
-# FIXME(ppc): We want 25.04 but get SIGILLs
-ARG IMAGE=ubuntu:24.04
+ARG IMAGE=ubuntu:25.04
 FROM $IMAGE
 
 RUN apt-get update && \
