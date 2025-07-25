@@ -11,7 +11,7 @@
  * ====================================================
  */
 
-use super::{floor, scalbn};
+use super::{scalbn, trunc};
 
 // initial value for jk
 const INIT_JK: [usize; 4] = [3, 4, 4, 6];
@@ -290,7 +290,7 @@ pub(crate) fn rem_pio2_large(x: &[f64], y: &mut [f64], e0: i32, prec: usize) -> 
 
         /* compute n */
         z = scalbn(z, q0); /* actual value of z */
-        z -= 8.0 * floor(z * 0.125); /* trim off integer >= 8 */
+        z -= 8.0 * trunc(z * 0.125); /* trim off integer >= 8 */
         n = z as i32;
         z -= n as f64;
         ih = 0;
