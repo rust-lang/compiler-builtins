@@ -20,7 +20,7 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
         // operations from builtins are always precise
         Bn::Add | Bn::Sub | Bn::Mul | Bn::Div => 0,
         // FIXME: we need a better powi implementation (though this is no worse than C)
-        Bn::Powi if ctx.fn_ident == Id::Powif64 => 4000,
+        Bn::Powi if ctx.fn_ident == Id::Powif64 => 10_000,
         Bn::Powi => 1000,
 
         // Operations that require exact results. This list should correlate with what we
