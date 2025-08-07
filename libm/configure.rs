@@ -34,7 +34,7 @@ impl Config {
             .collect();
 
         let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
-        let bootstrapping_f16 = target_arch == "x86";
+        let bootstrapping_f128 = target_arch == "x86";
 
         Self {
             target_triple,
@@ -53,8 +53,8 @@ impl Config {
             // with `RUSTC_BOOTSTRAP=1` (which is required to use the types anyway).
             // reliable_f128: env::var_os("CARGO_CFG_TARGET_HAS_RELIABLE_F128").is_some(),
             // reliable_f16: env::var_os("CARGO_CFG_TARGET_HAS_RELIABLE_F16").is_some(),
-            reliable_f16: !bootstrapping_f16,
-            reliable_f128: true,
+            reliable_f16: true,
+            reliable_f128: bootstrapping_f128,
         }
     }
 }

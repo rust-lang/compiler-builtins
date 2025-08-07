@@ -407,11 +407,20 @@ macro_rules! apfloat_fallback {
 
 mod bootstrap {
     // Needed for testing other symbols,
-    #[linkage = "weak"]
-    #[unsafe(no_mangle)]
     #[cfg(f16_enabled)]
     #[cfg(target_arch = "s390x")]
+    #[linkage = "weak"]
+    #[unsafe(no_mangle)]
     pub extern "C" fn __extendhfsf2(a: f16) -> f32 {
         compiler_builtins::float::extend::__extendhfsf2(a)
+    }
+
+    #[cfg(f16_enabled)]
+    #[cfg(f128_enabled)]
+    #[cfg(target_arch = "x86")]
+    #[linkage = "weak"]
+    #[unsafe(no_mangle)]
+    pub extern "C" fn __extenddftf2(a: f64) -> f128 {
+        compiler_builtins::float::extend::__extenddftf2(a)
     }
 }
