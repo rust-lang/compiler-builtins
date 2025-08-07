@@ -33,13 +33,16 @@ impl Config {
             .map(|s| s.to_lowercase().replace("_", "-"))
             .collect();
 
+        let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
+        let bootstrapping_f16 = target_arch == "x86";
+
         Self {
             target_triple,
             manifest_dir: PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()),
             out_dir: PathBuf::from(env::var("OUT_DIR").unwrap()),
             opt_level: env::var("OPT_LEVEL").unwrap(),
             cargo_features,
-            target_arch: env::var("CARGO_CFG_TARGET_ARCH").unwrap(),
+            target_arch,
             target_env: env::var("CARGO_CFG_TARGET_ENV").unwrap(),
             target_family: env::var("CARGO_CFG_TARGET_FAMILY").ok(),
             target_os: env::var("CARGO_CFG_TARGET_OS").unwrap(),
@@ -50,7 +53,7 @@ impl Config {
             // with `RUSTC_BOOTSTRAP=1` (which is required to use the types anyway).
             // reliable_f128: env::var_os("CARGO_CFG_TARGET_HAS_RELIABLE_F128").is_some(),
             // reliable_f16: env::var_os("CARGO_CFG_TARGET_HAS_RELIABLE_F16").is_some(),
-            reliable_f16: true,
+            reliable_f16: !bootstrapping_f16,
             reliable_f128: true,
         }
     }

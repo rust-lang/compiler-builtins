@@ -405,11 +405,12 @@ macro_rules! apfloat_fallback {
     }};
 }
 
-#[cfg(target_arch = "s390x")]
 mod bootstrap {
     // Needed for testing other symbols,
     #[linkage = "weak"]
     #[unsafe(no_mangle)]
+    #[cfg(f16_enabled)]
+    #[cfg(target_arch = "s390x")]
     pub extern "C" fn __extendhfsf2(a: f16) -> f32 {
         compiler_builtins::float::extend::__extendhfsf2(a)
     }
