@@ -34,6 +34,7 @@ impl Config {
             .collect();
 
         let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
+        // Symbols are missing so we can't test until they get to nightly
         let bootstrapping_f128 = target_arch == "x86";
 
         Self {
@@ -51,10 +52,10 @@ impl Config {
             target_features,
             // Note that these are unstable options, so only show up with the nightly compiler or
             // with `RUSTC_BOOTSTRAP=1` (which is required to use the types anyway).
-            // reliable_f128: env::var_os("CARGO_CFG_TARGET_HAS_RELIABLE_F128").is_some(),
             // reliable_f16: env::var_os("CARGO_CFG_TARGET_HAS_RELIABLE_F16").is_some(),
             reliable_f16: true,
-            reliable_f128: bootstrapping_f128,
+            reliable_f128: env::var_os("CARGO_CFG_TARGET_HAS_RELIABLE_F128").is_some()
+                && !bootstrapping_f128,
         }
     }
 }

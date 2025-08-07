@@ -415,12 +415,19 @@ mod bootstrap {
         compiler_builtins::float::extend::__extendhfsf2(a)
     }
 
-    #[cfg(f16_enabled)]
     #[cfg(f128_enabled)]
     #[cfg(target_arch = "x86")]
     #[linkage = "weak"]
     #[unsafe(no_mangle)]
     pub extern "C" fn __extenddftf2(a: f64) -> f128 {
         compiler_builtins::float::extend::__extenddftf2(a)
+    }
+
+    #[cfg(f128_enabled)]
+    #[cfg(target_arch = "x86")]
+    #[linkage = "weak"]
+    #[unsafe(no_mangle)]
+    pub extern "C" fn __floattitf(i: i128) -> f128 {
+        compiler_builtins::float::conv::__floattitf(a)
     }
 }
