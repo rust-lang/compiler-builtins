@@ -35,7 +35,7 @@ impl Config {
 
         let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
         // Symbols are missing so we can't test until they get to nightly
-        let bootstrapping_f128 = target_arch == "x86";
+        let bootstrapping_f128 = target_arch == "x86" || target_arch == "s390x";
 
         Self {
             target_triple,
