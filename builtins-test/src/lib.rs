@@ -15,6 +15,7 @@
 #![no_std]
 #![cfg_attr(f128_enabled, feature(f128))]
 #![cfg_attr(f16_enabled, feature(f16))]
+#![feature(linkage)]
 
 pub mod bench;
 extern crate alloc;
@@ -402,4 +403,14 @@ macro_rules! apfloat_fallback {
     ) => {{
         $apfloat_op($($arg),+)
     }};
+}
+
+#[cfg(target_arch = "s390x")]
+mod bootstrap {
+    // Needed for testing other symbols,
+    #[linkage = "weak"]
+    #[unsafe(no_mangle)]
+    pub extern "C" fn __extendhfsf2(a: f16) -> f32 {
+        compiler_builtins::float::extend::__extendhfsf2(a)
+    }
 }
