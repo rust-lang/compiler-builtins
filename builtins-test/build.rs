@@ -69,6 +69,8 @@ fn main() {
         || target.arch == "powerpc64"
         || target.arch == "powerpc64le"
         || target.arch == "loongarch64"
+        // ABI only recently got specified
+        || target.arch == "s390x"
         || (target.arch == "x86" && !target.has_feature("sse"))
         || target.os == "windows"
         // Linking says "error: function signature mismatch: __extendhfsf2" and seems to
