@@ -428,6 +428,6 @@ mod bootstrap {
     #[linkage = "weak"]
     #[unsafe(no_mangle)]
     pub extern "C" fn __floattitf(i: i128) -> f128 {
-        compiler_builtins::float::conv::__floattitf(a)
+        compiler_builtins::float::conv::__floattitf(i)
     }
 }
