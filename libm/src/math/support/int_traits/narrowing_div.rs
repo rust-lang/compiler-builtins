@@ -157,6 +157,17 @@ mod test {
             for y in 1..=u8::MAX {
                 let xy = x.widen_mul(y);
                 assert_eq!(xy.checked_narrowing_div_rem(y), Some((x, 0)));
+                assert_eq!(
+                    (xy + (y - 1) as u16).checked_narrowing_div_rem(y),
+                    Some((x, y - 1))
+                );
+                if y > 1 {
+                    assert_eq!((xy + 1).checked_narrowing_div_rem(y), Some((x, 1)));
+                    assert_eq!(
+                        (xy + (y - 2) as u16).checked_narrowing_div_rem(y),
+                        Some((x, y - 2))
+                    );
+                }
             }
         }
     }
