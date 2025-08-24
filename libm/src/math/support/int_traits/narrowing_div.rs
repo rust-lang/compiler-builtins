@@ -89,7 +89,6 @@ where
     U::D: Int + NarrowingDiv,
 {
     if n.leading_zeros() > 0 || a >= n {
-        debug_assert!(false, "unsafe preconditions not met");
         unsafe { core::hint::unreachable_unchecked() }
     }
 
