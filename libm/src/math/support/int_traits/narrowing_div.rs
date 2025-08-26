@@ -1,4 +1,4 @@
-use crate::support::{DInt, HInt, Int, MinInt, u256};
+use crate::support::{CastInto, DInt, HInt, Int, MinInt, u256};
 
 /// Trait for unsigned division of a double-wide integer
 /// when the quotient doesn't overflow.
@@ -25,6 +25,8 @@ pub trait NarrowingDiv: DInt + MinInt<Unsigned = Self> {
     }
 }
 
+// For primitive types we can just use the standard
+// division operators in the double-wide type.
 macro_rules! impl_narrowing_div_primitive {
     ($D:ident) => {
         impl NarrowingDiv for $D {
@@ -32,7 +34,7 @@ macro_rules! impl_narrowing_div_primitive {
                 if self.hi() >= n {
                     unsafe { core::hint::unreachable_unchecked() }
                 }
-                ((self / n as $D) as Self::H, (self % n as $D) as Self::H)
+                ((self / n.widen()).cast(), (self % n.widen()).cast())
             }
         }
     };
