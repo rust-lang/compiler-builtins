@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MIT OR Apache-2.0 */
 use crate::support::{CastInto, DInt, HInt, Int, MinInt, u256};
 
 /// Trait for unsigned division of a double-wide integer
