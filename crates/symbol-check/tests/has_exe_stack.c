@@ -1,5 +1,5 @@
-/* GNU nested functions are the only way I could fine to force an executable
- * stack. Supported by GCC only, not Clang. */
+/* GNU nested functions are the only way I could find to force an explicitly
+ * executable stack. Supported by GCC only, not Clang. */
 
 void intermediate(void (*)(int, int), int);
 
