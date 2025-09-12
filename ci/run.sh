@@ -56,7 +56,6 @@ fi
 symcheck=(cargo run -p symbol-check --release)
 [[ "$target" = "wasm"* ]] && symcheck+=(--features wasm)
 symcheck+=(-- build-and-check)
-[[ "$target" = *"thumb"* ]] && symcheck+=(--no-std)
 
 "${symcheck[@]}" "$target" -- -p compiler_builtins
 "${symcheck[@]}" "$target" -- -p compiler_builtins --release

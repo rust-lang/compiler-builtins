@@ -9,11 +9,13 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::{env, fs};
 
+use object::elf::SectionHeader32;
 use object::read::archive::ArchiveFile;
+use object::read::elf::SectionHeader;
 use object::{
-    Architecture, BinaryFormat, Bytes, Endianness, File as ObjFile, Object, ObjectSection,
-    ObjectSymbol, Result as ObjResult, SectionFlags, SectionKind, Symbol, SymbolKind, SymbolScope,
-    elf,
+    Architecture, BinaryFormat, Bytes, Endianness, File as ObjFile, LittleEndian, Object,
+    ObjectSection, ObjectSymbol, Result as ObjResult, SectionFlags, SectionKind, Symbol,
+    SymbolKind, SymbolScope, U32, U32Bytes, elf,
 };
 use serde_json::Value;
 
@@ -55,18 +57,23 @@ fn main() {
 
     let mut target = None;
     let mut verify_no_exe = true;
+    let mut positional = Vec::new();
 
     for arg in args_iter.by_ref() {
+        dbg!(&arg);
         match arg.as_str() {
             "--no-std" => verify_no_exe = false,
             "--" => break,
             f if f.starts_with("-") => invalid_usage(&format!("unrecognized flag `{f}`")),
             _ if mode == Mode::BuildAndCheck => target = Some(arg),
-            _ => break,
+            _ => {
+                positional.push(arg);
+                break;
+            }
         }
     }
 
-    let positional = args_iter.collect::<Vec<_>>();
+    positional.extend(args_iter);
 
     match mode {
         Mode::BuildAndCheck => {
@@ -74,7 +81,10 @@ fn main() {
             let paths = exec_cargo_with_args(&target, positional.as_slice());
             check_paths(&paths, verify_no_exe);
         }
-        Mode::CheckOnly => check_paths(&positional, verify_no_exe),
+        Mode::CheckOnly => {
+            assert!(!positional.is_empty());
+            check_paths(&positional, verify_no_exe);
+        }
     };
 }
 
@@ -91,11 +101,11 @@ fn check_paths<P: AsRef<Path>>(paths: &[P], verify_no_exe: bool) {
 
         // verify_no_duplicates(&archive);
         // verify_core_symbols(&archive);
-        if verify_no_exe {
-            // We don't really have a good way of knowing whether or not an elf file is for a
-            // no-kernel environment, in which case note.GNU-stack doesn't get emitted.
-            verify_no_exec_stack(&archive);
-        }
+        // if verify_no_exe {
+        // We don't really have a good way of knowing whether or not an elf file is for a
+        // no-kernel environment, in which case note.GNU-stack doesn't get emitted.
+        verify_no_exec_stack(&archive);
+        // }
     }
 }
 
@@ -359,16 +369,29 @@ fn obj_requires_exe_stack(obj: &ObjFile) -> bool {
         return false;
     }
 
+    let secs = match obj {
+        ObjFile::Elf32(elf_file) => elf_file.sections(),
+        ObjFile::Elf64(elf_file) => panic!(),
+        // ObjFile::Elf64(elf_file) => elf_file.sections(),
+        _ => return false,
+    };
+
     let mut return_immediate = None;
     let mut has_exe_sections = false;
     for sec in obj.sections() {
+        dbg!(sec.name());
         let SectionFlags::Elf { sh_flags } = sec.flags() else {
             unreachable!("only elf files are being checked");
         };
 
         if sec.kind() == SectionKind::Elf(elf::SHT_ARM_ATTRIBUTES) {
+            let end = obj.endianness();
             let data = sec.data().unwrap();
-            parse_arm_thing(data);
+            let ObjFile::Elf32(elf) = obj else { panic!() };
+            let elf_sec = elf.section_by_index(sec.index()).unwrap();
+            let elf_hdr = elf_sec.elf_section_header();
+
+            parse_arm_thing(data, elf_hdr, end);
         }
 
         let is_exe = (sh_flags & elf::SHF_EXECINSTR as u64) != 0;
@@ -405,13 +428,52 @@ fn platform_default_exe_stack_required(arch: Architecture, end: Endianness) -> b
     }
 }
 
-fn parse_arm_thing(data: &[u8]) {
-    eprintln!("data: {data:x?}");
+// See https://github.com/ARM-software/abi-aa/blob/main/addenda32/addenda32.rst#33public-aeabi-attribute-tags
+fn parse_arm_thing(data: &[u8], elf_hdr: &SectionHeader32<Endianness>, end: Endianness) {
+    let attrs = elf_hdr.attributes(end, data).unwrap();
+    dbg!(attrs);
+
+    eprintln!("data d: {data:?}");
+    eprintln!("data x: {data:x?}");
     eprintln!("data string: {:?}", String::from_utf8_lossy(data));
-    eprintln!("data: {:x?}", &data[16..]);
+    // eprintln!("data: {:x?}", &data[16..]);
     // let mut rest = &data[16..];
     let mut b = Bytes(data);
-    b.skip(16).unwrap();
+    let _fmt_version = b.read::<u8>().unwrap();
+    let _sec_length = b.read::<U32<LittleEndian>>().unwrap();
+
+    // loop {
+    let s = b.read_string().unwrap();
+    eprintln!("abi {}", String::from_utf8_lossy(s));
+
+    let _tag = b.read_uleb128().unwrap();
+    let _size = b.read::<U32<LittleEndian>>().unwrap();
+
+    // NUL-terminated byte strings
+    const CPU_RAW_NAME: u64 = 4;
+    const CPU_NAME: u64 = 5;
+    const ALSO_COMPATIBLE_WITH: u64 = 65;
+    const CONFORMANCE: u64 = 67;
+
+    const CPU_ARCH_PROFILE: u64 = 7;
+
+    while !b.is_empty() {
+        let tag = b.read_uleb128().unwrap();
+        match tag {
+            CONFORMANCE => eprintln!(
+                "conf: {}",
+                String::from_utf8_lossy(b.read_string().unwrap())
+            ),
+            // 77 =>
+            CPU_ARCH_PROFILE => {
+                // CPU_arch_profile
+                let value = b.read_uleb128().unwrap();
+            }
+            _ => eprintln!("tag {tag} value {}", b.read::<u8>().unwrap()),
+        }
+    }
+
+    // }
 
     // while !rest.is_empty() {}
 }
