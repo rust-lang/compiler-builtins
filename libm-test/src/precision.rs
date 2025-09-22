@@ -83,6 +83,16 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
         Bn::Tgamma => 20,
     };
 
+    // These have a separate implementation on i586
+    if cfg!(x86_no_sse) {
+        match ctx.base_name {
+            Bn::Exp => ulp = 1,
+            Bn::Exp2 => ulp = 1,
+            Bn::Exp10 => ulp = 1,
+            _ => (),
+        }
+    }
+
     // There are some cases where musl's approximation is less accurate than ours. For these
     // cases, increase the ULP.
     if ctx.basis == Musl {
@@ -124,8 +134,6 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
             Id::Asinh => ulp = 3,
             Id::Asinhf => ulp = 3,
             Id::Cbrt => ulp = 1,
-            Id::Exp10 | Id::Exp10f => ulp = 1_000_000,
-            Id::Exp2 | Id::Exp2f => ulp = 10_000_000,
             Id::Log1p | Id::Log1pf => ulp = 2,
             Id::Tan => ulp = 2,
             _ => (),
