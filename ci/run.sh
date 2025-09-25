@@ -148,8 +148,6 @@ case "$target" in
     *wasm*) mflags+=(--exclude musl-math-sys) ;;
     *thumb*) mflags+=(--exclude musl-math-sys) ;;
 
-    # We can build musl on MinGW but running tests gets a stack overflow
-    *windows-gnu*) ;;
     # FIXME(#309): LE PPC crashes calling the musl version of some functions. It
     # seems like a qemu bug but should be investigated further at some point.
     # See <https://github.com/rust-lang/libm/issues/309>.
