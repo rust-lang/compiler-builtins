@@ -165,9 +165,6 @@ case "$target" in
     *wasm*) mflags+=(--exclude musl-math-sys) ;;
     *thumb*) mflags+=(--exclude musl-math-sys) ;;
 
-    # We can build musl on MinGW but running tests gets a stack overflow
-    *windows-gnu*) ;;
-
     # Everything else gets musl enabled
     *) mflags+=(--features libm-test/build-musl) ;;
 esac
