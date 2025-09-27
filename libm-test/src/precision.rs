@@ -111,6 +111,8 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
             Id::Cbrt => ulp = 2,
             // FIXME(#401): musl has an incorrect result here.
             Id::Fdim => ulp = 2,
+            Id::Exp2f => ulp = 1,
+            Id::Expf => ulp = 1,
             Id::Sincosf => ulp = 500,
             Id::Tgamma => ulp = 20,
             _ => (),
