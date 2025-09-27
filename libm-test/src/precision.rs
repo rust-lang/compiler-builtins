@@ -85,10 +85,13 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
 
     // These have a separate implementation on i586
     if cfg!(x86_no_sse) {
-        match ctx.base_name {
-            Bn::Exp => ulp = 1,
-            Bn::Exp2 => ulp = 1,
-            Bn::Exp10 => ulp = 1,
+        match ctx.fn_ident {
+            Id::Exp => ulp = 1,
+            Id::Exp2 => ulp = 1,
+            Id::Exp10 => ulp = 1,
+            Id::Expf => ulp = 0,
+            Id::Exp2f => ulp = 0,
+            Id::Exp10f => ulp = 0,
             _ => (),
         }
     }
@@ -226,15 +229,6 @@ impl MaybeOverride<(f32,)> for SpecialCase {
             return XFAIL("expm1 representable numbers");
         }
 
-        if cfg!(x86_no_sse)
-            && ctx.base_name == BaseName::Exp2
-            && !expected.is_infinite()
-            && actual.is_infinite()
-        {
-            // We return infinity when there is a representable value. Test input: 127.97238
-            return XFAIL("586 exp2 representable numbers");
-        }
-
         if ctx.base_name == BaseName::Sinh && input.0.abs() > 80.0 && actual.is_nan() {
             // we return some NaN that should be real values or infinite
             if ctx.basis == CheckBasis::Musl {
@@ -284,14 +278,6 @@ impl MaybeOverride<(f64,)> for SpecialCase {
         {
             // Our rounding mode is incorrect.
             return XFAIL("i586 rint rounding mode");
-        }
-
-        if cfg!(x86_no_sse)
-            && (ctx.fn_ident == Identifier::Exp10 || ctx.fn_ident == Identifier::Exp2)
-        {
-            // FIXME: i586 has very imprecise results with ULP > u32::MAX for these
-            // operations so we can't reasonably provide a limit.
-            return XFAIL_NOCHECK;
         }
 
         if ctx.base_name == BaseName::J0 && input.0 < -1e300 {
