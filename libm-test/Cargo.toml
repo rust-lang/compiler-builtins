@@ -29,6 +29,7 @@ short-benchmarks = []
 
 [dependencies]
 anyhow = "1.0.98"
+compiler_builtins = { path = "../builtins-shim", default-features = false, features = ["unstable-public-internals"] }
 # This is not directly used but is required so we can enable `gmp-mpfr-sys/force-cross`.
 gmp-mpfr-sys = { version = "1.6.5", optional = true, default-features = false }
 gungraun = { version = "0.17.0", optional = true }
