@@ -60,12 +60,13 @@ pub fn floor(mut x: f64) -> f64 {
     }
     x
 }
-/// Implements the exponential functions with `x87` assembly. This relies on
-/// the instruction `f2xm1`, which computes `2^x - 1` (for |x| < 1). This
-/// transcendental instruction is documented to produce results with error
-/// below 1ulp (in the native double-extended precision format).
-/// This translates to correctly rounded results for f32, but results
-/// in f64 may have 1ulp error, which may depend on the hardware.
+/// Implements the exponential functions with `x87` assembly.
+/// 
+/// This relies on the instruction `f2xm1`, which computes `2^x - 1` (for
+/// |x| < 1). This transcendental instruction is documented to produce results
+/// with error below 1ulp (in the native double-extended precision format). This
+/// translates to correctly rounded results for f32, but results in f64 may have
+/// 1ulp error, which may depend on the hardware.
 macro_rules! x87exp {
     ($float_ty:ident, $word_size:literal, $fn_name:ident,  $load_op:literal) => {
         pub fn $fn_name(mut x: $float_ty) -> $float_ty { unsafe {
