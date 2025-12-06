@@ -61,7 +61,7 @@ pub fn floor(mut x: f64) -> f64 {
     x
 }
 /// Implements the exponential functions with `x87` assembly.
-/// 
+///
 /// This relies on the instruction `f2xm1`, which computes `2^x - 1` (for
 /// |x| < 1). This transcendental instruction is documented to produce results
 /// with error below 1ulp (in the native double-extended precision format). This
