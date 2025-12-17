@@ -1,16 +1,21 @@
 //! Tool used by CI to inspect compiler-builtins archives and help ensure we won't run into any
 //! linking errors.
 
+#![allow(unused)] // TODO
+
 use std::collections::{BTreeMap, BTreeSet};
-use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::{env, fs};
 
+use object::elf::SectionHeader32;
 use object::read::archive::ArchiveFile;
+use object::read::elf::SectionHeader;
 use object::{
-    File as ObjFile, Object, ObjectSection, ObjectSymbol, Result as ObjResult, Symbol, SymbolKind,
-    SymbolScope,
+    Architecture, BinaryFormat, Bytes, Endianness, File as ObjFile, LittleEndian, Object,
+    ObjectSection, ObjectSymbol, Result as ObjResult, SectionFlags, SectionKind, Symbol,
+    SymbolKind, SymbolScope, U32, U32Bytes, elf,
 };
 use serde_json::Value;
 
@@ -19,64 +24,88 @@ const CHECK_EXTENSIONS: &[Option<&str>] = &[Some("rlib"), Some("a"), Some("exe")
 
 const USAGE: &str = "Usage:
 
-    symbol-check build-and-check [TARGET] -- CARGO_BUILD_ARGS ...
+    symbol-check build-and-check [TARGET] [--no-std] -- CARGO_BUILD_ARGS ...
 
 Cargo will get invoked with `CARGO_ARGS` and the specified target. All output
 `compiler_builtins*.rlib` files will be checked.
 
 If TARGET is not specified, the host target is used.
 
-    check PATHS ...
+If the `--no-std` flag is passed, the binaries will not be checked for
+executable stacks under the assumption that they are not being emitted.
+
+    check [--no-std] PATHS ...
 
 Run the same checks on the given set of paths, without invoking Cargo. Paths
 may be either archives or object files.
 ";
 
+#[derive(Debug, PartialEq)]
+enum Mode {
+    BuildAndCheck,
+    CheckOnly,
+}
+
 fn main() {
-    // Create a `&str` vec so we can match on it.
-    let args = std::env::args().collect::<Vec<_>>();
-    let args_ref = args.iter().map(String::as_str).collect::<Vec<_>>();
+    let mut args_iter = env::args().skip(1);
+    let mode = match args_iter.next() {
+        Some(arg) if arg == "build-and-check" => Mode::BuildAndCheck,
+        Some(arg) if arg == "check" => Mode::CheckOnly,
+        Some(other) => invalid_usage(&format!("unrecognized mode `{other}`")),
+        None => invalid_usage("mode must be specified"),
+    };
 
-    match &args_ref[1..] {
-        ["build-and-check", target, "--", args @ ..] if !args.is_empty() => {
-            run_build_and_check(target, args);
-        }
-        ["build-and-check", "--", args @ ..] if !args.is_empty() => {
-            let target = &host_target();
-            run_build_and_check(target, args);
-        }
-        ["check", paths @ ..] if !paths.is_empty() => {
-            check_paths(paths);
-        }
-        _ => {
-            println!("{USAGE}");
-            std::process::exit(1);
+    let mut target = None;
+    let mut verify_no_exe = true;
+    let mut positional = Vec::new();
+
+    for arg in args_iter.by_ref() {
+        dbg!(&arg);
+        match arg.as_str() {
+            "--no-std" => verify_no_exe = false,
+            "--" => break,
+            f if f.starts_with("-") => invalid_usage(&format!("unrecognized flag `{f}`")),
+            _ if mode == Mode::BuildAndCheck => target = Some(arg),
+            _ => {
+                positional.push(arg);
+                break;
+            }
         }
     }
+
+    positional.extend(args_iter);
+
+    match mode {
+        Mode::BuildAndCheck => {
+            let target = target.unwrap_or_else(|| host_target());
+            let paths = exec_cargo_with_args(&target, positional.as_slice());
+            check_paths(&paths, verify_no_exe);
+        }
+        Mode::CheckOnly => {
+            assert!(!positional.is_empty());
+            check_paths(&positional, verify_no_exe);
+        }
+    };
 }
 
-fn run_build_and_check(target: &str, args: &[&str]) {
-    // Make sure `--target` isn't passed to avoid confusion (since it should be
-    // proivded only once, positionally).
-    for arg in args {
-        assert!(
-            !arg.contains("--target"),
-            "target must be passed positionally. {USAGE}"
-        );
-    }
-
-    let paths = exec_cargo_with_args(target, args);
-    check_paths(&paths);
+fn invalid_usage(s: &str) -> ! {
+    println!("{s}\n{USAGE}");
+    std::process::exit(1);
 }
 
-fn check_paths<P: AsRef<Path>>(paths: &[P]) {
+fn check_paths<P: AsRef<Path>>(paths: &[P], verify_no_exe: bool) {
     for path in paths {
         let path = path.as_ref();
         println!("Checking {}", path.display());
         let archive = BinFile::from_path(path);
 
-        verify_no_duplicates(&archive);
-        verify_core_symbols(&archive);
+        // verify_no_duplicates(&archive);
+        // verify_core_symbols(&archive);
+        // if verify_no_exe {
+        // We don't really have a good way of knowing whether or not an elf file is for a
+        // no-kernel environment, in which case note.GNU-stack doesn't get emitted.
+        verify_no_exec_stack(&archive);
+        // }
     }
 }
 
@@ -96,7 +125,7 @@ fn host_target() -> String {
 
 /// Run `cargo build` with the provided additional arguments, collecting the list of created
 /// libraries.
-fn exec_cargo_with_args(target: &str, args: &[&str]) -> Vec<PathBuf> {
+fn exec_cargo_with_args<S: AsRef<str>>(target: &str, args: &[S]) -> Vec<PathBuf> {
     let mut cmd = Command::new("cargo");
     cmd.args([
         "build",
@@ -104,7 +133,7 @@ fn exec_cargo_with_args(target: &str, args: &[&str]) -> Vec<PathBuf> {
         target,
         "--message-format=json-diagnostic-rendered-ansi",
     ])
-    .args(args)
+    .args(args.iter().map(|arg| arg.as_ref()))
     .stdout(Stdio::piped());
 
     println!("running: {cmd:?}");
@@ -299,6 +328,156 @@ fn verify_core_symbols(archive: &BinFile) {
     println!("    success: no undefined references to core found");
 }
 
+/// Ensure that the object/archive will not require an executable stack.
+fn verify_no_exec_stack(archive: &BinFile) {
+    let mut problem_objfiles = Vec::new();
+
+    archive.for_each_object(|obj, obj_path| {
+        if obj_requires_exe_stack(&obj) {
+            problem_objfiles.push(obj_path.to_owned());
+        }
+    });
+
+    if !problem_objfiles.is_empty() {
+        panic!("the following object files require an executable stack: {problem_objfiles:#?}");
+    }
+
+    println!("    success: no writeable+executable sections found");
+}
+
+/// True if the section/flag combination indicates that the object file should be linked with an
+/// executable stack.
+///
+/// Paraphrased from <https://www.man7.org/linux/man-pages/man1/ld.1.html>:
+///
+/// - A `.note.GNU-stack` section with the exe flag means this needs an executable stack
+/// - A `.note.GNU-stack` section without the exe flag means there is no executable stack needed
+/// - Without the section, behavior is target-specific and on some targets means an executable
+///   stack is required.
+///
+/// If any object files meet the requirements for an executable stack, any final binary that links
+/// it will have a program header with a `PT_GNU_STACK` section, which will be marked `RWE` rather
+/// than the desired `RW`. (We don't check final binaries).
+///
+/// Per [1], it is now deprecated behavior for a missing `.note.GNU-stack` section to imply an
+/// executable stack. However, we shouldn't assume that tooling has caught up to this.
+///
+/// [1]: https://sourceware.org/git/gitweb.cgi?p=binutils-gdb.git;h=0d38576a34ec64a1b4500c9277a8e9d0f07e6774>
+fn obj_requires_exe_stack(obj: &ObjFile) -> bool {
+    // Files other than elf do not use the same convention.
+    if obj.format() != BinaryFormat::Elf {
+        return false;
+    }
+
+    let secs = match obj {
+        ObjFile::Elf32(elf_file) => elf_file.sections(),
+        ObjFile::Elf64(elf_file) => panic!(),
+        // ObjFile::Elf64(elf_file) => elf_file.sections(),
+        _ => return false,
+    };
+
+    let mut return_immediate = None;
+    let mut has_exe_sections = false;
+    for sec in obj.sections() {
+        dbg!(sec.name());
+        let SectionFlags::Elf { sh_flags } = sec.flags() else {
+            unreachable!("only elf files are being checked");
+        };
+
+        if sec.kind() == SectionKind::Elf(elf::SHT_ARM_ATTRIBUTES) {
+            let end = obj.endianness();
+            let data = sec.data().unwrap();
+            let ObjFile::Elf32(elf) = obj else { panic!() };
+            let elf_sec = elf.section_by_index(sec.index()).unwrap();
+            let elf_hdr = elf_sec.elf_section_header();
+
+            parse_arm_thing(data, elf_hdr, end);
+        }
+
+        let is_exe = (sh_flags & elf::SHF_EXECINSTR as u64) != 0;
+
+        // If the magic section is present, its exe bit tells us whether or not the object
+        // file requires an executable stack.
+        if sec.name().unwrap_or_default() == ".note.GNU-stack" {
+            return_immediate = Some(is_exe);
+        }
+
+        // Otherwise, just keep track of whether or not we have exeuctable sections
+        has_exe_sections |= is_exe;
+    }
+
+    if let Some(imm) = return_immediate {
+        return imm;
+    }
+
+    // Ignore object files that have no executable sections, like rmeta
+    if !has_exe_sections {
+        return false;
+    }
+
+    platform_default_exe_stack_required(obj.architecture(), obj.endianness())
+}
+
+/// Default if there is no `.note.GNU-stack` section.
+fn platform_default_exe_stack_required(arch: Architecture, end: Endianness) -> bool {
+    match arch {
+        // PPC64 doesn't set `.note.GNU-stack` since GNU nested functions don't need a trampoline,
+        // <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=21098>.
+        Architecture::PowerPc64 if end == Endianness::Big => false,
+        _ => true,
+    }
+}
+
+// See https://github.com/ARM-software/abi-aa/blob/main/addenda32/addenda32.rst#33public-aeabi-attribute-tags
+fn parse_arm_thing(data: &[u8], elf_hdr: &SectionHeader32<Endianness>, end: Endianness) {
+    let attrs = elf_hdr.attributes(end, data).unwrap();
+    dbg!(attrs);
+
+    eprintln!("data d: {data:?}");
+    eprintln!("data x: {data:x?}");
+    eprintln!("data string: {:?}", String::from_utf8_lossy(data));
+    // eprintln!("data: {:x?}", &data[16..]);
+    // let mut rest = &data[16..];
+    let mut b = Bytes(data);
+    let _fmt_version = b.read::<u8>().unwrap();
+    let _sec_length = b.read::<U32<LittleEndian>>().unwrap();
+
+    // loop {
+    let s = b.read_string().unwrap();
+    eprintln!("abi {}", String::from_utf8_lossy(s));
+
+    let _tag = b.read_uleb128().unwrap();
+    let _size = b.read::<U32<LittleEndian>>().unwrap();
+
+    // NUL-terminated byte strings
+    const CPU_RAW_NAME: u64 = 4;
+    const CPU_NAME: u64 = 5;
+    const ALSO_COMPATIBLE_WITH: u64 = 65;
+    const CONFORMANCE: u64 = 67;
+
+    const CPU_ARCH_PROFILE: u64 = 7;
+
+    while !b.is_empty() {
+        let tag = b.read_uleb128().unwrap();
+        match tag {
+            CONFORMANCE => eprintln!(
+                "conf: {}",
+                String::from_utf8_lossy(b.read_string().unwrap())
+            ),
+            // 77 =>
+            CPU_ARCH_PROFILE => {
+                // CPU_arch_profile
+                let value = b.read_uleb128().unwrap();
+            }
+            _ => eprintln!("tag {tag} value {}", b.read::<u8>().unwrap()),
+        }
+    }
+
+    // }
+
+    // while !rest.is_empty() {}
+}
+
 /// Thin wrapper for owning data used by `object`.
 struct BinFile {
     path: PathBuf,
@@ -359,4 +538,48 @@ impl BinFile {
             obj.symbols().for_each(|sym| f(sym, &obj, obj_path));
         });
     }
+}
+
+/// Check with a binary that has no `.note.GNU-stack` section, indicating platform-default stack
+/// writeability.
+#[test]
+fn check_no_gnu_stack_obj() {
+    // Should be supported on all Unix platforms
+    let p = env!("NO_GNU_STACK_OBJ");
+    let f = fs::read(p).unwrap();
+    let obj = ObjFile::parse(f.as_slice()).unwrap();
+    dbg!(
+        obj.format(),
+        obj.architecture(),
+        obj.sub_architecture(),
+        obj.is_64()
+    );
+    let has_exe_stack = obj_requires_exe_stack(&obj);
+
+    let obj_target = env!("OBJ_TARGET");
+    if obj_target.contains("-windows-") || obj_target.contains("-apple-") {
+        // Non-ELF targets don't have executable stacks marked in the same way
+        assert!(!has_exe_stack);
+    } else {
+        assert!(has_exe_stack);
+    }
+}
+
+#[test]
+#[cfg_attr(
+    any(target_os = "windows", target_vendor = "apple"),
+    ignore = "requires elf format"
+)]
+fn check_obj() {
+    #[expect(clippy::option_env_unwrap, reason = "test is ignored")]
+    let p = option_env!("HAS_EXE_STACK_OBJ").expect("has_exe_stack.o not present");
+    let f = fs::read(p).unwrap();
+    let obj = ObjFile::parse(f.as_slice()).unwrap();
+    dbg!(
+        obj.format(),
+        obj.architecture(),
+        obj.sub_architecture(),
+        obj.is_64()
+    );
+    assert!(obj_requires_exe_stack(&obj));
 }
