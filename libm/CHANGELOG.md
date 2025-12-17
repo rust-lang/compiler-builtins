@@ -8,6 +8,48 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.2.16](https://github.com/rust-lang/compiler-builtins/compare/libm-v0.2.15...libm-v0.2.16) - 2025-12-17
+
+### Other
+
+- Fix `expm1f` overflow threshold
+- remove uses of Ord::clamp in scalbn ([#1047](https://github.com/rust-lang/compiler-builtins/pull/1047))
+- Update Cargo.toml `authors` fields
+- Implement `exp` and its variants for i586 with inline assembly
+- Optimize `fmod`
+- Document the purpose of a helper module
+- Implement accelerated computation of (x << e) % y in unsigned integers
+- require some basic operators in trait DInt
+- Compare against `CARGO_CFG_TARGET_FAMILY` in a multi-valued fashion
+- Add back the `unsafe` for `intrinsics::fma` but `allow(unused_unsafe)`
+- Merge ref 'caccb4d0368b' from rust-lang/rust
+- Remove usage of the to-be-deprecated `core::f32`, `core::f64` items
+- define and implement `trait NarrowingDiv` for unsigned integer division
+- Fix some typos
+- Use `CARGO_CFG_*_{F16,F128}` rather than invoking rustc
+- Simplify the configuration for no-panic
+- Implement `floor` and `ceil` in assembly on `i586`
+- Avoid inlining `floor` into `rem_pio2`
+- Update for new warn-by-default clippy lints
+- Use `x86_no_sse` configuration in more places
+- Enable tests that were skipped on PowerPC
+- Allow a new lint failure in nightly
+- Test building custom targets and resolve an issue probing `rustc`
+- Use the compiler to determine whether or not to enable `f16` and `f128`
+- Improved integer utilities, implement shifts and bug fixes for i256 and u256
+- Clean up and sort manifest keys
+- Fix incorrect result and add tests
+- Fix unintentional skips in `binop_common`
+- Use `x.biteq(y)` rather than `x.to_bits() == y.to_bits()`
+- Fix new `dead_code` warnings from recent nightlies
+- Reuse `libm`'s `Caat` and `CastFrom` in `compiler-builtins`
+- Reuse `MinInt` and `Int` from `libm` in `compiler-builtins`
+- Add a note saying why we use `frintx` rather than `frintn`
+- Typo in README.md
+- Update `CmpResult` to use a pointer-sized return type
+- Clean up unused files
+- Fix `i256::MAX`
+
 ## [0.2.15](https://github.com/rust-lang/compiler-builtins/compare/libm-v0.2.14...libm-v0.2.15) - 2025-05-06
 
 ### Other
