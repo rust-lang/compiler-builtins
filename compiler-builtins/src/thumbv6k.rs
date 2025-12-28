@@ -12,26 +12,22 @@ use core::mem;
 // Armv6 does not support DMB instruction, so use use special instruction equivalent to it.
 //
 // Refs: https://developer.arm.com/documentation/ddi0360/f/control-coprocessor-cp15/register-descriptions/c7--cache-operations-register
-macro_rules! dmb {
+macro_rules! cp15_barrier {
     () => {
         "mcr p15, #0, {zero}, c7, c10, #5"
-    };
-}
-macro_rules! asm_use_dmb {
-    ($($asm:tt)*) => {
-        // dmb! calls `mcr p15, 0, <Rd>, c7, c10, 5`, and
-        // the value in the Rd register should be zero (SBZ).
-        asm!(
-            $($asm)*
-            zero = inout(reg) 0_u32 => _,
-        )
     };
 }
 
 #[instruction_set(arm::a32)]
 unsafe fn fence() {
     unsafe {
-        asm_use_dmb!(dmb!(), options(nostack, preserves_flags),);
+        asm!(
+            cp15_barrier!(),
+            // cp15_barrier! calls `mcr p15, 0, {zero}, c7, c10, 5`, and
+            // the value in the {zero} register should be zero (SBZ).
+            zero = inout(reg) 0_u32 => _,
+            options(nostack, preserves_flags),
+        );
     }
 }
 
@@ -69,11 +65,11 @@ macro_rules! atomic {
             ) -> Self {
                 let mut out: Self;
                 unsafe {
-                    asm_use_dmb!(
+                    asm!(
                             concat!("ldrex", $suffix, " {out}, [{dst}]"),      // atomic { out = *dst; EXCLUSIVE = dst }
                             "cmp {out}, {old}",                                // if out == old { Z = 1 } else { Z = 0 }
                             "bne 3f",                                          // if Z == 0 { jump 'cmp-fail }
-                            dmb!(),                                            // fence
+                            cp15_barrier!(),                                            // fence
                         "2:", // 'retry:
                             concat!("strex", $suffix, " {r}, {new}, [{dst}]"), // atomic { if EXCLUSIVE == dst { *dst = new; r = 0 } else { r = 1 }; EXCLUSIVE = None }
                             "cmp {r}, #0",                                     // if r == 0 { Z = 1 } else { Z = 0 }
@@ -82,7 +78,7 @@ macro_rules! atomic {
                             "cmp {out}, {old}",                                // if out == old { Z = 1 } else { Z = 0 }
                             "beq 2b",                                          // if Z == 1 { jump 'retry }
                         "3:", // 'cmp-fail | 'success:
-                            dmb!(),                                            // fence
+                            cp15_barrier!(),                                            // fence
                         dst = in(reg) dst,
                         // Note: this cast must be a zero-extend since loaded value
                         // which compared to it is zero-extended.
@@ -90,6 +86,9 @@ macro_rules! atomic {
                         new = in(reg) new,
                         out = out(reg) out,
                         r = out(reg) _,
+                        // cp15_barrier! calls `mcr p15, 0, {zero}, c7, c10, 5`, and
+                        // the value in the {zero} register should be zero (SBZ).
+                        zero = inout(reg) 0_u32 => _,
                         // Do not use `preserves_flags` because CMP modifies the condition flags.
                         options(nostack),
                     );
