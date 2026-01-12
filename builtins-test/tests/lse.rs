@@ -17,14 +17,15 @@ mod cas {
         fn $name() {
             builtins_test::fuzz_2(10000, |expected: super::int_ty!($bytes), new| {
                 let mut target = expected.wrapping_add(10);
+                let ret: super::int_ty!($bytes) = unsafe {
+                    compiler_builtins::aarch64_outline_atomics::$name::$name(
+                        expected,
+                        new,
+                        &mut target,
+                    )
+                };
                 assert_eq!(
-                    unsafe {
-                        compiler_builtins::aarch64_outline_atomics::$name::$name(
-                            expected,
-                            new,
-                            &mut target,
-                        )
-                    },
+                    ret,
                     expected.wrapping_add(10),
                     "return value should always be the previous value",
                 );
@@ -35,15 +36,17 @@ mod cas {
                 );
 
                 target = expected;
+                let ret: super::int_ty!($bytes) = unsafe {
+                    compiler_builtins::aarch64_outline_atomics::$name::$name(
+                        expected,
+                        new,
+                        &mut target,
+                    )
+                };
                 assert_eq!(
-                    unsafe {
-                        compiler_builtins::aarch64_outline_atomics::$name::$name(
-                            expected,
-                            new,
-                            &mut target,
-                        )
-                    },
-                    expected
+                    ret,
+                    expected,
+                    "the new return value should always be the previous value (i.e. the first parameter passed to the function)",
                 );
                 assert_eq!(target, new, "should have updated target");
             });
