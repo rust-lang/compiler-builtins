@@ -45,6 +45,8 @@ macro_rules! atomic {
                 src: *const Self,
             ) -> Self {
                 let out: Self;
+                // SAFETY: the caller must guarantee that the pointer is valid for read and write
+                // and aligned to the element size.
                 unsafe {
                     asm!(
                         concat!("ldr", $suffix, " {out}, [{src}]"), // atomic { out = *src }
@@ -63,6 +65,8 @@ macro_rules! atomic {
                 new: Self,
             ) -> Self {
                 let mut out: Self;
+                // SAFETY: the caller must guarantee that the pointer is valid for read and write
+                // and aligned to the element size.
                 unsafe {
                     asm!(
                             concat!("ldrex", $suffix, " {out}, [{dst}]"),      // atomic { out = *dst; EXCLUSIVE = dst }
@@ -147,10 +151,12 @@ delegate_signed!(i32, u32);
 // for more details.
 unsafe fn atomic_rmw<T: Atomic, F: Fn(T) -> T, G: Fn(T, T) -> T>(ptr: *mut T, f: F, g: G) -> T {
     loop {
-        // FIXME(safety): preconditions review needed
+        // SAFETY: the caller must guarantee that the pointer is valid for read and write
+        // and aligned to the element size.
         let curval = unsafe { T::load_relaxed(ptr) };
         let newval = f(curval);
-        // FIXME(safety): preconditions review needed
+        // SAFETY: the caller must guarantee that the pointer is valid for read and write
+        // and aligned to the element size.
         if unsafe { T::cmpxchg(ptr, curval, newval) } == curval {
             return g(curval, newval);
         }
@@ -161,7 +167,8 @@ macro_rules! atomic_rmw {
     ($name:ident, $ty:ty, $op:expr, $fetch:expr) => {
         intrinsics! {
             pub unsafe extern "C" fn $name(ptr: *mut $ty, val: $ty) -> $ty {
-                // FIXME(safety): preconditions review needed
+                // SAFETY: the caller must guarantee that the pointer is valid for read and write
+                // and aligned to the element size.
                 unsafe {
                     atomic_rmw(
                         ptr,
@@ -185,7 +192,8 @@ macro_rules! atomic_cmpxchg {
     ($name:ident, $ty:ty) => {
         intrinsics! {
             pub unsafe extern "C" fn $name(ptr: *mut $ty, oldval: $ty, newval: $ty) -> $ty {
-                // FIXME(safety): preconditions review needed
+                // SAFETY: the caller must guarantee that the pointer is valid for read and write
+                // and aligned to the element size.
                 unsafe { <$ty as Atomic>::cmpxchg(ptr, oldval, newval) }
             }
         }

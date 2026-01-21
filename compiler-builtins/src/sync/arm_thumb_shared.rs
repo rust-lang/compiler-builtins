@@ -1,5 +1,10 @@
 // Used by both arm_linux.rs and thumbv6k.rs.
 
+// References:
+// - https://llvm.org/docs/Atomics.html#libcalls-sync
+// - https://gcc.gnu.org/onlinedocs/gcc/_005f_005fsync-Builtins.html
+// - https://refspecs.linuxfoundation.org/elf/IA64-SysV-psABI.pdf#page=58
+
 atomic_rmw!(@old __sync_fetch_and_add_1, u8, |a: u8, b: u8| a.wrapping_add(b));
 atomic_rmw!(@old __sync_fetch_and_add_2, u16, |a: u16, b: u16| a
     .wrapping_add(b));
