@@ -36,7 +36,6 @@ trait Atomic: Copy + Eq {
     unsafe fn cmpxchg(dst: *mut Self, current: Self, new: Self) -> Self;
 }
 
-#[rustfmt::skip]
 macro_rules! atomic {
     ($ty:ident, $suffix:tt) => {
         impl Atomic for $ty {
@@ -82,7 +81,7 @@ macro_rules! atomic {
                         dst = in(reg) dst,
                         // Note: this cast must be a zero-extend since loaded value
                         // which compared to it is zero-extended.
-                        old = in(reg) old as u32,
+                        old = in(reg) u32::from(old),
                         new = in(reg) new,
                         out = out(reg) out,
                         r = out(reg) _,
@@ -115,15 +114,19 @@ macro_rules! delegate_signed {
             unsafe fn load_relaxed(src: *const Self) -> Self {
                 // SAFETY: the caller must uphold the safety contract.
                 // casts are okay because $ty and $base implement the same layout.
-                unsafe { <$base as Atomic>::load_relaxed(src.cast::<$base>()) as Self }
+                unsafe { <$base as Atomic>::load_relaxed(src.cast::<$base>()).cast_signed() }
             }
             #[inline]
             unsafe fn cmpxchg(dst: *mut Self, old: Self, new: Self) -> Self {
                 // SAFETY: the caller must uphold the safety contract.
                 // casts are okay because $ty and $base implement the same layout.
                 unsafe {
-                    <$base as Atomic>::cmpxchg(dst.cast::<$base>(), old as $base, new as $base)
-                        as Self
+                    <$base as Atomic>::cmpxchg(
+                        dst.cast::<$base>(),
+                        old.cast_unsigned(),
+                        new.cast_unsigned(),
+                    )
+                    .cast_signed()
                 }
             }
         }
