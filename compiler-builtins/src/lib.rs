@@ -45,6 +45,7 @@ pub mod float;
 pub mod int;
 pub mod math;
 pub mod mem;
+pub mod sync;
 
 // `libm` expects its `support` module to be available in the crate root.
 use math::libm_math::support;
@@ -57,27 +58,6 @@ pub mod aarch64;
 
 #[cfg(all(target_arch = "aarch64", target_feature = "outline-atomics"))]
 pub mod aarch64_outline_atomics;
-
-#[cfg(all(
-    kernel_user_helpers,
-    any(target_os = "linux", target_os = "android"),
-    target_arch = "arm"
-))]
-pub mod arm_linux;
-
-// Armv6k supports atomic instructions, but they are unavailable in Thumb mode
-// unless Thumb-2 instructions available (v6t2).
-// Using Thumb interworking allows us to use these instructions even from Thumb mode
-// without Thumb-2 instructions, but LLVM does not implement that processing (as of LLVM 21),
-// so we implement it here at this time.
-// (`not(target_feature = "mclass")` is unneeded because v6k is not set on thumbv6m.)
-#[cfg(all(
-    target_arch = "arm",
-    target_feature = "thumb-mode",
-    target_feature = "v6k",
-    not(target_feature = "v6t2"),
-))]
-pub mod thumbv6k;
 
 #[cfg(target_arch = "avr")]
 pub mod avr;

@@ -189,7 +189,7 @@ macro_rules! atomic_cmpxchg {
     };
 }
 
-include!("sync_builtins.rs");
+include!("arm_thumb_shared.rs");
 
 intrinsics! {
     pub unsafe extern "C" fn __sync_synchronize() {
