@@ -67,6 +67,9 @@ macro_rules! atomic {
                 let mut out: Self;
                 // SAFETY: the caller must guarantee that the pointer is valid for read and write
                 // and aligned to the element size.
+                //
+                // Instead of the common `fence; ll/sc loop; fence` form, we use the form used by
+                // LLVM, which omits the preceding fence if no write operation is performed.
                 unsafe {
                     asm!(
                             concat!("ldrex", $suffix, " {out}, [{dst}]"),      // atomic { out = *dst; EXCLUSIVE = dst }
