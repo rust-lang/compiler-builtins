@@ -218,8 +218,10 @@ macro_rules! try_lse_op {
             "cbz     w16, 8f\n",
             // LSE_OP  s(reg),* [$mem]
             concat!(lse!($op, $ordering, $bytes), $( " ", reg!($bytes, $reg), ", " ,)* "[", stringify!($mem), "]\n",),
-            "ret
-            8:"
+            "ret\n",
+            // SXTB s(0), s(0)
+            concat!(sign_extend!($bytes), "\n"),
+            "8:"
         )
     };
 }
