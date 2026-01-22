@@ -190,6 +190,24 @@ macro_rules! sym_off {
     };
 }
 
+/// Emit the required AArch64 sign-extension for signed integer values
+/// smaller than 32 bits, operating in-place on the given register.
+///
+/// Intended for use in naked assembly before `ret` or before a value
+/// is compared/consumed at full register width.
+#[rustfmt::skip]
+macro_rules! sign_extend {
+    (1) => {
+        concat!("sxtb ", reg!(1, 0), ", ", reg!(1, 0))
+    };
+    (2) => {
+        concat!("sxth ", reg!(2, 0), ", ", reg!(2, 0))
+    };
+    (4) => { "" };
+    (8) => { "" };
+    (16) => { "" };
+}
+
 // If supported, perform the requested LSE op and return, or fallthrough.
 macro_rules! try_lse_op {
     ($op: literal, $ordering:ident, $bytes:tt, $($reg:literal,)* [ $mem:ident ] ) => {
@@ -250,6 +268,8 @@ macro_rules! compare_and_swap {
                     concat!(stxr!($ordering, $bytes), " w17, ", reg!($bytes, 1), ", [x2]"),
                     "cbnz   w17, 0b",
                     "1:",
+                    // SXTB s(0), s(0)
+                    sign_extend!($bytes),
                     "ret",
                     have_lse = sym crate::aarch64_outline_atomics::HAVE_LSE_ATOMICS,
                 }
@@ -310,6 +330,8 @@ macro_rules! swap {
                     // STXR   w(tmp1), s(tmp0), [x1]
                     concat!(stxr!($ordering, $bytes), " w17, ", reg!($bytes, 16), ", [x1]"),
                     "cbnz   w17, 0b",
+                    // SXTB s(0), s(0)
+                    sign_extend!($bytes),
                     "ret",
                     have_lse = sym crate::aarch64_outline_atomics::HAVE_LSE_ATOMICS,
                 }
@@ -340,6 +362,8 @@ macro_rules! fetch_op {
                     // STXR   w(tmp2), s(tmp1), [x1]
                     concat!(stxr!($ordering, $bytes), " w15, ", reg!($bytes, 17), ", [x1]"),
                     "cbnz  w15, 0b",
+                    // SXTB s(0), s(0)
+                    sign_extend!($bytes),
                     "ret",
                     have_lse = sym crate::aarch64_outline_atomics::HAVE_LSE_ATOMICS,
                 }
