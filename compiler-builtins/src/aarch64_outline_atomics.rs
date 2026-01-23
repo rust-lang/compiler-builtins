@@ -37,11 +37,11 @@ intrinsics! {
 /// Translate a byte size to a Rust type.
 #[rustfmt::skip]
 macro_rules! int_ty {
-    (1) => { i8 };
-    (2) => { i16 };
-    (4) => { i32 };
-    (8) => { i64 };
-    (16) => { i128 };
+    (1) => { u8 };
+    (2) => { u16 };
+    (4) => { u32 };
+    (8) => { u64 };
+    (16) => { u128 };
 }
 
 /// Given a byte size and a register number, return a register of the appropriate size.
@@ -190,27 +190,6 @@ macro_rules! sym_off {
     };
 }
 
-/// Given a byte size and a register number given by $num,
-/// this will emit the required AArch64 sign-extension for signed integer values
-/// smaller than 32 bits, operating in-place on the given register.
-///
-/// If the byte size is bigger than 2, this turns into a no-op.
-///
-/// Intended for use in naked assembly before `ret` or before a value
-/// is compared/consumed at full register width.
-#[rustfmt::skip]
-macro_rules! sign_extend {
-    (1, $num:literal) => {
-        concat!("sxtb ", reg!(1, $num), ", ", reg!(1, $num))
-    };
-    (2, $num:literal) => {
-        concat!("sxth ", reg!(2, $num), ", ", reg!(2, $num))
-    };
-    (4, $num:literal) => { "" };
-    (8, $num:literal) => { "" };
-    (16, $num:literal) => { "" };
-}
-
 // If supported, perform the requested LSE op and return, or fallthrough.
 macro_rules! try_lse_op {
     ($op: literal, $ordering:ident, $bytes:tt, $($reg:literal,)* [ $mem:ident ] ) => {
@@ -221,8 +200,6 @@ macro_rules! try_lse_op {
             "cbz     w16, 8f\n",
             // LSE_OP  s(reg),* [$mem]
             concat!(lse!($op, $ordering, $bytes), $( " ", reg!($bytes, $reg), ", " ,)* "[", stringify!($mem), "]\n",),
-            // SXTB s(0), s(0)
-            concat!(sign_extend!($bytes, 0), "\n"),
             "ret
             8:"
         )
@@ -273,8 +250,6 @@ macro_rules! compare_and_swap {
                     concat!(stxr!($ordering, $bytes), " w17, ", reg!($bytes, 1), ", [x2]"),
                     "cbnz   w17, 0b",
                     "1:",
-                    // SXTB s(0), s(0)
-                    sign_extend!($bytes, 0),
                     "ret",
                     have_lse = sym crate::aarch64_outline_atomics::HAVE_LSE_ATOMICS,
                 }
@@ -283,15 +258,15 @@ macro_rules! compare_and_swap {
     };
 }
 
-// i128 uses a completely different impl, so it has its own macro.
-macro_rules! compare_and_swap_i128 {
+// u128 uses a completely different impl, so it has its own macro.
+macro_rules! compare_and_swap_u128 {
     ($ordering:ident, $name:ident) => {
         intrinsics! {
             #[maybe_use_optimized_c_shim]
             #[unsafe(naked)]
             pub unsafe extern "C" fn $name (
-                expected: i128, desired: i128, ptr: *mut i128
-            ) -> i128 {
+                expected: u128, desired: u128, ptr: *mut u128
+            ) -> u128 {
                 core::arch::naked_asm! {
                     // CASP   x0, x1, x2, x3, [x4]; if LSE supported.
                     try_lse_op!("cas", $ordering, 16, 0, 1, 2, 3, [x4]),
@@ -335,8 +310,6 @@ macro_rules! swap {
                     // STXR   w(tmp1), s(tmp0), [x1]
                     concat!(stxr!($ordering, $bytes), " w17, ", reg!($bytes, 16), ", [x1]"),
                     "cbnz   w17, 0b",
-                    // SXTB s(0), s(0)
-                    sign_extend!($bytes, 0),
                     "ret",
                     have_lse = sym crate::aarch64_outline_atomics::HAVE_LSE_ATOMICS,
                 }
@@ -367,8 +340,6 @@ macro_rules! fetch_op {
                     // STXR   w(tmp2), s(tmp1), [x1]
                     concat!(stxr!($ordering, $bytes), " w15, ", reg!($bytes, 17), ", [x1]"),
                     "cbnz  w15, 0b",
-                    // SXTB s(0), s(0)
-                    sign_extend!($bytes, 0),
                     "ret",
                     have_lse = sym crate::aarch64_outline_atomics::HAVE_LSE_ATOMICS,
                 }
@@ -475,7 +446,7 @@ macro_rules! foreach_ldset {
 }
 
 foreach_cas!(compare_and_swap);
-foreach_cas16!(compare_and_swap_i128);
+foreach_cas16!(compare_and_swap_u128);
 foreach_swp!(swap);
 foreach_ldadd!(add);
 foreach_ldclr!(and);
