@@ -181,6 +181,7 @@ macro_rules! compare_and_swap {
             ) -> int_ty!($bytes) {
                 // We can't use `AtomicI8::compare_and_swap`; we *are* compare_and_swap.
                 core::arch::naked_asm! {
+                    "hint #34", // BTI c
                     // CAS    s(0), s(1), [x2]; if LSE supported.
                     try_lse_op!("cas", $ordering, $bytes, 0, 1, [x2]),
                     // UXT    s(tmp0), s(0)
@@ -213,6 +214,7 @@ macro_rules! compare_and_swap_i128 {
                 expected: i128, desired: i128, ptr: *mut i128
             ) -> i128 {
                 core::arch::naked_asm! {
+                    "hint #34", // BTI c
                     // CASP   x0, x1, x2, x3, [x4]; if LSE supported.
                     try_lse_op!("cas", $ordering, 16, 0, 1, 2, 3, [x4]),
                     "mov    x16, x0",
@@ -245,6 +247,7 @@ macro_rules! swap {
                 left: int_ty!($bytes), right_ptr: *mut int_ty!($bytes)
             ) -> int_ty!($bytes) {
                 core::arch::naked_asm! {
+                    "hint #34", // BTI c
                     // SWP    s(0), s(0), [x1]; if LSE supported.
                     try_lse_op!("swp", $ordering, $bytes, 0, 0, [x1]),
                     // mov    s(tmp0), s(0)
@@ -273,6 +276,7 @@ macro_rules! fetch_op {
                 val: int_ty!($bytes), ptr: *mut int_ty!($bytes)
             ) -> int_ty!($bytes) {
                 core::arch::naked_asm! {
+                    "hint #34", // BTI c
                     // LSEOP  s(0), s(0), [x1]; if LSE supported.
                     try_lse_op!($lse_op, $ordering, $bytes, 0, 0, [x1]),
                     // mov    s(tmp0), s(0)
