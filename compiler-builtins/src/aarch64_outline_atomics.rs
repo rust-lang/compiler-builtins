@@ -401,3 +401,28 @@ foreach_ldadd!(add);
 foreach_ldclr!(and);
 foreach_ldeor!(xor);
 foreach_ldset!(or);
+
+core::arch::global_asm!(
+    "
+    .pushsection .note.gnu.property, \"a\"
+    .balign 8
+    .word 4
+    .word 0x10
+    .word 0x5 // NT_GNU_PROPERTY_TYPE_0
+    .asciz \"GNU\"
+    .word 0xc0000000 // GNU_PROPERTY_AARCH64_FEATURE_1_AND
+    .word 4
+    ",
+    #[cfg(all(branch_protection = "bti", branch_protection = "pac-ret"))]
+    ".word 3",
+    #[cfg(all(not(branch_protection = "bti"), branch_protection = "pac-ret"))]
+    ".word 2",
+    #[cfg(all(branch_protection = "bti", not(branch_protection = "pac-ret")))]
+    ".word 1",
+    #[cfg(all(not(branch_protection = "bti"), not(branch_protection = "pac-ret")))]
+    ".word 0",
+    "
+    .word 0
+    .popsection
+    "
+);
