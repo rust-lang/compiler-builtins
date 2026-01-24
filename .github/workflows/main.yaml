@@ -50,6 +50,26 @@ jobs:
           os: macos-15
         - target: aarch64-unknown-linux-gnu
           os: ubuntu-24.04-arm
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-24.04-arm
+          flags: -Z branch-protection=bti -C link-arg=-Wl,-z,force-bti
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-24.04-arm
+          flags: -Z branch-protection=pac-ret,bti -C link-arg=-Wl,-z,force-bti
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-24.04-arm
+          flags: -Z branch-protection=pac-ret,bti,b-key -C link-arg=-Wl,-z,force-bti
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-24.04 # QEMU
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-24.04 # QEMU
+          flags: -Z branch-protection=bti -C link-arg=-Wl,-z,force-bti
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-24.04 # QEMU
+          flags: -Z branch-protection=pac-ret,bti -C link-arg=-Wl,-z,force-bti
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-24.04 # QEMU
+          flags: -Z branch-protection=pac-ret,bti,b-key -C link-arg=-Wl,-z,force-bti
         - target: aarch64-pc-windows-msvc
           os: windows-11-arm
         - target: arm-unknown-linux-gnueabi
@@ -174,11 +194,15 @@ jobs:
       if: matrix.os != 'ubuntu-24.04'
       shell: bash
       run: ./ci/run.sh ${{ matrix.target }}
+      env:
+        RUSTFLAGS: ${{ matrix.flags }} ${{ env.RUSTFLAGS }}
 
     # Otherwise we use our docker containers to run builds
     - name: Run in Docker
       if: matrix.os == 'ubuntu-24.04'
       run: ./ci/run-docker.sh ${{ matrix.target }}
+      env:
+        RUSTFLAGS: ${{ matrix.flags }} ${{ env.RUSTFLAGS }}
 
     - name: Print test logs if available
       if: always()

@@ -21,6 +21,8 @@ fn main() {
     println!("cargo::rustc-check-cfg=cfg(kernel_user_helpers)");
     println!("cargo::rustc-check-cfg=cfg(feature, values(\"mem-unaligned\"))");
 
+    branch_protection_cfg();
+
     // Emscripten's runtime includes all the builtins
     if target.os == "emscripten" {
         return;
@@ -180,6 +182,25 @@ fn configure_check_cfg() {
     // FIXME: these come from libm and should be changed there
     println!("cargo::rustc-check-cfg=cfg(feature, values(\"checked\"))");
     println!("cargo::rustc-check-cfg=cfg(assert_no_panic)");
+
+    println!("cargo::rustc-check-cfg=cfg(branch_protection, values(\"pac-ret\",\"bti\"))");
+}
+
+fn branch_protection_cfg() {
+    //   flags: -Z branch-protection=pac-ret,bti,b-key
+    if let Some(rustflags) = env::var_os("CARGO_ENCODED_RUSTFLAGS") {
+        for mut flag in rustflags.to_string_lossy().split('\x1f') {
+            if flag.starts_with("-Z") {
+                flag = &flag["-Z".len()..];
+            }
+            if let Some(branch_protection) = flag.strip_prefix("branch-protection=") {
+                for x in branch_protection.split(",") {
+                    println!("cargo:rustc-cfg=branch_protection=\"{x}\"")
+                }
+                return;
+            }
+        }
+    }
 }
 
 #[cfg(feature = "c")]
