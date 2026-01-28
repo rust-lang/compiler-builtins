@@ -40,9 +40,13 @@ pub mod full_availability {
     }
 
     /* Weak linkage is unreliable on Windows and Apple, so we don't expose symbols that we know
-     * the system libc provides in order to avoid conflicts. */
+     * the system libc provides in order to avoid conflicts.
+     *
+     * Windows+GNU is an exception since we _do_ want to use our `fma` to avoid the inaccurate
+     * system implementation. see the issue: https://github.com/rust-lang/rust/issues/140515.
+     */
 
-    #[cfg(all(not(windows), not(target_vendor = "apple")))]
+    #[cfg(all(not(all(windows, target_env = "gnu")), not(target_vendor = "apple")))]
     libm_intrinsics! {
         /* f32 */
         fn cbrtf(n: f32) -> f32;
