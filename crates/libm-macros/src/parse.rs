@@ -52,6 +52,7 @@ pub struct StructuredInput {
     pub skip: Vec<Ident>,
     /// If true, omit f16 and f128 functions that aren't present in other libraries.
     pub skip_f16_f128: bool,
+    pub skip_builtins: bool,
     /// Invoke only for these functions
     pub only: Option<Vec<Ident>>,
     /// Attributes that get applied to specific functions
@@ -73,6 +74,7 @@ impl StructuredInput {
         let emit_types_expr = expect_field(&mut map, "emit_types").ok();
         let skip_expr = expect_field(&mut map, "skip").ok();
         let skip_f16_f128 = expect_field(&mut map, "skip_f16_f128").ok();
+        let skip_builtins = expect_field(&mut map, "skip_builtins").ok();
         let only_expr = expect_field(&mut map, "only").ok();
         let attr_expr = expect_field(&mut map, "attributes").ok();
         let extra = expect_field(&mut map, "extra").ok();
@@ -97,6 +99,11 @@ impl StructuredInput {
         };
 
         let skip_f16_f128 = match skip_f16_f128 {
+            Some(expr) => expect_litbool(expr)?.value,
+            None => false,
+        };
+
+        let skip_builtins = match skip_builtins {
             Some(expr) => expect_litbool(expr)?.value,
             None => false,
         };
@@ -131,6 +138,7 @@ impl StructuredInput {
             emit_types,
             skip,
             skip_f16_f128,
+            skip_builtins,
             only,
             only_span,
             attributes,

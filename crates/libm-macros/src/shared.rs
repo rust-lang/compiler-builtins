@@ -8,12 +8,93 @@ struct NestedOp {
     rust_sig: Signature,
     c_sig: Option<Signature>,
     fn_list: &'static [&'static str],
-    public: bool,
+    scope: OpScope,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum OpScope {
+    LibmPublic,
+    #[allow(dead_code)]
+    LibmPrivate,
+    #[allow(dead_code)]
+    BuiltinsPublic,
+}
+
+impl OpScope {
+    pub const fn path_root(self) -> &'static str {
+        match self {
+            OpScope::LibmPublic => "libm",
+            OpScope::LibmPrivate => todo!(),
+            OpScope::BuiltinsPublic => "crate::builtins_wrapper",
+        }
+    }
 }
 
 /// We need a flat list to work with most of the time, but define things as a more convenient
 /// nested list.
 const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
+    /* compiler-builtins operations */
+    NestedOp {
+        float_ty: FloatTy::F32,
+        rust_sig: Signature {
+            args: &[Ty::F32, Ty::F32],
+            returns: &[Ty::F32],
+        },
+        c_sig: None,
+        fn_list: &["addf32", "divf32", "mulf32", "subf32"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F64,
+        rust_sig: Signature {
+            args: &[Ty::F64, Ty::F64],
+            returns: &[Ty::F64],
+        },
+        c_sig: None,
+        fn_list: &["addf64", "divf64", "mulf64", "subf64"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F128,
+        rust_sig: Signature {
+            args: &[Ty::F128, Ty::F128],
+            returns: &[Ty::F128],
+        },
+        c_sig: None,
+        fn_list: &["addf128", "divf128", "mulf128", "subf128"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F32,
+        rust_sig: Signature {
+            args: &[Ty::F32, Ty::I32],
+            returns: &[Ty::F32],
+        },
+        c_sig: None,
+        fn_list: &["powif32"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F64,
+        rust_sig: Signature {
+            args: &[Ty::F64, Ty::I32],
+            returns: &[Ty::F64],
+        },
+        c_sig: None,
+        fn_list: &["powif64"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    NestedOp {
+        float_ty: FloatTy::F128,
+        rust_sig: Signature {
+            args: &[Ty::F128, Ty::I32],
+            returns: &[Ty::F128],
+        },
+        c_sig: None,
+        fn_list: &["powif128"],
+        scope: OpScope::BuiltinsPublic,
+    },
+    /* libm operations */
     NestedOp {
         // `fn(f16) -> f16`
         float_ty: FloatTy::F16,
@@ -32,7 +113,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
             "sqrtf16",
             "truncf16",
         ],
-        public: true,
+        scope: OpScope::LibmPublic,
     },
     NestedOp {
         // `fn(f32) -> f32`
@@ -81,7 +162,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
             "y0f",
             "y1f",
         ],
-        public: true,
+        scope: OpScope::LibmPublic,
     },
     NestedOp {
         // `(f64) -> f64`
@@ -130,7 +211,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
             "y0",
             "y1",
         ],
-        public: true,
+        scope: OpScope::LibmPublic,
     },
     NestedOp {
         // `fn(f128) -> f128`
@@ -150,7 +231,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
             "sqrtf128",
             "truncf128",
         ],
-        public: true,
+        scope: OpScope::LibmPublic,
     },
     NestedOp {
         // `(f16, f16) -> f16`
@@ -171,7 +252,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
             "fminimumf16",
             "fmodf16",
         ],
-        public: true,
+        scope: OpScope::LibmPublic,
     },
     NestedOp {
         // `(f32, f32) -> f32`
@@ -197,7 +278,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
             "powf",
             "remainderf",
         ],
-        public: true,
+        scope: OpScope::LibmPublic,
     },
     NestedOp {
         // `(f64, f64) -> f64`
@@ -223,7 +304,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
             "pow",
             "remainder",
         ],
-        public: true,
+        scope: OpScope::LibmPublic,
     },
     NestedOp {
         // `(f128, f128) -> f128`
@@ -244,7 +325,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
             "fminimumf128",
             "fmodf128",
         ],
-        public: true,
+        scope: OpScope::LibmPublic,
     },
     NestedOp {
         // `(f32, f32, f32) -> f32`
@@ -255,7 +336,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         },
         c_sig: None,
         fn_list: &["fmaf"],
-        public: true,
+        scope: OpScope::LibmPublic,
     },
     NestedOp {
         // `(f64, f64, f64) -> f64`
@@ -266,7 +347,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         },
         c_sig: None,
         fn_list: &["fma"],
-        public: true,
+        scope: OpScope::LibmPublic,
     },
     NestedOp {
         // `(f128, f128, f128) -> f128`
@@ -277,7 +358,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         },
         c_sig: None,
         fn_list: &["fmaf128"],
-        public: true,
+        scope: OpScope::LibmPublic,
     },
     NestedOp {
         // `(f32) -> i32`
@@ -288,7 +369,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         },
         c_sig: None,
         fn_list: &["ilogbf"],
-        public: true,
+        scope: OpScope::LibmPublic,
     },
     NestedOp {
         // `(f64) -> i32`
@@ -299,7 +380,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         },
         c_sig: None,
         fn_list: &["ilogb"],
-        public: true,
+        scope: OpScope::LibmPublic,
     },
     NestedOp {
         // `(i32, f32) -> f32`
@@ -310,7 +391,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         },
         c_sig: None,
         fn_list: &["jnf", "ynf"],
-        public: true,
+        scope: OpScope::LibmPublic,
     },
     NestedOp {
         // `(i32, f64) -> f64`
@@ -321,7 +402,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         },
         c_sig: None,
         fn_list: &["jn", "yn"],
-        public: true,
+        scope: OpScope::LibmPublic,
     },
     NestedOp {
         // `(f16, i32) -> f16`
@@ -332,7 +413,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         },
         c_sig: None,
         fn_list: &["ldexpf16", "scalbnf16"],
-        public: true,
+        scope: OpScope::LibmPublic,
     },
     NestedOp {
         // `(f32, i32) -> f32`
@@ -343,7 +424,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         },
         c_sig: None,
         fn_list: &["ldexpf", "scalbnf"],
-        public: true,
+        scope: OpScope::LibmPublic,
     },
     NestedOp {
         // `(f64, i64) -> f64`
@@ -354,7 +435,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         },
         c_sig: None,
         fn_list: &["ldexp", "scalbn"],
-        public: true,
+        scope: OpScope::LibmPublic,
     },
     NestedOp {
         // `(f128, i32) -> f128`
@@ -365,7 +446,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         },
         c_sig: None,
         fn_list: &["ldexpf128", "scalbnf128"],
-        public: true,
+        scope: OpScope::LibmPublic,
     },
     NestedOp {
         // `(f32, &mut f32) -> f32` as `(f32) -> (f32, f32)`
@@ -379,7 +460,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
             returns: &[Ty::F32],
         }),
         fn_list: &["modff"],
-        public: true,
+        scope: OpScope::LibmPublic,
     },
     NestedOp {
         // `(f64, &mut f64) -> f64` as  `(f64) -> (f64, f64)`
@@ -393,7 +474,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
             returns: &[Ty::F64],
         }),
         fn_list: &["modf"],
-        public: true,
+        scope: OpScope::LibmPublic,
     },
     NestedOp {
         // `(f32, &mut c_int) -> f32` as `(f32) -> (f32, i32)`
@@ -407,7 +488,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
             returns: &[Ty::F32],
         }),
         fn_list: &["frexpf", "lgammaf_r"],
-        public: true,
+        scope: OpScope::LibmPublic,
     },
     NestedOp {
         // `(f64, &mut c_int) -> f64` as `(f64) -> (f64, i32)`
@@ -421,7 +502,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
             returns: &[Ty::F64],
         }),
         fn_list: &["frexp", "lgamma_r"],
-        public: true,
+        scope: OpScope::LibmPublic,
     },
     NestedOp {
         // `(f32, f32, &mut c_int) -> f32` as `(f32, f32) -> (f32, i32)`
@@ -435,7 +516,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
             returns: &[Ty::F32],
         }),
         fn_list: &["remquof"],
-        public: true,
+        scope: OpScope::LibmPublic,
     },
     NestedOp {
         // `(f64, f64, &mut c_int) -> f64` as `(f64, f64) -> (f64, i32)`
@@ -449,7 +530,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
             returns: &[Ty::F64],
         }),
         fn_list: &["remquo"],
-        public: true,
+        scope: OpScope::LibmPublic,
     },
     NestedOp {
         // `(f32, &mut f32, &mut f32)` as `(f32) -> (f32, f32)`
@@ -463,7 +544,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
             returns: &[],
         }),
         fn_list: &["sincosf"],
-        public: true,
+        scope: OpScope::LibmPublic,
     },
     NestedOp {
         // `(f64, &mut f64, &mut f64)` as `(f64) -> (f64, f64)`
@@ -477,7 +558,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
             returns: &[],
         }),
         fn_list: &["sincos"],
-        public: true,
+        scope: OpScope::LibmPublic,
     },
 ];
 
@@ -558,7 +639,9 @@ pub struct MathOpInfo {
     /// Function signature for Rust implementations
     pub rust_sig: Signature,
     /// True if part of libm's public API
-    pub public: bool,
+    pub scope: OpScope,
+    /// The path to this function, including crate but excluding the function itself.
+    pub path: String,
 }
 
 /// A flat representation of `ALL_FUNCTIONS`.
@@ -573,7 +656,8 @@ pub static ALL_OPERATIONS: LazyLock<Vec<MathOpInfo>> = LazyLock::new(|| {
                 float_ty: op.float_ty,
                 rust_sig: op.rust_sig.clone(),
                 c_sig: op.c_sig.clone().unwrap_or_else(|| op.rust_sig.clone()),
-                public: op.public,
+                scope: op.scope,
+                path: format!("{}::{name}", op.scope.path_root()),
             };
             ret.push(api);
         }
