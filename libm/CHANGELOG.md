@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.2.17](https://github.com/rust-lang/compiler-builtins/compare/libm-v0.2.16...libm-v0.2.17) - 2026-01-31
+
+### Other
+
+- Merge ref '44e34e1ac6d7' from rust-lang/rust
+
 ## [0.2.16](https://github.com/rust-lang/compiler-builtins/compare/libm-v0.2.15...libm-v0.2.16) - 2025-12-07
 
 ### Fixed
