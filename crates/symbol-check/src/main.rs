@@ -77,6 +77,7 @@ fn check_paths<P: AsRef<Path>>(paths: &[P]) {
 
         verify_no_duplicates(&archive);
         verify_core_symbols(&archive);
+        verify_hidden_visibility(&archive);
     }
 }
 
@@ -297,6 +298,36 @@ fn verify_core_symbols(archive: &BinFile) {
     }
 
     println!("    success: no undefined references to core found");
+}
+
+/// Check for symbols with default visibility.
+fn verify_hidden_visibility(archive: &BinFile) {
+    let mut visible = Vec::new();
+    let mut found_any = false;
+
+    archive.for_each_symbol(|symbol, obj, member| {
+        // Only check defined globals.
+        if !symbol.is_global() || symbol.is_undefined() {
+            return;
+        }
+
+        let sym = SymInfo::new(&symbol, obj, member);
+        if sym.scope == SymbolScope::Dynamic {
+            visible.push(sym);
+        }
+
+        found_any = true
+    });
+
+    assert!(found_any, "no symbols found");
+
+    if !visible.is_empty() {
+        visible.sort_unstable_by(|a, b| a.name.cmp(&b.name));
+        let num = visible.len();
+        panic!("found {num:#?} visible symbols: {visible:#?}");
+    }
+
+    println!("    success: no visible symbols found");
 }
 
 /// Thin wrapper for owning data used by `object`.
