@@ -8,6 +8,18 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.2.17](https://github.com/rust-lang/compiler-builtins/compare/libm-v0.2.16...libm-v0.2.17) - 2026-02-07
+
+### Other
+
+- Perform some simplifications possible with the MSRV bump
+- Bump the libm MSRV to 1.67
+- Sort Cargo.toml `[features]` table after `[dependencies]`
+- Switch to workspace dependencies
+- Fix acoshf and acosh for negative inputs
+- Allow unstable_name_collisions
+- Merge ref '44e34e1ac6d7' from rust-lang/rust
+
 ## [0.2.16](https://github.com/rust-lang/compiler-builtins/compare/libm-v0.2.15...libm-v0.2.16) - 2025-12-07
 
 ### Fixed
