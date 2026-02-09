@@ -22,6 +22,8 @@ ROOT_DIR = ETC_DIR.parent
 
 # These files do not trigger a retest.
 IGNORED_SOURCES = ["libm/src/libm_helper.rs", "libm/src/math/support/float_traits.rs"]
+# Same as above, limited to specific functions
+IGNORED_SOURCES_MAP = {"fma": ["libm/src/math/cbrt.rs"]}
 
 IndexTy: TypeAlias = dict[str, dict[str, Any]]
 """Type of the `index` item in rustdoc's JSON output"""
@@ -138,6 +140,8 @@ class Crate:
                 sources.add(src)
 
             for src in IGNORED_SOURCES:
+                sources.discard(src)
+            for src in IGNORED_SOURCES_MAP.get(name, []):
                 sources.discard(src)
 
         # Sort the set
