@@ -20,6 +20,15 @@ if [ "${USING_CONTAINER_RUSTC:-}" = 1 ]; then
         rustup target add "$target"
 fi
 
+# Make all linker warnings errors
+if [[ "$target" == *"-apple-"* || "$target" == "thumb"* ]]; then
+    extra_rustflags=""
+else
+    extra_rustflags=" -Clink-arg=-Wl,--fatal-warnings"
+fi
+
+export RUSTFLAGS="${RUSTFLAGS:-}$extra_rustflags"
+
 # Test our implementation
 if [ "${BUILD_ONLY:-}" = "1" ]; then
     echo "no tests to run for build-only targets"
