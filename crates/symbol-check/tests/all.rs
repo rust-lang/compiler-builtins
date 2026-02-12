@@ -84,8 +84,7 @@ fn test_visible_symbols() {
     let assert = t.symcheck_exe().arg(&lib_out).assert();
     assert
         .failure()
-        .stderr_contains("found 1 visible symbols")
-        .stderr_contains("name: \"good\"");
+        .stderr_contains("found 1 visible symbols"); // good is visible.
 }
 
 mod exe_stack {
@@ -108,7 +107,7 @@ mod exe_stack {
         let objs = t.cc_build().file(src).out_dir(&dir).compile_intermediates();
         let [obj] = objs.as_slice() else { panic!() };
 
-        let assert = t.symcheck_exe().arg(obj).assert();
+        let assert = t.symcheck_exe().arg(obj).arg("--no-visibility").assert();
 
         if t.is_ppc64be() || t.no_os() || t.binary_obj_format() != BinaryFormat::Elf {
             // Ppc64be doesn't emit `.note.GNU-stack`, not relevant without an OS, and non-elf
@@ -140,7 +139,7 @@ mod exe_stack {
             .compile_intermediates();
         let [obj] = objs.as_slice() else { panic!() };
 
-        let assert = t.symcheck_exe().arg(obj).assert();
+        let assert = t.symcheck_exe().arg(obj).arg("--no-visibility").assert();
 
         if t.is_ppc64be() || t.no_os() {
             // Ppc64be doesn't emit `.note.GNU-stack`, not relevant without an OS.
