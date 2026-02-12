@@ -75,6 +75,19 @@ fn test_core_symbols() {
         .stderr_contains("from_utf8");
 }
 
+#[test]
+fn test_visible_symbols() {
+    let t = TestTarget::from_env();
+    let dir = tempdir().unwrap();
+    let lib_out = dir.path().join("libfoo.rlib");
+    t.rustc_build(&input_dir().join("good_lib.rs"), &lib_out, |cmd| cmd);
+    let assert = t.symcheck_exe().arg(&lib_out).assert();
+    assert
+        .failure()
+        .stderr_contains("found 1 visible symbols")
+        .stderr_contains("name: \"good\"");
+}
+
 mod exe_stack {
     use super::*;
 
