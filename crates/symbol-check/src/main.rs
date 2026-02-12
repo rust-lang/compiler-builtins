@@ -58,6 +58,11 @@ fn main() {
         "The binaries will not be checked for executable stacks. Used for embedded targets which \
         don't set `.note.GNU-stack` since there is no protection.",
     );
+    opts.optflag(
+        "",
+        "no-visibility",
+        "Don't check visibility.",
+    );
 
     let print_usage_and_exit = |code: i32| -> ! {
         eprintln!("{}", opts.usage(USAGE));
@@ -74,6 +79,7 @@ fn main() {
     }
 
     let no_os_target = m.opt_present("no-os");
+    let check_visibility = !m.opt_present("no-visibility");
     let free_args = m.free.iter().map(String::as_str).collect::<Vec<_>>();
     for arg in &free_args {
         assert!(
@@ -85,18 +91,18 @@ fn main() {
     if m.opt_present("build-and-check") {
         let target = m.opt_str("target").unwrap_or(env!("HOST").to_string());
         let paths = exec_cargo_with_args(&target, &free_args);
-        check_paths(&paths, no_os_target);
+        check_paths(&paths, no_os_target, check_visibility);
     } else if m.opt_present("check") {
         if free_args.is_empty() {
             print_usage_and_exit(1);
         }
-        check_paths(&free_args, no_os_target);
+        check_paths(&free_args, no_os_target, check_visibility);
     } else {
         print_usage_and_exit(1);
     }
 }
 
-fn check_paths<P: AsRef<Path>>(paths: &[P], no_os_target: bool) {
+fn check_paths<P: AsRef<Path>>(paths: &[P], no_os_target: bool, check_visibility: bool) {
     for path in paths {
         let path = path.as_ref();
         println!("Checking {}", path.display());
@@ -105,7 +111,9 @@ fn check_paths<P: AsRef<Path>>(paths: &[P], no_os_target: bool) {
         verify_no_duplicates(&archive);
         verify_core_symbols(&archive);
         verify_no_exec_stack(&archive, no_os_target);
-        verify_hidden_visibility(&archive);
+        if check_visibility {
+            verify_hidden_visibility(&archive);
+        }
     }
 }
 

@@ -179,7 +179,7 @@ fn test_good_lib() {
     let dir = tempdir().unwrap();
     let lib_out = dir.path().join("libfoo.rlib");
     t.rustc_build(&input_dir().join("good_lib.rs"), &lib_out, |cmd| cmd);
-    let assert = t.symcheck_exe().arg(&lib_out).assert();
+    let assert = t.symcheck_exe().arg(&lib_out).arg("--no-visibility").assert();
     assert.success();
 }
 
@@ -199,7 +199,7 @@ fn test_good_bin() {
     t.set_bin_out_path(&mut cmd, &out);
     run(cmd.arg(input_dir().join("good_bin.c")));
 
-    let assert = t.symcheck_exe().arg(&out).assert();
+    let assert = t.symcheck_exe().arg(&out).arg("--no-visibility").assert();
     assert.success();
 }
 
