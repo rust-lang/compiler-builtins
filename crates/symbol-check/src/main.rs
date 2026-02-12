@@ -58,11 +58,7 @@ fn main() {
         "The binaries will not be checked for executable stacks. Used for embedded targets which \
         don't set `.note.GNU-stack` since there is no protection.",
     );
-    opts.optflag(
-        "",
-        "no-visibility",
-        "Don't check visibility.",
-    );
+    opts.optflag("", "no-visibility", "Don't check visibility.");
 
     let print_usage_and_exit = |code: i32| -> ! {
         eprintln!("{}", opts.usage(USAGE));

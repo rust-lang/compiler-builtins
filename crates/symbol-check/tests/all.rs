@@ -192,7 +192,11 @@ fn test_good_lib() {
     let dir = tempdir().unwrap();
     let lib_out = dir.path().join("libfoo.rlib");
     t.rustc_build(&input_dir().join("good_lib.rs"), &lib_out, |cmd| cmd);
-    let assert = t.symcheck_exe().arg(&lib_out).arg("--no-visibility").assert();
+    let assert = t
+        .symcheck_exe()
+        .arg(&lib_out)
+        .arg("--no-visibility")
+        .assert();
     assert.success();
 }
 
