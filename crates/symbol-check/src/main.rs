@@ -349,7 +349,9 @@ fn verify_hidden_visibility(archive: &BinFile) {
         found_any = true
     });
 
-    assert!(found_any, "no symbols found");
+    if archive.has_symbol_tables() {
+        assert!(found_any, "no symbols found");
+    }
 
     if !visible.is_empty() {
         visible.sort_unstable_by(|a, b| a.name.cmp(&b.name));
