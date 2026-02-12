@@ -82,9 +82,7 @@ fn test_visible_symbols() {
     let lib_out = dir.path().join("libfoo.rlib");
     t.rustc_build(&input_dir().join("good_lib.rs"), &lib_out, |cmd| cmd);
     let assert = t.symcheck_exe().arg(&lib_out).assert();
-    assert
-        .failure()
-        .stderr_contains("found 1 visible symbols"); // good is visible.
+    assert.failure().stderr_contains("found 1 visible symbols"); // good is visible.
 }
 
 mod exe_stack {
