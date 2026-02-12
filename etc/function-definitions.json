@@ -362,6 +362,12 @@
         ],
         "type": "f128"
     },
+    "fmaf16": {
+        "sources": [
+            "libm/src/math/fma.rs"
+        ],
+        "type": "f16"
+    },
     "fmax": {
         "sources": [
             "libm/src/math/fmin_fmax.rs",
