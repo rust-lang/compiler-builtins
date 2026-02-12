@@ -40,6 +40,7 @@ mod i_to_f {
                         );
                         let f1: $f_ty = $fn(x);
 
+                        // cfg needed for f->i conversions
                         #[cfg($sys_available)] {
                             // This makes sure that the conversion produced the best rounding possible, and does
                             // this independent of `x as $into` rounding correctly.
@@ -60,9 +61,12 @@ mod i_to_f {
                                     && ((f0.to_bits() & 1) != 0))
                             {
                                 panic!(
-                                    "incorrect rounding by {}({}): {}, ({}, {}, {}), errors ({}, {}, {})",
+                                    "incorrect rounding by {}({}): {} ({:#x})\n\
+                                        f->i bracket: ({}, {}, {})\n\
+                                        errors: ({}, {}, {})",
                                     stringify!($fn),
                                     x,
+                                    f1,
                                     f1.to_bits(),
                                     y_minus_ulp,
                                     y,
