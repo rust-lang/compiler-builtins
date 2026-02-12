@@ -318,6 +318,7 @@ cfg_if! {
         pub use self::fabs::fabsf16;
         pub use self::fdim::fdimf16;
         pub use self::floor::floorf16;
+        pub use self::fma::fmaf16;
         pub use self::fmin_fmax::{fmaxf16, fminf16};
         pub use self::fminimum_fmaximum::{fmaximumf16, fminimumf16};
         pub use self::fminimum_fmaximum_num::{fmaximum_numf16, fminimum_numf16};
@@ -332,9 +333,6 @@ cfg_if! {
         pub use self::sqrt::sqrtf16;
         pub use self::trunc::truncf16;
         // verify-sorted-end
-
-        #[allow(unused_imports)]
-        pub(crate) use self::fma::fmaf16;
     }
 }
 
