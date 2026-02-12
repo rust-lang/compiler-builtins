@@ -567,6 +567,7 @@ fn log_cases() -> Vec<TestCase<op::log::Routine>> {
         &mut v,
         &[
             // Cases that showed up during extensive tests and proved problematic
+            (hf64!("0x1.90bde64e6e033p-57"),), // showed up on i586
             (hf64!("0x1.ffffffffffff9p-1"),),
             (hf64!("0x1.4b649a5ce2720p-235"),),
             (hf64!("0x1.b028b028b02a0p-1"),),

@@ -136,6 +136,7 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
             Id::Fmaf => ulp = 1,
             Id::Fdim => ulp = 1,
             Id::Round => ulp = 1,
+            Id::Log => ulp = 1,
 
             Id::Asinh => ulp = 3,
             Id::Asinhf => ulp = 3,
