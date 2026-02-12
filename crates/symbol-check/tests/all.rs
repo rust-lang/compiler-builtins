@@ -78,6 +78,10 @@ fn test_core_symbols() {
 #[test]
 fn test_visible_symbols() {
     let t = TestTarget::from_env();
+    if t.is_windows() {
+        eprintln!("windows does not have visibility, skipping");
+        return;
+    }
     let dir = tempdir().unwrap();
     let lib_out = dir.path().join("libfoo.rlib");
     t.rustc_build(&input_dir().join("good_lib.rs"), &lib_out, |cmd| cmd);
