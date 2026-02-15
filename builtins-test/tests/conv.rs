@@ -34,12 +34,13 @@ mod i_to_f {
                                     FloatTy::from_u128(x.try_into().unwrap()).value
                                 };
 
-                                <$f_ty>::from_bits(apf.to_bits())
+                                <$f_ty>::from_bits(apf.to_bits().try_into().unwrap())
                             },
                             x
                         );
                         let f1: $f_ty = $fn(x);
 
+                        // cfg needed for f->i conversions
                         #[cfg($sys_available)] {
                             // This makes sure that the conversion produced the best rounding possible, and does
                             // this independent of `x as $into` rounding correctly.
@@ -60,9 +61,12 @@ mod i_to_f {
                                     && ((f0.to_bits() & 1) != 0))
                             {
                                 panic!(
-                                    "incorrect rounding by {}({}): {}, ({}, {}, {}), errors ({}, {}, {})",
+                                    "incorrect rounding by {}({}): {} ({:#x})\n\
+                                        f->i bracket: ({}, {}, {})\n\
+                                        errors: ({}, {}, {})",
                                     stringify!($fn),
                                     x,
+                                    f1,
                                     f1.to_bits(),
                                     y_minus_ulp,
                                     y,
@@ -94,6 +98,16 @@ mod i_to_f {
                 }
             )*
         };
+    }
+
+    #[cfg(f16_enabled)]
+    i_to_f! { f16, Half, not(feature = "no-sys-f16-int-convert"),
+        u32, __floatunsihf;
+        i32, __floatsihf;
+        u64, __floatundihf;
+        i64, __floatdihf;
+        u128, __floatuntihf;
+        i128, __floattihf;
     }
 
     i_to_f! { f32, Single, all(),
