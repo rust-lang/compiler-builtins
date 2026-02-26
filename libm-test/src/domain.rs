@@ -196,7 +196,7 @@ impl<F: Float, I: Int> EitherPrim<Domain<F>, Domain<I>> {
             Box::new((0..u8::MAX).map(|scale| {
                 let mut base = F::ZERO;
                 for _ in 0..scale {
-                    base = base - F::ONE;
+                    base -= F::ONE;
                 }
                 base
             }))
