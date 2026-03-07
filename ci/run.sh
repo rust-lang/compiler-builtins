@@ -20,11 +20,90 @@ if [ "${USING_CONTAINER_RUSTC:-}" = 1 ]; then
         rustup target add "$target"
 fi
 
+# If nextest is available, use that for tests
+command -v cargo-nextest && nextest=1 || nextest=0
+if [ "$nextest" = "1" ]; then
+    test_cmd=(cargo nextest run --max-fail=20)
+
+    # Workaround for https://github.com/nextest-rs/nextest/issues/2066
+    if [ -f /.dockerenv ]; then
+        cfg_file="/tmp/nextest-config.toml"
+        echo "[store]" >> "$cfg_file"
+        echo "dir = \"$CARGO_TARGET_DIR/nextest\"" >> "$cfg_file"
+        test_cmd+=(--config-file "$cfg_file")
+    fi
+
+    # Not all configurations have tests to run on wasm
+    [[ "$target" = *"wasm"* ]] && test_cmd+=(--no-tests=warn)
+
+    profile_flag="--cargo-profile"
+else
+    test_cmd=(cargo test --no-fail-fast)
+    profile_flag="--profile"
+fi
+
+# Cargo args for testing with `--workspace`
+ws_flags=()
+
+# We enumerate features manually.
+ws_flags+=(--no-default-features)
+
+# Enable arch-specific routines when available.
+ws_flags+=(--features libm/arch)
+
+# Always enable `unstable-float` since it expands available API but does not
+# change any implementations.
+ws_flags+=(--features unstable-float)
+
+# We need to specifically skip tests for musl-math-sys on systems that can't
+# build musl since otherwise `--all` will activate it.
+case "$target" in
+    # Can't build at all on MSVC, WASM, or thumb
+    *windows-msvc*) ws_flags+=(--exclude musl-math-sys) ;;
+    *wasm*) ws_flags+=(--exclude musl-math-sys) ;;
+    *thumb*) ws_flags+=(--exclude musl-math-sys) ;;
+
+    # We can build musl on MinGW but running tests gets a stack overflow
+    *windows-gnu*) ;;
+    # FIXME(#309): LE PPC crashes calling the musl version of some functions. It
+    # seems like a qemu bug but should be investigated further at some point.
+    # See <https://github.com/rust-lang/libm/issues/309>.
+    *powerpc64le*) ;;
+
+    # Everything else gets musl enabled
+    *) ws_flags+=(--features libm-test/build-musl) ;;
+esac
+
+# Configure which targets test against MPFR
+case "$target" in
+    # MSVC cannot link MPFR
+    *windows-msvc*) ;;
+    # FIXME: MinGW should be able to build MPFR, but setup in CI is nontrivial.
+    *windows-gnu*) ;;
+    # Targets that aren't cross compiled in CI work fine
+    aarch64*apple*) ws_flags+=(--features libm-test/build-mpfr) ;;
+    aarch64*linux*) ws_flags+=(--features libm-test/build-mpfr) ;;
+    i586*) ws_flags+=(--features libm-test/build-mpfr --features gmp-mpfr-sys/force-cross) ;;
+    i686*) ws_flags+=(--features libm-test/build-mpfr) ;;
+    x86_64*) ws_flags+=(--features libm-test/build-mpfr) ;;
+esac
+
+# FIXME: `STATUS_DLL_NOT_FOUND` testing macros on CI.
+# <https://github.com/rust-lang/rust/issues/128944>
+case "$target" in
+    *windows-gnu) ws_flags+=(--exclude libm-macros) ;;
+esac
+
 # Test our implementation
 if [ "${BUILD_ONLY:-}" = "1" ]; then
-    echo "no tests to run for build-only targets"
+    # If we are on targets that can't run tests, verify that we can build.
+    cmd=(cargo build --target "$target" --package compiler_builtins --package libm)
+    "${cmd[@]}"
+    "${cmd[@]}" --features unstable-intrinsics
+
+    echo "can't run tests on $target; skipping"
 else
-    test_builtins=(cargo test --package builtins-test --no-fail-fast --target "$target")
+    test_builtins=("${test_cmd[@]}" --target "$target" --package builtins-test)
     "${test_builtins[@]}"
     "${test_builtins[@]}" --release
     "${test_builtins[@]}" --features c
@@ -41,6 +120,40 @@ else
         verb_path=$(cmd.exe //C echo \\\\?\\%cd%\\builtins-test\\target2)
         "${test_builtins[@]}" --target-dir "$verb_path" --features c
     fi
+
+    # symcheck tests need specific env setup so it gets checked separately
+    ws_flags+=(--workspace --exclude symbol-check --target "$target")
+
+    if [ "${MAY_SKIP_LIBM_CI:-}" = "true" ]; then
+        echo "skipping full libm PR CI"
+        ws_flags+=(--exclude libm-test)
+    fi
+
+    test_ws=("${test_cmd[@]}" "${ws_flags[@]}")
+
+    # Test once without any special features
+    "${test_ws[@]}"
+
+    # Run doctests if they were excluded by nextest
+    [ "$nextest" = "1" ] && cargo test --doc --exclude compiler_builtins "${ws_flags[@]}"
+
+    # Exclude the macros and utile crates from the rest of the tests to save CI
+    # runtime, they shouldn't have anything feature- or opt-level-dependent.
+    test_ws+=(
+        --package libm --package libm-test
+        --package compiler_builtins --package builtins-test
+    )
+
+    # Test once with intrinsics enabled
+    "${test_ws[@]}" --features unstable-intrinsics
+    "${test_ws[@]}" --features unstable-intrinsics --benches
+
+    # Test the same in release mode, which also increases coverage. Also ensure
+    # the soft float routines are checked.
+    "${test_ws[@]}" "$profile_flag" release-checked
+    "${test_ws[@]}" "$profile_flag" release-checked --features force-soft-floats
+    "${test_ws[@]}" "$profile_flag" release-checked --features unstable-intrinsics
+    "${test_ws[@]}" "$profile_flag" release-checked --features unstable-intrinsics --benches
 fi
 
 # Ensure there are no duplicate symbols or references to `core` when
@@ -90,127 +203,15 @@ CARGO_PROFILE_RELEASE_LTO=true run_intrinsics_test --release
 # Make sure a simple build works
 cargo check -p libm --no-default-features --target "$target"
 
-if [ "${MAY_SKIP_LIBM_CI:-}" = "true" ]; then
-    echo "skipping libm PR CI"
-    exit
-fi
-
-mflags=()
-
-# We enumerate features manually.
-mflags+=(--no-default-features)
-
-# Enable arch-specific routines when available.
-mflags+=(--features arch)
-
-# Always enable `unstable-float` since it expands available API but does not
-# change any implementations.
-mflags+=(--features unstable-float)
-
-# We need to specifically skip tests for musl-math-sys on systems that can't
-# build musl since otherwise `--all` will activate it.
-case "$target" in
-    # Can't build at all on MSVC, WASM, or thumb
-    *windows-msvc*) mflags+=(--exclude musl-math-sys) ;;
-    *wasm*) mflags+=(--exclude musl-math-sys) ;;
-    *thumb*) mflags+=(--exclude musl-math-sys) ;;
-
-    # We can build musl on MinGW but running tests gets a stack overflow
-    *windows-gnu*) ;;
-    # FIXME(#309): LE PPC crashes calling the musl version of some functions. It
-    # seems like a qemu bug but should be investigated further at some point.
-    # See <https://github.com/rust-lang/libm/issues/309>.
-    *powerpc64le*) ;;
-
-    # Everything else gets musl enabled
-    *) mflags+=(--features libm-test/build-musl) ;;
-esac
-
-
-# Configure which targets test against MPFR
-case "$target" in
-    # MSVC cannot link MPFR
-    *windows-msvc*) ;;
-    # FIXME: MinGW should be able to build MPFR, but setup in CI is nontrivial.
-    *windows-gnu*) ;;
-    # Targets that aren't cross compiled in CI work fine
-    aarch64*apple*) mflags+=(--features libm-test/build-mpfr) ;;
-    aarch64*linux*) mflags+=(--features libm-test/build-mpfr) ;;
-    i586*) mflags+=(--features libm-test/build-mpfr --features gmp-mpfr-sys/force-cross) ;;
-    i686*) mflags+=(--features libm-test/build-mpfr) ;;
-    x86_64*) mflags+=(--features libm-test/build-mpfr) ;;
-esac
-
-# FIXME: `STATUS_DLL_NOT_FOUND` testing macros on CI.
-# <https://github.com/rust-lang/rust/issues/128944>
-case "$target" in
-    *windows-gnu) mflags+=(--exclude libm-macros) ;;
-esac
-
-if [ "${BUILD_ONLY:-}" = "1" ]; then
-    # If we are on targets that can't run tests, verify that we can build.
-    cmd=(cargo build --target "$target" --package libm)
-    "${cmd[@]}"
-    "${cmd[@]}" --features unstable-intrinsics
-
-    echo "can't run tests on $target; skipping"
-else
-    # symcheck tests need specific env setup, and is already tested above
-    mflags+=(--workspace --exclude symbol-check --target "$target")
-    cmd=(cargo test "${mflags[@]}")
-    profile_flag="--profile"
-
-    # If nextest is available, use that
-    command -v cargo-nextest && nextest=1 || nextest=0
-    if [ "$nextest" = "1" ]; then
-        cmd=(cargo nextest run --max-fail=10)
-
-        # Workaround for https://github.com/nextest-rs/nextest/issues/2066
-        if [ -f /.dockerenv ]; then
-            cfg_file="/tmp/nextest-config.toml"
-            echo "[store]" >> "$cfg_file"
-            echo "dir = \"$CARGO_TARGET_DIR/nextest\"" >> "$cfg_file"
-            cmd+=(--config-file "$cfg_file")
-        fi
-
-        # Not all configurations have tests to run on wasm
-        [[ "$target" = *"wasm"* ]] && cmd+=(--no-tests=warn)
-
-        cmd+=("${mflags[@]}")
-        profile_flag="--cargo-profile"
-    fi
-
-    # Test once without intrinsics
-    "${cmd[@]}"
-
-    # Run doctests if they were excluded by nextest
-    [ "$nextest" = "1" ] && cargo test --doc --exclude compiler_builtins "${mflags[@]}"
-
-    # Exclude the macros and utile crates from the rest of the tests to save CI
-    # runtime, they shouldn't have anything feature- or opt-level-dependent.
-    cmd+=(--exclude util --exclude libm-macros)
-
-    # Test once with intrinsics enabled
-    "${cmd[@]}" --features unstable-intrinsics
-    "${cmd[@]}" --features unstable-intrinsics --benches
-
-    # Test the same in release mode, which also increases coverage. Also ensure
-    # the soft float routines are checked.
-    "${cmd[@]}" "$profile_flag" release-checked
-    "${cmd[@]}" "$profile_flag" release-checked --features force-soft-floats
-    "${cmd[@]}" "$profile_flag" release-checked --features unstable-intrinsics
-    "${cmd[@]}" "$profile_flag" release-checked --features unstable-intrinsics --benches
-
-    # Ensure that the routines do not panic.
-    #
-    # `--tests` must be passed because no-panic is only enabled as a dev
-    # dependency. The `release-opt` profile must be used to enable LTO and a
-    # single CGU.
-    ENSURE_NO_PANIC=1 cargo build \
-        -p libm \
-        --target "$target" \
-        --no-default-features \
-        --features unstable-float \
-        --tests \
-        --profile release-opt
-fi
+# Ensure that the routines do not panic.
+#
+# `--tests` must be passed because no-panic is only enabled as a dev
+# dependency. The `release-opt` profile must be used to enable LTO and a
+# single CGU.
+ENSURE_NO_PANIC=1 cargo build \
+    --package libm \
+    --target "$target" \
+    --no-default-features \
+    --features unstable-float \
+    --tests \
+    --profile release-opt
