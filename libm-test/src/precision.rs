@@ -47,6 +47,7 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
 
         // Operations that aren't required to be exact, but our implementations are.
         Bn::Cbrt => 0,
+        Bn::Log if ctx.fn_ident == Id::Log => 0,
 
         // Bessel functions have large inaccuracies.
         Bn::J0 | Bn::J1 | Bn::Y0 | Bn::Y1 | Bn::Jn | Bn::Yn => 8_000_000,
@@ -109,6 +110,7 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
 
         match ctx.fn_ident {
             Id::Cbrt => ulp = 2,
+            Id::Log => ulp = 2,
             // FIXME(#401): musl has an incorrect result here.
             Id::Fdim => ulp = 2,
             Id::Exp2f => ulp = 1,
@@ -135,6 +137,7 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
             Id::Fmaf => ulp = 1,
             Id::Fdim => ulp = 1,
             Id::Round => ulp = 1,
+            Id::Log => ulp = 1,
 
             Id::Asinh => ulp = 3,
             Id::Asinhf => ulp = 3,
