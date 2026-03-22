@@ -2,7 +2,7 @@ extern crate std;
 use std::eprintln;
 
 use super::{HInt, MinInt, i256, u256};
-use crate::support::{Int as _, NarrowingDiv};
+use crate::support::NarrowingDiv;
 
 const LOHI_SPLIT: u128 = 0xaaaaaaaaaaaaaaaaffffffffffffffff;
 
@@ -26,7 +26,7 @@ fn widen_u128() {
 
 #[test]
 fn widen_i128() {
-    assert_eq!((-1i128).widen(), u256::MAX.signed());
+    assert_eq!((-1i128).widen(), u256::MAX.cast_signed());
     assert_eq!(
         (LOHI_SPLIT as i128).widen(),
         i256 {
@@ -34,7 +34,7 @@ fn widen_i128() {
             hi: -1,
         }
     );
-    assert_eq!((-1i128).zero_widen().unsigned(), (u128::MAX).widen());
+    assert_eq!((-1i128).zero_widen().cast_unsigned(), (u128::MAX).widen());
 }
 
 #[test]
@@ -327,12 +327,12 @@ fn i256_shifts() {
 #[test]
 fn div_u256_by_u128() {
     for j in i8::MIN..=i8::MAX {
-        let y: u128 = (j as i128).rotate_right(4).unsigned();
+        let y: u128 = (j as i128).rotate_right(4).cast_unsigned();
         if y == 0 {
             continue;
         }
         for i in i8::MIN..=i8::MAX {
-            let x: u128 = (i as i128).rotate_right(4).unsigned();
+            let x: u128 = (i as i128).rotate_right(4).cast_unsigned();
             let xy = x.widen_mul(y);
             assert_eq!(xy.checked_narrowing_div_rem(y), Some((x, 0)));
             if y != 1 {

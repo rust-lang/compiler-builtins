@@ -105,7 +105,7 @@ pub trait Float:
     /// Returns `self` transmuted to `Self::SignedInt`
     #[allow(dead_code)]
     fn to_bits_signed(self) -> Self::SignedInt {
-        self.to_bits().signed()
+        self.to_bits().cast_signed()
     }
 
     /// Check bitwise equality.
@@ -173,7 +173,7 @@ pub trait Float:
 
     /// Extract the exponent and adjust it for bias, not accounting for subnormals or zero.
     fn exp_unbiased(self) -> i32 {
-        self.ex().signed() - (Self::EXP_BIAS as i32)
+        self.ex().cast_signed() - (Self::EXP_BIAS as i32)
     }
 
     /// Returns the significand with no implicit bit (or the "fractional" part)

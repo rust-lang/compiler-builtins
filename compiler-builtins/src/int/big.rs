@@ -23,7 +23,7 @@ impl u256 {
     pub const MAX: Self = Self([u64::MAX, u64::MAX, u64::MAX, u64::MAX]);
 
     /// Reinterpret as a signed integer
-    pub fn signed(self) -> i256 {
+    pub fn cast_signed(self) -> i256 {
         i256(self.0)
     }
 }
@@ -37,7 +37,7 @@ pub struct i256(pub [u64; 4]);
 
 impl i256 {
     /// Reinterpret as an unsigned integer
-    pub fn unsigned(self) -> u256 {
+    pub fn cast_unsigned(self) -> u256 {
         u256(self.0)
     }
 }
@@ -233,7 +233,7 @@ impl HInt for i128 {
     type D = i256;
 
     fn widen(self) -> Self::D {
-        let mut ret = self.unsigned().zero_widen().signed();
+        let mut ret = self.cast_unsigned().zero_widen().cast_signed();
         if self.is_negative() {
             ret.0[2] = u64::MAX;
             ret.0[3] = u64::MAX;
@@ -242,11 +242,13 @@ impl HInt for i128 {
     }
 
     fn zero_widen(self) -> Self::D {
-        self.unsigned().zero_widen().signed()
+        self.cast_unsigned().zero_widen().cast_signed()
     }
 
     fn zero_widen_mul(self, rhs: Self) -> Self::D {
-        self.unsigned().zero_widen_mul(rhs.unsigned()).signed()
+        self.cast_unsigned()
+            .zero_widen_mul(rhs.cast_unsigned())
+            .cast_signed()
     }
 
     fn widen_mul(self, rhs: Self) -> Self::D {

@@ -21,12 +21,12 @@ fn widen_u128() {
 
 #[test]
 fn widen_i128() {
-    assert_eq!((-1i128).widen(), u256::MAX.signed());
+    assert_eq!((-1i128).widen(), u256::MAX.cast_signed());
     assert_eq!(
         (LOHI_SPLIT as i128).widen(),
         i256([u64::MAX, 0xaaaaaaaaaaaaaaaa, u64::MAX, u64::MAX])
     );
-    assert_eq!((-1i128).zero_widen().unsigned(), (u128::MAX).widen());
+    assert_eq!((-1i128).zero_widen().cast_unsigned(), (u128::MAX).widen());
 }
 
 #[test]

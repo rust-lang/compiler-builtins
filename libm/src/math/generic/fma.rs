@@ -115,8 +115,8 @@ where
         rlo = res;
         rhi = rhi.wrapping_sub(zhi.wrapping_add(IntTy::<F>::from(borrow)));
         if (rhi >> (F::BITS - 1)) != zero {
-            rlo = rlo.signed().wrapping_neg().unsigned();
-            rhi = rhi.signed().wrapping_neg().unsigned() - IntTy::<F>::from(rlo != zero);
+            rlo = rlo.cast_signed().wrapping_neg().cast_unsigned();
+            rhi = rhi.cast_signed().wrapping_neg().cast_unsigned() - IntTy::<F>::from(rlo != zero);
             neg = !neg;
         }
         rhi_nonzero = rhi != zero;
@@ -150,7 +150,7 @@ where
 
     // Use int->float conversion to populate the significand.
     // i is in [1 << (BITS - 2), (1 << (BITS - 1)) - 1]
-    let mut i: F::SignedInt = rhi.signed();
+    let mut i: F::SignedInt = rhi.cast_signed();
 
     if neg {
         i = -i;
@@ -185,7 +185,7 @@ where
                 // Account for truncated bits. One bit will be lost in the `scalbn` call, add
                 // another top bit to avoid double rounding if inexact.
                 let iu: F::Int = (rhi >> 1) | (rhi & one) | (one << (F::BITS - 2));
-                i = iu.signed();
+                i = iu.cast_signed();
 
                 if neg {
                     i = -i;
@@ -201,7 +201,7 @@ where
             // Only round once when scaled
             d = F::EXP_BITS as i32 - 1;
             let sticky = IntTy::<F>::from(rhi << (F::BITS as i32 - d) != zero);
-            i = (((rhi >> d) | sticky) << d).signed();
+            i = (((rhi >> d) | sticky) << d).cast_signed();
 
             if neg {
                 i = -i;

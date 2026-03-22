@@ -25,7 +25,7 @@ impl u256 {
     };
 
     /// Reinterpret as a signed integer
-    pub fn signed(self) -> i256 {
+    pub fn cast_signed(self) -> i256 {
         i256 {
             lo: self.lo,
             hi: self.hi as i128,
@@ -43,7 +43,7 @@ pub struct i256 {
 
 impl i256 {
     /// Reinterpret as an unsigned integer
-    pub fn unsigned(self) -> u256 {
+    pub fn cast_unsigned(self) -> u256 {
         u256 {
             lo: self.lo,
             hi: self.hi as u128,
@@ -240,11 +240,13 @@ impl HInt for i128 {
     }
 
     fn zero_widen(self) -> Self::D {
-        self.unsigned().zero_widen().signed()
+        self.cast_unsigned().zero_widen().cast_signed()
     }
 
     fn zero_widen_mul(self, rhs: Self) -> Self::D {
-        self.unsigned().zero_widen_mul(rhs.unsigned()).signed()
+        self.cast_unsigned()
+            .zero_widen_mul(rhs.cast_unsigned())
+            .cast_signed()
     }
 
     fn widen_mul(self, _rhs: Self) -> Self::D {
@@ -288,7 +290,7 @@ impl fmt::Debug for u256 {
 
 impl fmt::Debug for i256 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::LowerHex::fmt(&self.unsigned(), f)
+        fmt::LowerHex::fmt(&self.cast_unsigned(), f)
     }
 }
 
@@ -308,6 +310,6 @@ impl fmt::LowerHex for u256 {
 
 impl fmt::LowerHex for i256 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::LowerHex::fmt(&self.unsigned(), f)
+        fmt::LowerHex::fmt(&self.cast_unsigned(), f)
     }
 }

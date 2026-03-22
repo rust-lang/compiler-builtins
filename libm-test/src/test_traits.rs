@@ -357,8 +357,8 @@ where
             bail!("mismatched infinities");
         }
 
-        let act_bits = actual.to_bits().signed();
-        let exp_bits = expected.to_bits().signed();
+        let act_bits = actual.to_bits().cast_signed();
+        let exp_bits = expected.to_bits().cast_signed();
 
         let ulp_diff = act_bits.checked_sub(exp_bits).unwrap().abs();
 

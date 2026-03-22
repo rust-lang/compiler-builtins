@@ -76,8 +76,8 @@ pub trait Int:
     + CastInto<u8>
     + CastInto<usize>
 {
-    fn signed(self) -> OtherSign<Self::Unsigned>;
-    fn unsigned(self) -> Self::Unsigned;
+    fn cast_signed(self) -> OtherSign<Self::Unsigned>;
+    fn cast_unsigned(self) -> Self::Unsigned;
     fn from_unsigned(unsigned: Self::Unsigned) -> Self;
     fn abs(self) -> Self;
     fn unsigned_abs(self) -> Self::Unsigned;
@@ -117,7 +117,7 @@ macro_rules! int_impl_common {
         }
 
         fn logical_shr(self, other: u32) -> Self {
-            Self::from_unsigned(self.unsigned().wrapping_shr(other))
+            Self::from_unsigned(self.cast_unsigned().wrapping_shr(other))
         }
 
         fn is_zero(self) -> bool {
@@ -215,11 +215,11 @@ macro_rules! int_impl {
         }
 
         impl Int for $uty {
-            fn signed(self) -> $ity {
+            fn cast_signed(self) -> $ity {
                 self as $ity
             }
 
-            fn unsigned(self) -> Self {
+            fn cast_unsigned(self) -> Self {
                 self
             }
 
@@ -258,11 +258,11 @@ macro_rules! int_impl {
         }
 
         impl Int for $ity {
-            fn signed(self) -> Self {
+            fn cast_signed(self) -> Self {
                 self
             }
 
-            fn unsigned(self) -> $uty {
+            fn cast_unsigned(self) -> $uty {
                 self as $uty
             }
 

@@ -1,7 +1,9 @@
 /* SPDX-License-Identifier: MIT
  * origin: musl src/math/trunc.c */
 
-use crate::support::{Float, FpResult, Int, IntTy, MinInt, Status};
+#[allow(unused_imports)] // FIXME(msrv): polyfill for cast_unsigned which requires  1.87
+use crate::support::Int;
+use crate::support::{Float, FpResult, IntTy, MinInt, Status};
 
 #[inline]
 pub fn trunc<F: Float>(x: F) -> F {
@@ -24,7 +26,7 @@ pub fn trunc_status<F: Float>(x: F) -> FpResult<F> {
         !F::SIGN_MASK
     } else {
         // Otherwise, we keep `e` fractional bits and clear the rest.
-        F::SIG_MASK >> e.unsigned()
+        F::SIG_MASK >> e.cast_unsigned()
     };
 
     let cleared = xi & clear_mask;

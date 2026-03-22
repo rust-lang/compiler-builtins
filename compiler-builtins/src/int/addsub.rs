@@ -25,10 +25,10 @@ where
     <Self as MinInt>::Unsigned: UAddSub,
 {
     fn add(self, other: Self) -> Self {
-        Self::from_unsigned(self.unsigned().uadd(other.unsigned()))
+        Self::from_unsigned(self.cast_unsigned().uadd(other.cast_unsigned()))
     }
     fn sub(self, other: Self) -> Self {
-        Self::from_unsigned(self.unsigned().usub(other.unsigned()))
+        Self::from_unsigned(self.cast_unsigned().usub(other.cast_unsigned()))
     }
 }
 

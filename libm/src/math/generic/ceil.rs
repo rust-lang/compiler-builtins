@@ -7,7 +7,9 @@
 //! performance seems to be better (based on icount) and it does not seem to experience rounding
 //! errors on i386.
 
-use crate::support::{Float, FpResult, Int, IntTy, MinInt, Status};
+#[allow(unused_imports)] // FIXME(msrv): polyfill for cast_unsigned which requires  1.87
+use crate::support::Int;
+use crate::support::{Float, FpResult, IntTy, MinInt, Status};
 
 #[inline]
 pub fn ceil<F: Float>(x: F) -> F {
@@ -29,7 +31,7 @@ pub fn ceil_status<F: Float>(x: F) -> FpResult<F> {
     let status;
     let res = if e >= 0 {
         // |x| >= 1.0
-        let m = F::SIG_MASK >> e.unsigned();
+        let m = F::SIG_MASK >> e.cast_unsigned();
         if (ix & m) == zero {
             // Portion to be masked is already zero; no adjustment needed.
             return FpResult::ok(x);
