@@ -159,11 +159,17 @@ of being added to Rust.
 - [x] fixunstfdi.c
 - [x] fixunstfsi.c
 - [x] fixunstfti.c
+- [x] floatdihf.c (not yet in `compiler-rt` but emitted by LLVM)
 - [x] floatditf.c
+- [x] floatsihf.c (not yet in `compiler-rt` but emitted by LLVM)
 - [x] floatsitf.c
+- [x] floattihf.c (not yet in `compiler-rt` but emitted by LLVM)
 - [x] floattitf.c
+- [x] floatundihf.c (not yet in `compiler-rt` but emitted by LLVM)
 - [x] floatunditf.c
+- [x] floatunsihf.c (not yet in `compiler-rt` but emitted by LLVM)
 - [x] floatunsitf.c
+- [x] floatuntihf.c (not yet in `compiler-rt` but emitted by LLVM)
 - [x] floatuntitf.c
 - [x] multf3.c
 - [x] powitf2.c
