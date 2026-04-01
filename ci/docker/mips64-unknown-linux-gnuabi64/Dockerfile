@@ -1,4 +1,4 @@
-ARG IMAGE=ubuntu:25.10
+ARG IMAGE=ubuntu:questing-20251217
 FROM $IMAGE
 
 RUN apt-get update && \
