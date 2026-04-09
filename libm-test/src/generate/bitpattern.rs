@@ -1,83 +1,143 @@
 use libm::support::{Float, Int, MinInt};
 
-/// An efficient equivalent to
-/// `(0..=uN::MAX).filter(|x| x & !varying == 0).map(|x| x ^ preset)`
-/// That is, "all integers that only differ from the preset in the varying bits"
-pub struct BitConfig<I> {
-    /// A bitmask of bits to list exhaustively
-    varying: I,
-    /// Other bits are set according to preset.
-    preset: I,
+/// Iterate all the bitwise subsets of the given mask.
+///
+/// Produces the same sequence as `(0..=uN::MAX).filter(|x| x & !mask == 0)`,
+/// but each item is generated in O(1) time.
+///
+/// # Panics
+///
+/// Panics if the mask has all bits set.
+///
+/// # Example
+///
+/// ```ignore
+/// assert!(bitwise_subsets(0b1001).eq([0b0000, 0b0001, 0b1000, 0b1001]));
+/// ```
+fn bitwise_subsets<I>(mask: I) -> impl Iterator<Item = I> + Clone
+where
+    I: Int<Unsigned = I>,
+{
+    assert!(
+        mask != I::MAX,
+        "to optimize the implementation, varying every bit is not supported"
+    );
+    let fixed = !mask;
+    let mut counter = fixed - I::ONE;
+
+    // `(counter + 1) & !fixed` is initially 0, and increases after each item returned
+    std::iter::from_fn(move || {
+        counter = counter.checked_add(I::ONE)? | fixed;
+        Some(counter ^ fixed)
+    })
 }
 
-impl<I: Int<Unsigned = I>> BitConfig<I> {
-    fn into_iter(self) -> impl Iterator<Item = I> + Clone {
-        assert!(
-            self.varying != I::MAX,
-            "to optimize the implementation, varying every bit is not supported"
-        );
-        let fixed = !self.varying;
-        let flip = self.preset ^ fixed;
-        let mut counter = fixed - I::ONE;
-
-        // `(counter + 1) & !fixed` is initially 0, and increases after each item returned
-        std::iter::from_fn(move || {
-            counter = counter.checked_add(I::ONE)? | fixed;
-            Some(counter ^ flip)
-        })
+fn low_exp_bits<F: Float>(count: u32) -> F::Int {
+    F::EXP_MASK & (F::EXP_MASK >> (F::EXP_BITS.saturating_sub(count)))
+}
+fn high_exp_bits<F: Float>(count: u32) -> F::Int {
+    F::EXP_MASK & (F::EXP_MASK << (F::EXP_BITS.saturating_sub(count)))
+}
+fn low_sig_bits<F: Float>(count: u32) -> F::Int {
+    F::SIG_MASK & (F::SIG_MASK >> (F::SIG_BITS.saturating_sub(count)))
+}
+fn high_sig_bits<F: Float>(count: u32) -> F::Int {
+    F::SIG_MASK & (F::SIG_MASK << (F::SIG_BITS.saturating_sub(count)))
+}
+fn most_wanted_bitmask<F: Float>(count: u32) -> F::Int {
+    if count == 0 {
+        return F::Int::ZERO;
     }
+    let mut mask = F::SIGN_MASK;
+    let n = (count - 1) / 4;
+    mask |= low_exp_bits::<F>(n);
+    mask |= high_exp_bits::<F>(n);
+    mask |= high_sig_bits::<F>(n);
+    // spend the remaining budget on the least significant bits
+    mask |= low_sig_bits::<F>(count - mask.count_ones());
+    mask
 }
 
 /// Biased generator for floats.
 ///
 /// The returned iterator will produce `fillers.len() << bits_to_vary` items.
-pub fn float_gen<F>(bits_to_vary: u32, fillers: Vec<F::Int>) -> impl Iterator<Item = F> + Clone
+#[cfg_attr(not(test), expect(dead_code))]
+fn float_gen<F>(
+    bits_to_vary: u32,
+    fillers: impl IntoIterator<Item = F::Int>,
+) -> impl Iterator<Item = F>
 where
     F: Float,
     F::Int: Int<Unsigned = F::Int>,
 {
-    assert!(bits_to_vary < F::Int::BITS);
-
-    let mut bit_priority: Vec<_> = (0..F::BITS).rev().collect();
-    // sign bit first, otherwise by least distance to any edge of a bitfield,
-    bit_priority[1..].sort_by_key(|&i| {
-        // avoid a fencepost error by mapping the bit indices to odd numbers,
-        // and compare them to the bitfield edges mapped to even integers
-        let i = 2 * i + 1;
-        i.min(i.abs_diff(F::SIG_BITS * 2))
-            .min(i.abs_diff((F::BITS - 1) * 2))
-    });
-
-    let varying = bit_priority[..bits_to_vary as usize]
-        .iter()
-        .map(|&i| F::Int::ONE << i)
-        .reduce(std::ops::BitOr::bitor)
-        .unwrap_or(F::Int::ZERO);
+    let varying = most_wanted_bitmask::<F>(bits_to_vary);
+    let patterns = bitwise_subsets(varying);
 
     fillers
         .into_iter()
-        .map(move |preset| BitConfig {
-            preset: preset & !varying,
-            varying,
-        })
-        .flat_map(BitConfig::into_iter)
+        .flat_map(move |preset| patterns.clone().map(move |x| x ^ preset))
         .map(F::from_bits)
 }
 
 #[cfg(test)]
 mod test {
-    use super::{BitConfig, float_gen};
+    use super::{bitwise_subsets, float_gen};
     #[test]
     fn equivalence() {
         // with a small integer type, we can easily verify that behaviour matches for all arguments
-        for varying in 0..u8::MAX {
-            for preset in 0..=u8::MAX {
-                let expect = (0..=u8::MAX)
-                    .filter(|x| x & !varying == 0)
-                    .map(|x| x ^ preset);
-                let iter = BitConfig { varying, preset }.into_iter();
-                assert!(iter.eq(expect));
-            }
+        for mask in 0..u8::MAX {
+            let expect = (0..=u8::MAX).filter(|x| x & !mask == 0);
+            assert!(bitwise_subsets(mask).eq(expect));
+        }
+    }
+
+    #[test]
+    fn most_wanted() {
+        let expected = [
+            0b0_00000000_00000000000000000000000,
+            //
+            0b1_00000000_00000000000000000000000,
+            0b1_00000000_00000000000000000000001,
+            0b1_00000000_00000000000000000000011,
+            0b1_00000000_00000000000000000000111,
+            //
+            0b1_10000001_10000000000000000000001,
+            0b1_10000001_10000000000000000000011,
+            0b1_10000001_10000000000000000000111,
+            0b1_10000001_10000000000000000001111,
+            //
+            0b1_11000011_11000000000000000000011,
+            0b1_11000011_11000000000000000000111,
+            0b1_11000011_11000000000000000001111,
+            0b1_11000011_11000000000000000011111,
+            //
+            0b1_11100111_11100000000000000000111,
+            0b1_11100111_11100000000000000001111,
+            0b1_11100111_11100000000000000011111,
+            0b1_11100111_11100000000000000111111,
+            //
+            0b1_11111111_11110000000000000001111,
+            0b1_11111111_11110000000000000011111,
+            0b1_11111111_11110000000000000111111,
+            0b1_11111111_11110000000000001111111,
+            //
+            0b1_11111111_11111000000000001111111,
+            0b1_11111111_11111000000000011111111,
+            0b1_11111111_11111000000000111111111,
+            0b1_11111111_11111000000001111111111,
+            //
+            0b1_11111111_11111100000001111111111,
+            0b1_11111111_11111100000011111111111,
+            0b1_11111111_11111100000111111111111,
+            0b1_11111111_11111100001111111111111,
+            //
+            0b1_11111111_11111110001111111111111,
+            0b1_11111111_11111110011111111111111,
+            0b1_11111111_11111110111111111111111,
+            0b1_11111111_11111111111111111111111,
+        ];
+        for k in 0..=32 {
+            assert_eq!(super::most_wanted_bitmask::<f32>(k), expected[k as usize]);
         }
     }
     #[test]
