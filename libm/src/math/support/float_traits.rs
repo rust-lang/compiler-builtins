@@ -199,6 +199,8 @@ pub trait Float:
         )
     }
 
+    fn nan(payload: &str) -> Self;
+
     #[allow(dead_code)]
     fn abs(self) -> Self;
 
@@ -207,6 +209,8 @@ pub trait Float:
 
     /// Fused multiply add, rounding once.
     fn fma(self, y: Self, z: Self) -> Self;
+
+    fn sqrt(self) -> Self;
 
     /// Returns (normalized exponent, normalized significand)
     fn normalize(significand: Self::Int) -> (i32, Self::Int);
@@ -244,7 +248,9 @@ macro_rules! float_impl {
         $from_bits:path,
         $to_bits:path,
         $fma_fn:ident,
-        $fma_intrinsic:ident
+        $fma_intrinsic:ident,
+        $sqrt_fn:ident,
+        $sqrt_intrinsic:ident,
     ) => {
         impl Float for $ty {
             type Int = $ity;
@@ -332,6 +338,13 @@ macro_rules! float_impl {
             fn from_bits(a: Self::Int) -> Self {
                 Self::from_bits(a)
             }
+            fn nan(payload: &str) -> Self {
+                debug_assert!(payload.len() <= ((Self::SIG_BITS - 1) / 8) as usize);
+                let mut bytes = Self::NAN.to_bits().to_be_bytes();
+                let off = bytes.len() - payload.len();
+                bytes[off..].copy_from_slice(payload.as_bytes());
+                Self::from_bits(<$ity>::from_be_bytes(bytes))
+            }
             fn abs(self) -> Self {
                 cfg_if! {
                     // FIXME(msrv): `abs` is available in `core` starting with 1.85.
@@ -362,6 +375,16 @@ macro_rules! float_impl {
                     }
                 }
             }
+            fn sqrt(self) -> Self {
+                cfg_if! {
+                    // sqrt is not yet available in `core`
+                    if #[cfg(intrinsics_enabled)] {
+                        core::intrinsics::$sqrt_intrinsic(self)
+                    } else {
+                        super::super::$sqrt_fn(self)
+                    }
+                }
+            }
             fn normalize(significand: Self::Int) -> (i32, Self::Int) {
                 let shift = significand.leading_zeros().wrapping_sub(Self::EXP_BITS);
                 (1i32.wrapping_sub(shift as i32), significand << shift)
@@ -380,7 +403,9 @@ float_impl!(
     f16::from_bits,
     f16::to_bits,
     fmaf16,
-    fmaf16
+    fmaf16,
+    sqrtf16,
+    sqrtf16,
 );
 float_impl!(
     f32,
@@ -391,7 +416,9 @@ float_impl!(
     f32_from_bits,
     f32_to_bits,
     fmaf,
-    fmaf32
+    fmaf32,
+    sqrtf,
+    sqrtf32,
 );
 float_impl!(
     f64,
@@ -402,7 +429,9 @@ float_impl!(
     f64_from_bits,
     f64_to_bits,
     fma,
-    fmaf64
+    fmaf64,
+    sqrt,
+    sqrtf64,
 );
 #[cfg(f128_enabled)]
 float_impl!(
@@ -414,7 +443,9 @@ float_impl!(
     f128::from_bits,
     f128::to_bits,
     fmaf128,
-    fmaf128
+    fmaf128,
+    sqrtf128,
+    sqrtf128,
 );
 
 /* FIXME(msrv): vendor some things that are not const stable at our MSRV */

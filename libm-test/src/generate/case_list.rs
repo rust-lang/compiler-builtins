@@ -702,12 +702,12 @@ fn acosf_cases() -> Vec<TestCase<op::acosf::Routine>> {
     cases![]
 }
 
-fn acosh_cases() -> Vec<TestCase<op::acosh::Routine>> {
+fn acoshf_cases() -> Vec<TestCase<op::acoshf::Routine>> {
     cases![]
 }
 
-fn acoshf_cases() -> Vec<TestCase<op::acoshf::Routine>> {
-    cases![]
+fn acosh_cases() -> Vec<TestCase<op::acosh::Routine>> {
+    cases![((1.128320008019951), None),]
 }
 
 fn asin_cases() -> Vec<TestCase<op::asin::Routine>> {

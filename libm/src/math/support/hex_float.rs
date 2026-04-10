@@ -337,10 +337,24 @@ mod hex_fmt {
             write!(f, "-")?;
         }
 
-        if x.is_snan() {
-            return write!(f, "sNaN");
-        } else if x.is_nan() {
-            return write!(f, "qNaN");
+        if x.is_nan() {
+            if x.is_snan() {
+                write!(f, "sNaN")?;
+            } else {
+                write!(f, "qNaN")?;
+            }
+
+            // Write the payload, if there is one.
+            let frac = x.frac();
+            if frac != F::SIG_TOP_BIT {
+                write!(
+                    f,
+                    "({frac:#0width$x})",
+                    width = (F::SIG_BITS.div_ceil(8) as usize * 2) + 2
+                )?;
+            }
+
+            return Ok(());
         } else if x.is_infinite() {
             return write!(f, "inf");
         } else if *x == F::ZERO {

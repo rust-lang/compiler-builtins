@@ -82,6 +82,10 @@ impl Float for f8 {
         Self(a)
     }
 
+    fn nan(_payload: &str) -> Self {
+        Self::NAN
+    }
+
     fn abs(self) -> Self {
         libm::generic::fabs(self)
     }
@@ -91,6 +95,10 @@ impl Float for f8 {
     }
 
     fn fma(self, _y: Self, _z: Self) -> Self {
+        unimplemented!()
+    }
+
+    fn sqrt(self) -> Self {
         unimplemented!()
     }
 

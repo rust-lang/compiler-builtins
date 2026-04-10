@@ -31,9 +31,17 @@ pub use int_traits::{CastFrom, CastInto, DInt, HInt, Int, MinInt, NarrowingDiv};
 pub use modular::linear_mul_reduction;
 
 /// Hint to the compiler that the current path is cold.
-pub fn cold_path() {
+pub const fn cold_path() {
     #[cfg(intrinsics_enabled)]
     core::hint::cold_path();
+}
+
+#[inline(always)]
+pub const fn likely(b: bool) -> bool {
+    if !b {
+        cold_path();
+    }
+    b
 }
 
 /// # Safety
