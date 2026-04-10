@@ -30,6 +30,21 @@ pub use hex_float::{DisplayHex, Hex, hf32, hf64};
 pub use int_traits::{CastFrom, CastInto, DInt, HInt, Int, MinInt, NarrowingDiv};
 pub use modular::linear_mul_reduction;
 
+cfg_if! {
+    if #[cfg(target_pointer_width = "16")] {
+        /// Concrete sized integer compatible with `usize` (exists for using `DInt`/`HInt`).
+        pub type Word = u16;
+    } else if #[cfg(target_pointer_width = "32")] {
+        /// Concrete sized integer compatible with `usize` (exists for using `DInt`/`HInt`).
+        pub type Word = u32;
+    } else if #[cfg(target_pointer_width = "64")] {
+        /// Concrete sized integer compatible with `usize` (exists for using `DInt`/`HInt`).
+        pub type Word = u64;
+    } else {
+        compile_error!("unsupported pointer width");
+    }
+}
+
 /// Hint to the compiler that the current path is cold.
 pub fn cold_path() {
     #[cfg(intrinsics_enabled)]
@@ -66,5 +81,16 @@ pub unsafe fn unchecked_div_isize(x: isize, y: isize) -> isize {
         } else {
             x / y
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn word_size() {
+        assert_eq!(size_of::<Word>(), size_of::<usize>());
+        assert_eq!(align_of::<Word>(), align_of::<usize>());
     }
 }
