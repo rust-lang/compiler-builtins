@@ -347,6 +347,24 @@ pub trait HInt: Int {
     fn zero_widen_mul(self, rhs: Self) -> Self::D;
     /// Widening multiplication. This cannot overflow.
     fn widen_mul(self, rhs: Self) -> Self::D;
+
+    // FIXME(msrv): Use funnel shifts from `core` as a trait on `Int` when available.
+
+    /// Concatenate `self` and `right`, shift by `shift`, and return the upper half.
+    fn funnel_shl(self, right: Self, shift: u32) -> Self {
+        assert!(!Self::SIGNED, "unsupported for signed integers");
+        assert!(shift < Self::BITS, "attempt to funnel shift with overflow");
+        let n = Self::D::from_lo_hi(right, self);
+        (n << shift).hi()
+    }
+
+    /// Concatenate `self` and `right`, shift by `shift`, and return the lower half.
+    fn funnel_shr(self, right: Self, shift: u32) -> Self {
+        assert!(!Self::SIGNED, "unsupported for signed integers");
+        assert!(shift < Self::BITS, "attempt to funnel shift with overflow");
+        let n = Self::D::from_lo_hi(right, self);
+        (n >> shift).lo()
+    }
 }
 
 macro_rules! impl_d_int {
