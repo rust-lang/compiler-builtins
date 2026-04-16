@@ -1,4 +1,4 @@
-ARG IMAGE=ubuntu:26.04
+ARG IMAGE=ubuntu:resolute-20260413
 FROM $IMAGE
 
 RUN apt-get update && \
