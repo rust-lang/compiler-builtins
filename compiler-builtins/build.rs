@@ -12,6 +12,7 @@ fn main() {
     // Work around building as part of `builtins-shim`: if only `build.rs` is used, Cargo always
     // considers the build dirty because `builtins-shim/build.rs` does not exist. If only
     // `../c-b/build.rs` is used, the same may happen if not built in the workspace.
+    // Note: this may be `None` if CARGO_MANIFEST_DIR doesn't end in a directory name (e.g. ".")
     if let Some(dir) = cfg.manifest_dir.file_name()
         && dir == "builtins-shim"
     {
