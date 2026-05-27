@@ -72,6 +72,35 @@ pub fn rint(mut x: f64) -> f64 {
     x
 }
 
+pub fn trunc(mut x: f64) -> f64 {
+    // Note that Rust code can technically assume that the rounding mode is always set to round-to-
+    // nearest, so this could just be a `frndint`. Setting the rounding mode anyway is consistent
+    // with what we do in assembly on other architectures.
+    unsafe {
+        core::arch::asm!(
+            "fld qword ptr [{x}]",
+            // Save the FPU control word, using `x` as scratch space.
+            "fstcw [{x}]",
+            // Set rounding control to 0b11 (toward zero).
+            "mov word ptr [{x} + 2], 0x0f7f",
+            "fldcw [{x} + 2]",
+            // Round.
+            "frndint",
+            // Restore FPU control word.
+            "fldcw [{x}]",
+            // Save rounded value to memory.
+            "fstp qword ptr [{x}]",
+            x = in(reg) &mut x,
+            // All the x87 FPU stack is used, all registers must be clobbered
+            out("st(0)") _, out("st(1)") _,
+            out("st(2)") _, out("st(3)") _,
+            out("st(4)") _, out("st(5)") _,
+            out("st(6)") _, out("st(7)") _,
+            options(nostack),
+        );
+    }
+    x
+}
 /* FIXME(msrv): after 1.82, the below can be used to compute control words using `asm_const`:
 
 #[derive(Clone, Copy, Debug, PartialEq)]
