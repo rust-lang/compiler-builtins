@@ -66,6 +66,12 @@ mod tests {
                 (-1.0, -1.0, Status::OK),
                 (<$f>::INFINITY, <$f>::INFINITY, Status::OK),
                 (<$f>::NEG_INFINITY, <$f>::NEG_INFINITY, Status::OK),
+                // FIXME: these should return OK status
+                (<$f>::NAN, <$f>::NAN, Status::INEXACT),
+                (<$f>::NEG_NAN, <$f>::NEG_NAN, Status::INEXACT),
+                // FIXME(snan): these should technically quiet the sNaN and return INVALID.
+                (<$f>::SNAN, <$f>::SNAN, Status::INEXACT),
+                (<$f>::NEG_SNAN, <$f>::NEG_SNAN, Status::INEXACT),
                 // with rounding
                 (0.1, 0.0, Status::INEXACT),
                 (-0.1, -0.0, Status::INEXACT),
