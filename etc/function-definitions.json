@@ -1051,6 +1051,7 @@
     },
     "trunc": {
         "sources": [
+            "libm/src/math/arch/i586/rounding.rs",
             "libm/src/math/arch/wasm32/rounding.rs",
             "libm/src/math/generic/trunc.rs",
             "libm/src/math/trunc.rs"

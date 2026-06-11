@@ -31,6 +31,7 @@ pub fn trunc(x: f64) -> f64 {
     select_implementation! {
         name: trunc,
         use_arch: all(target_arch = "wasm32", intrinsics_enabled),
+        use_arch_required: x86_no_sse2,
         args: x,
     }
 
