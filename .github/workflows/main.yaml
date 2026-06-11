@@ -78,9 +78,8 @@ jobs:
           os: ubuntu-24.04
         - target: powerpc64le-unknown-linux-gnu
           os: ubuntu-24.04-ppc64le
-        # FIXME(ci): re-enable these once more capacity is avialable
-        # - target: riscv64gc-unknown-linux-gnu
-        #   os: ["self-hosted", "linux", "riscv64"]
+        - target: riscv64gc-unknown-linux-gnu
+          os: ["self-hosted", "linux", "riscv64"]
         - target: riscv64gc-unknown-linux-gnu
           os: ubuntu-24.04
         - target: s390x-unknown-linux-gnu
