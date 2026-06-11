@@ -482,6 +482,33 @@ macro_rules! cast_into_float {
     )*};
 }
 
+macro_rules! cast_into_int {
+    ($ty:ty) => {
+        cast_into_int!(
+            $ty;
+            usize, isize,
+            u8, i8,
+            u16, i16,
+            u32, i32,
+            u64, i64,
+            u128, i128,
+        );
+    };
+    ($ty:ty; $($into:ty),* $(,)?) => {$(
+        impl CastInto<$into> for $ty {
+            fn cast(self) -> $into {
+                #[cfg(not(feature = "compiler-builtins"))]
+                debug_assert_eq!(self as $into as $ty, self, "inexact float cast");
+                self as $into
+            }
+
+            fn cast_lossy(self) -> $into {
+                self as $into
+            }
+        }
+    )*};
+}
+
 cast_into!(usize);
 cast_into!(isize);
 cast_into!(u8);
@@ -500,3 +527,10 @@ cast_into_float!(i16);
 cast_into_float!(i32);
 cast_into_float!(i64);
 cast_into_float!(i128);
+
+#[cfg(f16_enabled)]
+cast_into_int!(f16);
+cast_into_int!(f32);
+cast_into_int!(f64);
+#[cfg(f128_enabled)]
+cast_into_int!(f128);
