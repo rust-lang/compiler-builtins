@@ -8,6 +8,70 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.2.17](https://github.com/rust-lang/compiler-builtins/compare/libm-v0.2.16...libm-v0.2.17) - 2026-06-30
+
+### Other
+
+- replace `cfg_if` with `cfg_select`
+- Enable `unstable-float` for docs.rs builds
+- Add `fmaf16`
+- Clean up unit test cases and add a few more
+- Update vendored cfg-if to upstream for `true` and `false` support
+- Fix printing bitwise float reprs in error printing
+- Always print a leading `+` sign and the NaN payload
+- Eliminate parser hacks needed for the previous MSRV
+- Add tests against `rug` for `i256`
+- Add basic tests for u256::shl
+- Use a single configure file for all libraries
+- Use an assembly implementation on i586
+- Deprecate `feature = "force-soft-float"`
+- Print build config if LIBM_BUILD_VERBOSE is set
+- Change the `mangled-names` feature to `unmangled-names`
+- Add an `approx` module
+- Add cr_hypot from CORE-math
+- Move the existing implementation to the `approx` module
+- Also test the non-generic function for rounding ops
+- Use the shorthand `cfg(x86_no_sse2)` in more places
+- Replace `cfg(x86_no_sse)` with `cfg(x86_no_sse2)`
+- Make unit test setup consistent across rounding functions
+- Add status output support to `rint_status`
+- Use the libm `Float` trait
+- Clean up an unused type parameter
+- Move tests out of `generic` to the consuming module
+- Reorder functions in `arch/` from smallest to largest type
+- Split files in `arch/`
+- Prepare to split files in `arch/`
+- Consolidate `Hexf`, `Hexi`, and the `Hex` trait
+- Cover compiler-builtins float comparison in libm-test 
+- Remove `hexu` in favor of formatting traits on `u256`
+- fix test for overflow in u256::shr
+- Add tests for signaling NaNs and update documentation
+- Print sNaN or qNaN for hex floats
+- Add different NaN types to the `Float` trait
+- Add `Hexi` for printing integers in hex
+- Allow a clippy lint that appears in recent versions
+- Replace `div!` with `unchecked_div_*`
+- Replace `core::intrinsics::{cold_path, likely}`
+- Reenable sincosf tests on ppc64
+- Reenable should_panic tests on ppc64le
+- Upgrade all dependencies to the latest incompatible versions
+- Add an optimization for `trunc`
+- Add an optimization for `floor`
+- Fix `_status` status outputs on null-mantissa inputs
+- Improve debug output for `Status`
+- Add `frexpf16`
+- Switch to a non-recursive algorithm for subnormals
+- Print `Hexf<i32>` with `0x` and zero padding
+- Add `frexpf128`, `ilogbf16`, and `ilogbf128`
+- Convert `frexp` and `ilogb` to a generic implementations
+- Perform some simplifications possible with the MSRV bump
+- Bump the libm MSRV to 1.67
+- Sort Cargo.toml `[features]` table after `[dependencies]`
+- Switch to workspace dependencies
+- Fix acoshf and acosh for negative inputs
+- Allow unstable_name_collisions
+- Merge ref '44e34e1ac6d7' from rust-lang/rust
+
 ## [0.2.16](https://github.com/rust-lang/compiler-builtins/compare/libm-v0.2.15...libm-v0.2.16) - 2025-12-07
 
 ### Fixed
