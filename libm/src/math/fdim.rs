@@ -54,73 +54,72 @@ pub fn fdimf128(x: f128, y: f128) -> f128 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::support::Float;
+    use crate::support::{Float, Hex};
 
-    fn spec_test<F: Float>(f: impl Fn(F, F) -> F) {
-        assert_biteq!(f(F::ONE, F::ZERO), F::ONE);
-        assert_biteq!(f(F::ZERO, F::NEG_ONE), F::ONE);
-        assert_biteq!(f(F::INFINITY, F::ONE), F::INFINITY);
-        assert_biteq!(f(F::ONE, F::NEG_INFINITY), F::INFINITY);
-        assert_biteq!(f(F::ZERO, F::ONE), F::ZERO);
-        assert_biteq!(f(F::NEG_ONE, F::ZERO), F::ZERO);
-        assert_biteq!(f(F::NEG_INFINITY, F::ZERO), F::ZERO);
-        assert_biteq!(f(F::ZERO, F::ZERO), F::ZERO);
-        assert_biteq!(f(F::NEG_ZERO, F::ZERO), F::ZERO);
-        assert_biteq!(f(F::ZERO, F::NEG_ZERO), F::ZERO);
-        assert_biteq!(f(F::ONE, F::ONE), F::ZERO);
-        assert_biteq!(f(F::INFINITY, F::INFINITY), F::ZERO);
-        assert_biteq!(f(F::NEG_INFINITY, F::NEG_INFINITY), F::ZERO);
-        assert!(f(F::NAN, F::ONE).is_nan());
-        assert!(f(F::ONE, F::NAN).is_nan());
-        assert!(f(F::NAN, F::NAN).is_nan());
+    macro_rules! cases {
+        ($f:ty) => {
+            [
+                // Sanity checks
+                (5.0, 3.0, 2.0),
+                (3.0, 5.0, 0.0),
+                // Spec tests
+                (1.0, 0.0, 1.0),
+                (0.0, -1.0, 1.0),
+                (<$f>::INFINITY, 1.0, <$f>::INFINITY),
+                (1.0, <$f>::NEG_INFINITY, <$f>::INFINITY),
+                (0.0, 1.0, 0.0),
+                (-1.0, 0.0, 0.0),
+                (<$f>::NEG_INFINITY, 0.0, 0.0),
+                (0.0, 0.0, 0.0),
+                (-0.0, 0.0, 0.0),
+                (0.0, -0.0, 0.0),
+                (1.0, 1.0, 0.0),
+                (<$f>::INFINITY, <$f>::INFINITY, 0.0),
+                (<$f>::NEG_INFINITY, <$f>::NEG_INFINITY, 0.0),
+                // NaN inputs
+                (<$f>::NAN, 1.0, <$f>::NAN),
+                (1.0, <$f>::NAN, <$f>::NAN),
+                (<$f>::NAN, <$f>::NAN, <$f>::NAN),
+            ]
+        };
+    }
+
+    #[track_caller]
+    fn check<F: Float>(f: fn(F, F) -> F, cases: &[(F, F, F)]) {
+        for &(x, y, exp_res) in cases {
+            let val = f(x, y);
+            if exp_res.is_nan() {
+                assert!(
+                    val.is_nan(),
+                    "fdim({x:?}, {y:?}) expected NaN, got {val:?} ({} {})",
+                    Hex(x),
+                    Hex(y)
+                );
+            } else {
+                assert_biteq!(val, exp_res, "fdim({x:?}, {y:?}) ({} {})", Hex(x), Hex(y));
+            }
+        }
     }
 
     #[test]
     #[cfg(f16_enabled)]
-    fn sanity_check_f16() {
-        assert_eq!(fdimf16(5.0f16, 3.0f16), 2.0f16);
-        assert_eq!(fdimf16(3.0f16, 5.0f16), 0.0f16);
+    fn check_f16() {
+        check::<f16>(super::super::fdimf16, &cases!(f16));
     }
 
     #[test]
-    #[cfg(f16_enabled)]
-    fn spec_tests_f16() {
-        spec_test::<f16>(fdimf16);
+    fn check_f32() {
+        check::<f32>(super::super::fdimf, &cases!(f32));
     }
 
     #[test]
-    fn sanity_check_f32() {
-        assert_eq!(fdimf(5.0f32, 3.0f32), 2.0f32);
-        assert_eq!(fdimf(3.0f32, 5.0f32), 0.0f32);
-    }
-
-    #[test]
-    fn spec_tests_f32() {
-        spec_test::<f32>(fdimf);
-    }
-
-    #[test]
-    fn sanity_check_f64() {
-        assert_eq!(fdim(5.0f64, 3.0f64), 2.0f64);
-        assert_eq!(fdim(3.0f64, 5.0f64), 0.0f64);
-    }
-
-    #[test]
-    fn spec_tests_f64() {
-        spec_test::<f64>(fdim);
+    fn check_f64() {
+        check::<f64>(super::super::fdim, &cases!(f64));
     }
 
     #[test]
     #[cfg(f128_enabled)]
-    fn sanity_check_f128() {
-        assert_eq!(fdimf128(5.0f128, 3.0f128), 2.0f128);
-        assert_eq!(fdimf128(3.0f128, 5.0f128), 0.0f128);
-    }
-
-    #[test]
-    #[cfg(f128_enabled)]
-    fn spec_tests_f128() {
-        spec_test::<f128>(fdimf128);
+    fn check_f128() {
+        check::<f128>(super::super::fdimf128, &cases!(f128));
     }
 }
