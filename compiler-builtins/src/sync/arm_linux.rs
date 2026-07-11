@@ -134,6 +134,9 @@ unsafe fn atomic_cmpxchg<T>(ptr: *mut T, oldval: u32, newval: u32) -> u32 {
         let curval_aligned = unsafe { atomic_load_aligned::<T>(aligned_ptr) };
         let curval = extract_aligned(curval_aligned, shift, mask);
         if curval != oldval {
+            // __sync builtins must have SeqCst semantics. So, failure path, which returns early
+            // without calling __kuser_cmpxchg, must emits a memory barrier.
+            __kuser_memory_barrier();
             return curval;
         }
         let newval_aligned = insert_aligned(curval_aligned, newval, shift, mask);
