@@ -107,12 +107,14 @@ unsafe fn atomic_rmw<T, F: Fn(u32) -> u32, G: Fn(u32, u32) -> u32>(ptr: *mut T, 
     let (shift, mask) = get_shift_mask(ptr);
 
     loop {
-        // FIXME(safety): preconditions review needed
+        // SAFETY: the caller must guarantee that the pointer is valid for read and write,
+        // and align_ptr returns the pointer aligned to 32-bit.
         let curval_aligned = unsafe { atomic_load_aligned::<T>(aligned_ptr) };
         let curval = extract_aligned(curval_aligned, shift, mask);
         let newval = f(curval);
         let newval_aligned = insert_aligned(curval_aligned, newval, shift, mask);
-        // FIXME(safety): preconditions review needed
+        // SAFETY: the caller must guarantee that the pointer is valid for read and write,
+        // and align_ptr returns the pointer aligned to 32-bit.
         if unsafe { __kuser_cmpxchg(curval_aligned, newval_aligned, aligned_ptr) } {
             return g(curval, newval);
         }
@@ -125,16 +127,16 @@ unsafe fn atomic_cmpxchg<T>(ptr: *mut T, oldval: u32, newval: u32) -> u32 {
     let (shift, mask) = get_shift_mask(ptr);
 
     loop {
-        // SAFETY: the caller must guarantee that the pointer is valid for read and write
-        // and aligned to the element size.
+        // SAFETY: the caller must guarantee that the pointer is valid for read and write,
+        // and align_ptr returns the pointer aligned to 32-bit.
         let curval_aligned = unsafe { atomic_load_aligned::<T>(aligned_ptr) };
         let curval = extract_aligned(curval_aligned, shift, mask);
         if curval != oldval {
             return curval;
         }
         let newval_aligned = insert_aligned(curval_aligned, newval, shift, mask);
-        // SAFETY: the caller must guarantee that the pointer is valid for read and write
-        // and aligned to the element size.
+        // SAFETY: the caller must guarantee that the pointer is valid for read and write,
+        // and align_ptr returns the pointer aligned to 32-bit.
         if unsafe { __kuser_cmpxchg(curval_aligned, newval_aligned, aligned_ptr) } {
             return oldval;
         }
