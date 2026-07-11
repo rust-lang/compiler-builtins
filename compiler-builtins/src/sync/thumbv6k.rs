@@ -19,7 +19,8 @@ macro_rules! cp15_barrier {
 }
 
 #[instruction_set(arm::a32)]
-unsafe fn fence() {
+fn fence() {
+    // SAFETY: `mcr p15, 0, {zero}, c7, c10, 5` is safe on Armv6k with Arm mode.
     unsafe {
         asm!(
             cp15_barrier!(),
@@ -207,7 +208,6 @@ include!("arm_thumb_shared.rs");
 
 intrinsics! {
     pub unsafe extern "C" fn __sync_synchronize() {
-       // SAFETY: preconditions are the same as the calling function.
-       unsafe { fence() };
+       fence();
     }
 }

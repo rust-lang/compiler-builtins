@@ -5,15 +5,17 @@ use core::{arch, mem};
 // https://www.kernel.org/doc/Documentation/arm/kernel_user_helpers.txt
 unsafe fn __kuser_cmpxchg(oldval: u32, newval: u32, ptr: *mut u32) -> bool {
     // FIXME(volatile): the third parameter is a volatile pointer
-    // SAFETY: kernel docs specify a known address with the given signature
+    // SAFETY: kernel docs specify a known address with the given signature.
+    // And the caller must guarantee that the pointer is valid for read and write
+    // and aligned to the element size.
     let f = unsafe {
         mem::transmute::<_, extern "C" fn(u32, u32, *mut u32) -> u32>(0xffff0fc0usize as *const ())
     };
     f(oldval, newval, ptr) == 0
 }
 
-unsafe fn __kuser_memory_barrier() {
-    // SAFETY: kernel docs specify a known address with the given signature
+fn __kuser_memory_barrier() {
+    // SAFETY: kernel docs specify a known address with the given signature.
     let f = unsafe { mem::transmute::<_, extern "C" fn()>(0xffff0fa0usize as *const ()) };
     f();
 }
@@ -184,7 +186,6 @@ include!("arm_thumb_shared.rs");
 
 intrinsics! {
     pub unsafe extern "C" fn __sync_synchronize() {
-       // SAFETY: preconditions are the same as the calling function.
-       unsafe {  __kuser_memory_barrier() };
+       __kuser_memory_barrier();
     }
 }
