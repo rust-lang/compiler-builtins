@@ -292,47 +292,70 @@ jobs:
         # - target: aarch64-unknown-linux-gnu
         #   os: ubuntu-24.04-arm
         #   bench_rustc: nightly-2026-02-10
-        - target: aarch64-unknown-linux-gnu
-          os: ubuntu-24.04-arm
-          bench_rustc: nightly-2026-03-10
-        - target: aarch64-unknown-linux-gnu
-          os: ubuntu-24.04-arm
-          bench_rustc: nightly-2026-03-20
-        - target: aarch64-unknown-linux-gnu
-          os: ubuntu-24.04-arm
-          bench_rustc: nightly-2026-03-30
+        # - target: aarch64-unknown-linux-gnu
+        #   os: ubuntu-24.04-arm
+        #   bench_rustc: nightly-2026-03-10
         #
-        # bad
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-24.04-arm
+          bench_rustc: nightly-2026-03-12
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-24.04-arm
+          bench_rustc: nightly-2026-03-14
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-24.04-arm
+          bench_rustc: nightly-2026-03-16
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-24.04-arm
+          bench_rustc: nightly-2026-03-18
+        # bad 1
+        # - target: aarch64-unknown-linux-gnu
+        #   os: ubuntu-24.04-arm
+        #   bench_rustc: nightly-2026-03-20
+        # - target: aarch64-unknown-linux-gnu
+        #   os: ubuntu-24.04-arm
+        #   bench_rustc: nightly-2026-03-30
         # - target: aarch64-unknown-linux-gnu
         #   os: ubuntu-24.04-arm
         #   bench_rustc: nightly-2026-04-01
         # - target: aarch64-unknown-linux-gnu
         #   os: ubuntu-24.04-arm
         #   bench_rustc: nightly-2026-05-01
+        # - target: aarch64-unknown-linux-gnu
+        #   os: ubuntu-24.04-arm
+        #   bench_rustc: nightly-2026-05-10
+        # - target: aarch64-unknown-linux-gnu
+        #   os: ubuntu-24.04-arm
+        #   bench_rustc: nightly-2026-05-20
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-24.04-arm
+          bench_rustc: nightly-2026-05-22
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-24.04-arm
+          bench_rustc: nightly-2026-05-24
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-24.04-arm
+          bench_rustc: nightly-2026-05-26
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-24.04-arm
+          bench_rustc: nightly-2026-05-28
 
-        - target: aarch64-unknown-linux-gnu
-          os: ubuntu-24.04-arm
-          bench_rustc: nightly-2026-05-10
-        - target: aarch64-unknown-linux-gnu
-          os: ubuntu-24.04-arm
-          bench_rustc: nightly-2026-05-20
-        - target: aarch64-unknown-linux-gnu
-          os: ubuntu-24.04-arm
-          bench_rustc: nightly-2026-05-30
-        - target: aarch64-unknown-linux-gnu
-          os: ubuntu-24.04-arm
-          bench_rustc: nightly-2026-06-10
-        - target: aarch64-unknown-linux-gnu
-          os: ubuntu-24.04-arm
-          bench_rustc: nightly-2026-06-20
-        - target: aarch64-unknown-linux-gnu
-          os: ubuntu-24.04-arm
-          bench_rustc: nightly-2026-06-30
-        - target: aarch64-unknown-linux-gnu
-          os: ubuntu-24.04-arm
-          bench_rustc: nightly-2026-05-01
-
-        # bad
+        # bad 2
+        # - target: aarch64-unknown-linux-gnu
+        #   os: ubuntu-24.04-arm
+        #   bench_rustc: nightly-2026-05-30
+        # - target: aarch64-unknown-linux-gnu
+        #   os: ubuntu-24.04-arm
+        #   bench_rustc: nightly-2026-06-10
+        # - target: aarch64-unknown-linux-gnu
+        #   os: ubuntu-24.04-arm
+        #   bench_rustc: nightly-2026-06-20
+        # - target: aarch64-unknown-linux-gnu
+        #   os: ubuntu-24.04-arm
+        #   bench_rustc: nightly-2026-06-30
+        # - target: aarch64-unknown-linux-gnu
+        #   os: ubuntu-24.04-arm
+        #   bench_rustc: nightly-2026-05-01
         # - target: aarch64-unknown-linux-gnu
         #   os: ubuntu-24.04-arm
         #   bench_rustc: nightly-2026-07-01
