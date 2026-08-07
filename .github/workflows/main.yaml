@@ -294,20 +294,48 @@ jobs:
         #   bench_rustc: nightly-2026-02-10
         - target: aarch64-unknown-linux-gnu
           os: ubuntu-24.04-arm
-          bench_rustc: nightly-2026-03-01
+          bench_rustc: nightly-2026-03-10
         - target: aarch64-unknown-linux-gnu
           os: ubuntu-24.04-arm
-          bench_rustc: nightly-2026-04-01
+          bench_rustc: nightly-2026-03-20
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-24.04-arm
+          bench_rustc: nightly-2026-03-30
+        #
+        # bad
+        # - target: aarch64-unknown-linux-gnu
+        #   os: ubuntu-24.04-arm
+        #   bench_rustc: nightly-2026-04-01
+        # - target: aarch64-unknown-linux-gnu
+        #   os: ubuntu-24.04-arm
+        #   bench_rustc: nightly-2026-05-01
+
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-24.04-arm
+          bench_rustc: nightly-2026-05-10
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-24.04-arm
+          bench_rustc: nightly-2026-05-20
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-24.04-arm
+          bench_rustc: nightly-2026-05-30
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-24.04-arm
+          bench_rustc: nightly-2026-06-10
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-24.04-arm
+          bench_rustc: nightly-2026-06-20
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-24.04-arm
+          bench_rustc: nightly-2026-06-30
         - target: aarch64-unknown-linux-gnu
           os: ubuntu-24.04-arm
           bench_rustc: nightly-2026-05-01
-        - target: aarch64-unknown-linux-gnu
-          os: ubuntu-24.04-arm
-          bench_rustc: nightly-2026-08-01
-        - target: aarch64-unknown-linux-gnu
-          os: ubuntu-24.04-arm
-          bench_rustc: nightly-2026-07-01
+
         # bad
+        # - target: aarch64-unknown-linux-gnu
+        #   os: ubuntu-24.04-arm
+        #   bench_rustc: nightly-2026-07-01
         # - target: aarch64-unknown-linux-gnu
         #   os: ubuntu-24.04-arm
         #   bench_rustc: nightly-2026-08-01
