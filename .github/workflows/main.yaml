@@ -150,8 +150,13 @@ jobs:
         rustup target add "$JOB_TARGET"
 
     - uses: taiki-e/install-action@7a79fe8c3a13344501c80d99cae481c1c9085912 # v2.81.10
+      continue-on-error: true
       with:
         tool: nextest@0.9.131
+        # On platforms without prebuilts, nextest can be installed system-wide
+        # or omitted. Building it probably takes longer than running tests
+        # without it
+        fallback: none
 
     - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
       with:
