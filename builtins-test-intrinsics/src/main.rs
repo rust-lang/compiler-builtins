@@ -294,6 +294,11 @@ mod intrinsics {
         x as f128
     }
 
+    #[cfg(f16_enabled)]
+    pub fn floatsihf(x: i32) -> f16 {
+        x as f16
+    }
+
     pub fn aeabi_idiv(a: i32, b: i32) -> i32 {
         a.wrapping_div(b)
     }
@@ -317,6 +322,11 @@ mod intrinsics {
     #[cfg(f128_enabled)]
     pub fn floatditf(x: i64) -> f128 {
         x as f128
+    }
+
+    #[cfg(f16_enabled)]
+    pub fn floatdihf(x: i64) -> f16 {
+        x as f16
     }
 
     pub fn mulodi4(a: i64, b: i64) -> i64 {
@@ -352,6 +362,11 @@ mod intrinsics {
         x as f128
     }
 
+    #[cfg(f16_enabled)]
+    pub fn floattihf(x: i128) -> f16 {
+        x as f16
+    }
+
     pub fn lshrti3(a: i128, b: usize) -> i128 {
         a >> b
     }
@@ -381,6 +396,11 @@ mod intrinsics {
         x as f128
     }
 
+    #[cfg(f16_enabled)]
+    pub fn floatunsihf(x: u32) -> f16 {
+        x as f16
+    }
+
     pub fn aeabi_uidiv(a: u32, b: u32) -> u32 {
         a / b
     }
@@ -406,6 +426,11 @@ mod intrinsics {
         x as f128
     }
 
+    #[cfg(f16_enabled)]
+    pub fn floatundihf(x: u64) -> f16 {
+        x as f16
+    }
+
     // udivdi3
     pub fn aeabi_uldivmod(a: u64, b: u64) -> u64 {
         a * b
@@ -428,6 +453,11 @@ mod intrinsics {
     #[cfg(f128_enabled)]
     pub fn floatuntitf(x: u128) -> f128 {
         x as f128
+    }
+
+    #[cfg(f16_enabled)]
+    pub fn floatuntihf(x: u128) -> f16 {
+        x as f16
     }
 
     pub fn muloti4(a: u128, b: u128) -> Option<u128> {
@@ -550,6 +580,18 @@ fn run() {
     bb(floatuntisf(bb(2)));
     #[cfg(f128_enabled)]
     bb(floatuntitf(bb(2)));
+    #[cfg(f16_enabled)]
+    bb(floatsihf(bb(2)));
+    #[cfg(f16_enabled)]
+    bb(floatdihf(bb(2)));
+    #[cfg(f16_enabled)]
+    bb(floattihf(bb(2)));
+    #[cfg(f16_enabled)]
+    bb(floatunsihf(bb(2)));
+    #[cfg(f16_enabled)]
+    bb(floatundihf(bb(2)));
+    #[cfg(f16_enabled)]
+    bb(floatuntihf(bb(2)));
     #[cfg(f128_enabled)]
     bb(gttf(bb(2.), bb(2.)));
     bb(lshrti3(bb(2), bb(2)));
