@@ -35,16 +35,25 @@ mod i_to_f {
                                     FloatTy::from_u128(x.try_into().unwrap()).value
                                 };
 
-                                <$f_ty>::from_bits(apf.to_bits())
+                                <$f_ty>::from_bits(apf.to_bits().try_into().unwrap())
                             },
                             x
                         );
                         let f1: $f_ty = $fn(x);
 
-                        #[cfg($sys_available)] {
-                            // This makes sure that the conversion produced the best rounding possible, and does
-                            // this independent of `x as $into` rounding correctly.
-                            // This assumes that float to integer conversion is correct.
+                        // This makes sure that the conversion produced the best rounding possible,
+                        // and does this independent of `x as $into` rounding correctly. It also
+                        // exercises the `f -> i` cast, which catches ABI and platform bugs that a
+                        // comparison against arbitrary-precision math would not.
+                        //
+                        // Skipped when the result is infinite: an integer whose magnitude exceeds
+                        // the float's exponent range correctly converts to `inf` (only reachable
+                        // for `f16`, whose range is narrower than any of these source integers),
+                        // and casting `inf` back to an integer saturates to `iN::MAX`, which would
+                        // spuriously fail the bracket. The native comparison below still covers the
+                        // infinite case.
+                        #[cfg($sys_available)]
+                        if f1.is_finite() {
                             let y_minus_ulp = <$f_ty>::from_bits(f1.to_bits().wrapping_sub(1)) as $i_ty;
                             let y = f1 as $i_ty;
                             let y_plus_ulp = <$f_ty>::from_bits(f1.to_bits().wrapping_add(1)) as $i_ty;
@@ -95,6 +104,16 @@ mod i_to_f {
                 }
             )*
         };
+    }
+
+    #[cfg(f16_enabled)]
+    i_to_f! { f16, Half, not(no_sys_f16_int_convert),
+        u32, __floatunsihf;
+        i32, __floatsihf;
+        u64, __floatundihf;
+        i64, __floatdihf;
+        u128, __floatuntihf;
+        i128, __floattihf;
     }
 
     i_to_f! { f32, Single, all(),
