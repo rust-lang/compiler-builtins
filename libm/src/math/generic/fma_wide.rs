@@ -1,12 +1,16 @@
 /* SPDX-License-Identifier: MIT */
 /* origin: musl src/math/fmaf.c Ported to generic Rust algorithm in 2025, TG. */
+/* The musl subnormal rounding bug is fixed using the formally proven algorithm from */
+/* "Emulation of FMA and correctly-rounded sums: proved algorithms using rounding to odd" */
+/* by Sylvie Boldo and Guillaume Melquiond, https://guillaume.melquiond.fr/doc/08-tc.pdf */
 
 use crate::support::{
     CastFrom, CastInto, Float, FpResult, IntTy, MinInt, NarrowFloat, Round, Status, WideFloat,
 };
 
-/// Fma implementation when a hardware-backed larger float type is available. For `f32` and `f64`,
-/// `f64` has enough precision to represent the `f32` in its entirety, except for double rounding.
+/// Fma implementation when a hardware-backed larger float type is available.
+/// The larger type has enough precision and exponent range to represent the exact product,
+/// leaving only the addition and the final narrowing susceptible to double rounding.
 #[inline]
 pub fn fma_wide_round<F, B>(x: F, y: F, z: F, round: Round) -> FpResult<F>
 where
@@ -22,14 +26,18 @@ where
     let mut ui: B::Int = result.to_bits();
     let re = result.ex();
     let zb: B = z.widen();
+    let mut narrowed = result.narrow();
 
     let prec_diff = B::SIG_BITS - F::SIG_BITS;
     let excess_prec = ui & ((one << prec_diff) - one);
     let halfway = one << (prec_diff - 1);
+    let abs_narrowed = narrowed.to_bits() & !F::SIGN_MASK;
+    let at_most_min_normal = abs_narrowed <= F::MIN_POSITIVE_NORMAL.to_bits();
 
     // Common case: the larger precision is fine if...
-    // This is not a halfway case
-    if excess_prec != halfway
+    //  - The result is NOT exactly halfway between two representable points
+    //  - The result does NOT touch the subnormal range
+    if (excess_prec != halfway && !at_most_min_normal)
         // Or the result is NaN
         || re == B::EXP_SAT
         // Or the result is exact
@@ -47,6 +55,7 @@ where
             status.set_inexact(false);
 
             result = xy + z.widen();
+            narrowed = result.narrow();
             if status.inexact() {
                 status.set_underflow(true);
             } else {
@@ -55,22 +64,28 @@ where
         }
 
         return FpResult {
-            val: result.narrow(),
+            val: narrowed,
             status,
         };
     }
 
+    // TwoSum recovers the exact residual of the widened addition. If the
+    // addition was inexact and its rounded significand is even, move it one
+    // ULP toward the residual to produce a round-to-odd intermediate. Rounding
+    // that intermediate to nearest in `F` gives the correctly rounded result:
+    // https://guillaume.melquiond.fr/doc/08-tc.pdf
+    let virtual_z = result - xy;
+    let residual = (xy - (result - virtual_z)) + (zb - virtual_z);
     let neg = ui >> (B::BITS - 1) != IntTy::<B>::ZERO;
-    let err = if neg == (zb > xy) {
-        xy - result + zb
-    } else {
-        zb - result + xy
-    };
-    if neg == (err < B::ZERO) {
-        ui += one;
-    } else {
-        ui -= one;
+    if residual != B::ZERO && (ui & one) == IntTy::<B>::ZERO {
+        if neg == (residual < B::ZERO) {
+            ui += one;
+        } else {
+            ui -= one;
+        }
+
+        result = B::from_bits(ui);
     }
 
-    FpResult::ok(B::from_bits(ui).narrow())
+    FpResult::ok(result.narrow())
 }
