@@ -183,6 +183,21 @@ mod tests {
     }
 
     #[test]
+    #[cfg(f128_enabled)]
+    fn fma_wide_f64_subnormal_double_rounding() {
+        let a = f64::from_bits(0x9e55_2156_d547_5b4a);
+        let b = f64::from_bits(0x1e58_3b0e_3ea1_8955);
+        let c = f64::from_bits(0x0000_0040_0000_0002);
+
+        // If q = 2^-1074, the exact product is
+        // -(1/2 + 0x5615e992 * 2^-106) * q. The fused result is therefore
+        // just below the midpoint between the expected value and c.
+        let expected = f64::from_bits(0x0000_0040_0000_0001);
+        let result = generic::fma_wide_round::<f64, f128>(a, b, c, Round::Nearest).val;
+        assert_biteq!(result, expected);
+    }
+
+    #[test]
     fn fma_segfault() {
         // These two inputs cause fma to segfault on release due to overflow:
         assert_eq!(
