@@ -169,6 +169,20 @@ mod tests {
     }
 
     #[test]
+    fn fmaf_subnormal_double_rounding() {
+        // https://github.com/rust-lang/compiler-builtins/issues/1262
+        let a = f32::from_bits(0x9700_0800);
+        let b = f32::from_bits(0x1cff_f001);
+        let c = f32::from_bits(0x0001_0002);
+
+        // The exact result is (65537.5 - 2^-37) * 2^-149, just below the
+        // midpoint between these two subnormal values.
+        let expected = f32::from_bits(0x0001_0001);
+        let result = generic::fma_wide_round::<f32, f64>(a, b, c, Round::Nearest).val;
+        assert_biteq!(result, expected);
+    }
+
+    #[test]
     fn fma_segfault() {
         // These two inputs cause fma to segfault on release due to overflow:
         assert_eq!(
