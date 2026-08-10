@@ -199,8 +199,9 @@ mod tests {
         assert_biteq!(result, expected);
     }
 
+    // 32-bit ARM has ABI bugs around f128 as of rustc 1.99.0-nightly, so it's disabled for this test
     #[test]
-    #[cfg(f128_enabled)]
+    #[cfg(all(f128_enabled, not(target_arch = "arm")))]
     fn fma_wide_f64_subnormal_double_rounding() {
         let a = f64::from_bits(0x9e55_2156_d547_5b4a);
         let b = f64::from_bits(0x1e58_3b0e_3ea1_8955);
