@@ -5,7 +5,7 @@
 /* by Sylvie Boldo and Guillaume Melquiond, https://guillaume.melquiond.fr/doc/08-tc.pdf */
 
 use crate::support::{
-    CastFrom, CastInto, Float, FpResult, IntTy, MinInt, NarrowFloat, Round, Status, WideFloat,
+    CastFrom, CastInto, Float, FpResult, IntTy, MinInt, NarrowFloat, Round, WideFloat,
 };
 
 /// Fma implementation when a hardware-backed larger float type is available.
@@ -26,54 +26,17 @@ where
     let mut ui: B::Int = result.to_bits();
     let re = result.ex();
     let zb: B = z.widen();
-    let mut narrowed = result.narrow();
 
-    let prec_diff = B::SIG_BITS - F::SIG_BITS;
-    let excess_prec = ui & ((one << prec_diff) - one);
-    let halfway = one << (prec_diff - 1);
-    let abs_narrowed = narrowed.to_bits() & !F::SIGN_MASK;
-    let at_most_min_normal = abs_narrowed <= F::MIN_POSITIVE_NORMAL.to_bits();
-
-    // Common case: the larger precision is fine if...
-    //  - The result is NOT exactly halfway between two representable points
-    //  - The result does NOT touch the subnormal range
-    if (excess_prec != halfway && !at_most_min_normal)
-        // Or the result is NaN
-        || re == B::EXP_SAT
-        // Or the result is exact
-        || (result - xy == zb && result - zb == xy)
-        // Or the mode is something other than round to nearest
-        || round != Round::Nearest
-    {
-        let min_inexact_exp = (B::EXP_BIAS as i32 + F::EXP_MIN_SUBNORM) as u32;
-        let max_inexact_exp = (B::EXP_BIAS as i32 + F::EXP_MIN) as u32;
-
-        let mut status = Status::OK;
-
-        if (min_inexact_exp..max_inexact_exp).contains(&re) && status.inexact() {
-            // This branch is never hit; requires previous operations to set a status
-            status.set_inexact(false);
-
-            result = xy + z.widen();
-            narrowed = result.narrow();
-            if status.inexact() {
-                status.set_underflow(true);
-            } else {
-                status.set_inexact(true);
-            }
-        }
-
-        return FpResult {
-            val: narrowed,
-            status,
-        };
+    // The round-to-odd method from the paper is only needed for non-exceptional values
+    // and only when rounding to nearest
+    if re == B::EXP_SAT || round != Round::Nearest {
+        return FpResult::ok(result.narrow());
     }
 
-    // TwoSum recovers the exact residual of the widened addition. If the
-    // addition was inexact and its rounded significand is even, move it one
-    // ULP toward the residual to produce a round-to-odd intermediate. Rounding
-    // that intermediate to nearest in `F` gives the correctly rounded result:
-    // https://guillaume.melquiond.fr/doc/08-tc.pdf
+    // TwoSum recovers the exact residual of the widened addition. If the addition was inexact and
+    // its rounded significand is even, move it one ULP toward the residual to produce a round-to-odd
+    // intermediate. Theorem 3 proves that rounding this intermediate to nearest in `F` gives the
+    // correctly rounded result, including for subnormals and underflow.
     let virtual_z = result - xy;
     let residual = (xy - (result - virtual_z)) + (zb - virtual_z);
     let neg = ui >> (B::BITS - 1) != IntTy::<B>::ZERO;
