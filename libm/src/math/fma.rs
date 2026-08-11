@@ -199,6 +199,26 @@ mod tests {
         assert_biteq!(result, expected);
     }
 
+    #[test]
+    fn fmaf_round_to_odd_before_overflow() {
+        let a = f32::from_bits(0x5f78_0000);
+        let b = f32::from_bits(0x5f84_2108);
+        let c = f32::from_bits(0x8000_0001);
+
+        // The exact product is 2^128 - 2^103, the round-to-nearest overflow midpoint. Subtracting
+        // the minimum subnormal puts the fused result just below that midpoint, so it rounds to the
+        // maximum finite value rather than infinity.
+        let result = generic::fma_wide_round::<f32, f64>(a, b, c, Round::Nearest).val;
+        assert_biteq!(result, f32::MAX);
+    }
+
+    #[test]
+    fn fmaf_wide_infinity() {
+        let result =
+            generic::fma_wide_round::<f32, f64>(f32::INFINITY, 1.0, 1.0, Round::Nearest).val;
+        assert_biteq!(result, f32::INFINITY);
+    }
+
     // 32-bit ARM has ABI bugs around f128 as of rustc 1.99.0-nightly, so it's disabled for this test
     #[test]
     #[cfg(all(f128_enabled, not(target_arch = "arm")))]
