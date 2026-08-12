@@ -91,6 +91,10 @@ impl Float for f8 {
         libm::generic::copysign(self, other)
     }
 
+    fn roundeven(self) -> Self {
+        libm::generic::rint_status(self).val
+    }
+
     fn fma(self, _y: Self, _z: Self) -> Self {
         unimplemented!()
     }
