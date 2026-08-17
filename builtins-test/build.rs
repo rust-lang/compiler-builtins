@@ -13,6 +13,7 @@ enum SetCfg {
     NoSysF16,
     NoSysF16F64Convert,
     NoSysF16F128Convert,
+    NoSysF16IntConvert,
 }
 
 impl SetCfg {
@@ -22,15 +23,22 @@ impl SetCfg {
         Self::NoSysF16,
         Self::NoSysF16F64Convert,
         Self::NoSysF16F128Convert,
+        Self::NoSysF16IntConvert,
     ];
 
     fn implies(self) -> &'static [Self] {
         match self {
             Self::NoSysF128 => [Self::NoSysF128IntConvert, Self::NoSysF16F128Convert].as_slice(),
             Self::NoSysF128IntConvert => [].as_slice(),
-            Self::NoSysF16 => [Self::NoSysF16F64Convert, Self::NoSysF16F128Convert].as_slice(),
+            Self::NoSysF16 => [
+                Self::NoSysF16F64Convert,
+                Self::NoSysF16F128Convert,
+                Self::NoSysF16IntConvert,
+            ]
+            .as_slice(),
             Self::NoSysF16F64Convert => [].as_slice(),
             Self::NoSysF16F128Convert => [].as_slice(),
+            Self::NoSysF16IntConvert => [].as_slice(),
         }
     }
 
@@ -41,6 +49,7 @@ impl SetCfg {
             Self::NoSysF16F64Convert => "no_sys_f16_f64_convert",
             Self::NoSysF16F128Convert => "no_sys_f16_f128_convert",
             Self::NoSysF16 => "no_sys_f16",
+            Self::NoSysF16IntConvert => "no_sys_f16_int_convert",
         }
     }
 }
@@ -80,6 +89,8 @@ fn main() {
         to_set.insert(SetCfg::NoSysF128IntConvert);
         // FIXME: 32-bit x86 has a bug in `f128 -> f16` system libraries
         to_set.insert(SetCfg::NoSysF16F128Convert);
+        // 32-bit x86 libgcc does not provide the 128-bit integer to `f16` routines
+        to_set.insert(SetCfg::NoSysF16IntConvert);
     }
 
     // These platforms do not have f16 symbols available in their system libraries, so
@@ -101,9 +112,11 @@ fn main() {
         to_set.insert(SetCfg::NoSysF16);
     }
 
-    // These platforms are missing either `__extendhfdf2` or `__truncdfhf2`.
+    // These platforms are missing either `__extendhfdf2` or `__truncdfhf2`, and also
+    // lack the integer-to-`f16` conversion routines in their system libraries.
     if cfg.target_vendor == "apple" || cfg.target_os == "windows" {
         to_set.insert(SetCfg::NoSysF16F64Convert);
+        to_set.insert(SetCfg::NoSysF16IntConvert);
     }
 
     // Add implied features. Collection is required for borrows.
