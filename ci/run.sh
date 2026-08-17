@@ -163,14 +163,15 @@ case "$target" in
     *windows-msvc*) ;;
     # FIXME: MinGW should be able to build MPFR, but setup in CI is nontrivial.
     *windows-gnu*) ;;
-    # Ensure enabled on targets that we expect to be native in CI
-    aarch64*apple*) mflags+=(--features libm-test/build-mpfr) ;;
-    aarch64*linux*) mflags+=(--features libm-test/build-mpfr) ;;
-    i586*) mflags+=(--features libm-test/build-mpfr --features gmp-mpfr-sys/force-cross) ;;
-    i686*) mflags+=(--features libm-test/build-mpfr) ;;
-    x86_64*) mflags+=(--features libm-test/build-mpfr) ;;
-    # Fallback to enabled on native targets, disabled otherwise
-    *) [ "$target" = "$host_tuple" ] && mflags+=(--features libm-test/build-mpfr) ;;
+    # # Ensure enabled on targets that we expect to be native in CI
+    # aarch64*apple*) mflags+=(--features libm-test/build-mpfr) ;;
+    # aarch64*linux*) mflags+=(--features libm-test/build-mpfr) ;;
+    # i586*) mflags+=(--features libm-test/build-mpfr --features gmp-mpfr-sys/force-cross) ;;
+    # i686*) mflags+=(--features libm-test/build-mpfr) ;;
+    # x86_64*) mflags+=(--features libm-test/build-mpfr) ;;
+    # # Fallback to enabled on native targets, disabled otherwise
+    # *) [ "$target" = "$host_tuple" ] && mflags+=(--features libm-test/build-mpfr) ;;
+    *) mflags+=(--features libm-test/build-mpfr --features gmp-mpfr-sys/force-cross) ;;
 esac
 
 # FIXME: `STATUS_DLL_NOT_FOUND` testing macros on CI.
