@@ -8,6 +8,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc-mips-linux-gnu \
     libc6-dev \
     libc6-dev-mips-cross \
+    m4 \
+    make \
     qemu-system-mips \
     qemu-user
 

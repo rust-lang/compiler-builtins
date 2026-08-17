@@ -7,6 +7,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc-powerpc-linux-gnu \
     libc6-dev \
     libc6-dev-powerpc-cross \
+    m4 \
+    make \
     qemu-system-ppc \
     qemu-user
 

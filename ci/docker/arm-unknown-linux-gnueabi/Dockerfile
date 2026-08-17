@@ -7,6 +7,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc-arm-linux-gnueabi \
     libc6-dev \
     libc6-dev-armel-cross \
+    m4 \
+    make \
     qemu-user
 
 ENV TOOLCHAIN_PREFIX=arm-linux-gnueabi-
