@@ -8,6 +8,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc-mipsel-linux-gnu \
     libc6-dev \
     libc6-dev-mipsel-cross \
+    m4 \
+    make \
     qemu-user
 
 ENV TOOLCHAIN_PREFIX=mipsel-linux-gnu-

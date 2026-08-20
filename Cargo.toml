@@ -44,7 +44,7 @@ criterion = { version = "0.8.2", default-features = false, features = ["cargo_be
 getopts = "0.2.24"
 getrandom = "0.4.1"
 glob = "0.3.3"
-gmp-mpfr-sys = { version = "1.6.8", default-features = false }
+gmp-mpfr-sys = { version = "1.7.1", default-features = false }
 gungraun = "0.19.0"
 heck = "0.5.0"
 indicatif = { version = "0.18.3", default-features = false }
@@ -95,3 +95,6 @@ codegen-units = 1
 # Required for gungraun
 debug = true
 strip = false
+
+[patch.crates-io]
+gmp-mpfr-sys = { git = "https://github.com/tgross35/gmp-mpfr-sys.git", branch = "tgross35/cross-improvements" }
