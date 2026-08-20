@@ -111,3 +111,95 @@ pub fn cbrtf64(x: f64) -> f64 {
     t = t + t * r; /* error <= 0.5 + 0.5/3 + epsilon */
     t
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The distance between `a` and `b` measured in ULPs, i.e. the number of
+    /// distinct representable `f64` values in between (inclusive of `±0`).
+    fn ulps(a: f64, b: f64) -> u64 {
+        // Map IEEE-754 bit patterns to a monotonic integer ordering: positive
+        // values have the sign bit set and negative values are bitwise
+        // inverted, converting from sign-magnitude to a two's complement-like
+        // ordering.
+        fn order(f: f64) -> u64 {
+            let bits = f.to_bits();
+            if bits >> 63 == 1 {
+                !bits
+            } else {
+                bits | (1 << 63)
+            }
+        }
+        order(a).abs_diff(order(b))
+    }
+
+    #[test]
+    fn special_values() {
+        assert_biteq!(cbrtf64(0.0), 0.0);
+        assert_biteq!(cbrtf64(-0.0), -0.0);
+        assert_biteq!(cbrtf64(1.0), 1.0);
+        assert_biteq!(cbrtf64(-1.0), -1.0);
+
+        // cbrt(±inf) is ±inf, cbrt(NaN) is NaN.
+        assert_biteq!(cbrtf64(f64::INFINITY), f64::INFINITY);
+        assert_biteq!(cbrtf64(f64::NEG_INFINITY), f64::NEG_INFINITY);
+        assert!(cbrtf64(f64::NAN).is_nan());
+
+        // Neither the largest finite value nor a subnormal may overflow or
+        // underflow to an infinite or zero result.
+        assert!(cbrtf64(f64::MAX).is_finite());
+        assert!(cbrtf64(f64::from_bits(0x0000000000000001)) > 0.0);
+    }
+
+    #[test]
+    fn perfect_cubes() {
+        for (x, expected) in [
+            (8.0, 2.0),
+            (27.0, 3.0),
+            (64.0, 4.0),
+            (-8.0, -2.0),
+            (0.125, 0.5),
+        ] {
+            let got = cbrtf64(x);
+            assert!(
+                ulps(got, expected) <= 4,
+                "cbrtf64({x}) = {got}, expected {expected} ({} ulps off)",
+                ulps(got, expected)
+            );
+        }
+    }
+
+    #[test]
+    fn close_to_main_cbrt() {
+        // The relaxed implementation must stay within a few ULPs of the
+        // (extensively tested) main `cbrt` across the whole exponent range,
+        // including subnormals and the largest finite values.
+        let mantissas = [
+            0x0,
+            0x1,
+            0x8000_0000_0000,
+            0x000f_ffff_ffff_ffff,
+            0xaaaa_aaaa_aaaa_aaaa,
+        ];
+        let mut checked = 0u64;
+        for e in 0..=2046u64 {
+            for m in mantissas {
+                for sign in [0u64, 0x8000_0000_0000_0000] {
+                    let x = f64::from_bits(sign | (e << 52) | m);
+                    let got = cbrtf64(x);
+                    let want = super::super::super::cbrt::cbrt(x);
+                    let d = ulps(got, want);
+                    assert!(
+                        d <= 8,
+                        "cbrtf64({x:e}) = {got:e} ({:#x}), main cbrt = {want:e} ({:#x}), {d} ulps off",
+                        got.to_bits(),
+                        want.to_bits(),
+                    );
+                    checked += 1;
+                }
+            }
+        }
+        assert!(checked >= 20_000, "sweep covered {checked} values");
+    }
+}
