@@ -7,6 +7,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc-mips64el-linux-gnuabi64 \
     libc6-dev \
     libc6-dev-mips64el-cross \
+    m4 \
+    make \
     qemu-user
 
 ENV TOOLCHAIN_PREFIX=mips64el-linux-gnuabi64-

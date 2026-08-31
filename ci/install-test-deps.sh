@@ -14,7 +14,12 @@ needed_deps=()
 to_install=()
 
 if [ "$RUN_IN_DOCKER" != "0" ]; then
-    needed_deps+=(rustup m4)
+    needed_deps+=(
+        libtool
+        m4
+        make
+        rustup
+    )
 fi
 
 for dep in "${needed_deps[@]}"; do
