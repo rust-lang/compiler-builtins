@@ -114,10 +114,9 @@ jobs:
           os: windows-2025-vs2026
         - target: x86_64-pc-windows-msvc
           os: windows-2025-vs2026
-        # FIXME(rust-lang/compiler-builtins#1306): disabled due to broken environment
-        # - target: i686-pc-windows-gnu
-        #   os: windows-2025-vs2026
-        #   host_toolchain: nightly-i686-gnu
+        - target: i686-pc-windows-gnu
+          os: windows-2025-vs2026
+          host_toolchain: nightly-x86_64-gnu
         - target: x86_64-pc-windows-gnu
           os: windows-2025-vs2026
           host_toolchain: nightly-x86_64-gnu
@@ -134,8 +133,14 @@ jobs:
       run: |
         uname -a
         lscpu || (sysctl -a | grep cpu) || true
-        echo "home: ${HOME:-not found}"
-        pwd
+        echo "home: ${HOME:-not found} pwd: $(pwd)"
+    - name: Configure Windows PATH
+      if: contains(matrix.target, 'windows-gnu')
+      run: |
+        # Put the msys bash in PATH so future launches use it rather than the default
+        # git bash. This give us access to pacman.
+        echo "C:\msys64\ucrt64\bin" >> "$GITHUB_PATH"
+        echo "C:\msys64\usr\bin" >> "$GITHUB_PATH"
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with: { persist-credentials: false }
 
