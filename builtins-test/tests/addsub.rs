@@ -108,6 +108,25 @@ macro_rules! float_sum {
                         );
                     }
                 });
+
+                // Quiet sNaN by setting the top significand bit. `sub(x, nan)`
+                // flips that sign because sub is add with b's sign bit inverted.
+                let one = <$f as Float>::ONE;
+                for input in [
+                    <$f as Float>::SNAN,
+                    <$f as Float>::NAN,
+                    <$f as Float>::NEG_SNAN,
+                    <$f as Float>::NEG_NAN,
+                ] {
+                    let expected =
+                        <$f>::from_bits(input.to_bits() | <$f as Float>::SIG_TOP_BIT);
+                    assert_eq!($fn_add(input, one).to_bits(), expected.to_bits());
+                    assert_eq!($fn_add(one, input).to_bits(), expected.to_bits());
+                    assert_eq!($fn_sub(input, one).to_bits(), expected.to_bits());
+                    let flipped =
+                        <$f>::from_bits(expected.to_bits() ^ <$f as Float>::SIGN_MASK);
+                    assert_eq!($fn_sub(one, input).to_bits(), flipped.to_bits());
+                }
             }
         )*
     }
@@ -116,67 +135,6 @@ macro_rules! float_sum {
 #[cfg(not(x86_no_sse2))]
 mod float_addsub {
     use super::*;
-
-    macro_rules! nan_sign_test {
-        ($name:ident, $f:ty, $add:path, $one:expr, $snan:expr, $qnan:expr) => {
-            #[test]
-            fn $name() {
-                let one = <$f>::from_bits($one);
-
-                for (input_bits, expected_bits) in [($snan, $qnan), ($qnan, $qnan)] {
-                    let input = <$f>::from_bits(input_bits);
-                    assert_eq!($add(input, one).to_bits(), expected_bits);
-                    assert_eq!($add(one, input).to_bits(), expected_bits);
-                }
-            }
-        };
-    }
-
-    #[cfg(f16_enabled)]
-    nan_sign_test!(
-        addhf3_preserves_nan_sign,
-        f16,
-        compiler_builtins::float::add::__addhf3,
-        0x3c00,
-        0xfc01,
-        0xfe01
-    );
-    nan_sign_test!(
-        addsf3_preserves_nan_sign,
-        f32,
-        compiler_builtins::float::add::__addsf3,
-        0x3f80_0000,
-        0xff80_0001,
-        0xffc0_0001
-    );
-    nan_sign_test!(
-        adddf3_preserves_nan_sign,
-        f64,
-        compiler_builtins::float::add::__adddf3,
-        0x3ff0_0000_0000_0000,
-        0xfff0_0000_0000_0001,
-        0xfff8_0000_0000_0001
-    );
-    #[cfg(f128_enabled)]
-    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
-    nan_sign_test!(
-        addtf3_preserves_nan_sign,
-        f128,
-        compiler_builtins::float::add::__addtf3,
-        0x3fff_0000_0000_0000_0000_0000_0000_0000,
-        0xffff_0000_0000_0000_0000_0000_0000_0001,
-        0xffff_8000_0000_0000_0000_0000_0000_0001
-    );
-    #[cfg(f128_enabled)]
-    #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
-    nan_sign_test!(
-        addkf3_preserves_nan_sign,
-        f128,
-        compiler_builtins::float::add::__addkf3,
-        0x3fff_0000_0000_0000_0000_0000_0000_0000,
-        0xffff_0000_0000_0000_0000_0000_0000_0001,
-        0xffff_8000_0000_0000_0000_0000_0000_0001
-    );
 
     #[cfg(f16_enabled)]
     float_sum! {
