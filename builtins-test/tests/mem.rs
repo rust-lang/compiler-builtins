@@ -1,3 +1,5 @@
+#![feature(optimize_attribute)]
+
 use compiler_builtins::mem::{memcmp, memcpy, memmove, memset, strlen, wchar_t};
 
 const WORD_SIZE: usize = core::mem::size_of::<usize>();
@@ -284,21 +286,6 @@ fn memset_backward_aligned() {
     }
 }
 
-/// Wrapper that prevents inlining the wcslen implementation into the test.
-///
-/// Inlining causes LLVM to pick up the wcslen pattern and generate a call to
-/// wcslen. That causes a linker error for tests on platforms without wcslen
-/// (such as wasm).
-///
-/// `no_mangle` is needed because LLVM knows not to apply the wcslen
-/// optimization to a function with this name:
-/// https://github.com/llvm/llvm-project/pull/132572
-#[inline(never)]
-#[unsafe(no_mangle)]
-unsafe fn wcslen(p: *const wchar_t) -> usize {
-    unsafe { compiler_builtins::mem::wcslen(p) }
-}
-
 #[test]
 fn test_strlen() {
     unsafe {
@@ -309,11 +296,22 @@ fn test_strlen() {
     }
 }
 
+/// Wrapper that prevents inlining the wcslen implementation into the test.
+///
+/// Inlining causes LLVM to pick up the wcslen pattern and generate a call to
+/// wcslen when optimizations are enabled. That causes a linker error for tests
+/// on platforms without wcslen (such as wasm). `optimize(none)` prevents this.
+#[inline(never)]
+#[optimize(none)]
+unsafe fn wcslen(p: *const wchar_t) -> usize {
+    unsafe { compiler_builtins::mem::wcslen(p) }
+}
+
 #[test]
 fn wide_string_length() {
-    let s = [0];
+    let s: &[wchar_t] = &[0];
     assert_eq!(unsafe { wcslen(s.as_ptr()) }, 0);
 
-    let s = [97, 98, 99, 0];
+    let s: &[wchar_t] = &[97, 98, 99, 0];
     assert_eq!(unsafe { wcslen(s.as_ptr()) }, 3);
 }
