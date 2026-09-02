@@ -108,6 +108,25 @@ macro_rules! float_sum {
                         );
                     }
                 });
+
+                // Quiet sNaN by setting the top significand bit. `sub(x, nan)`
+                // flips that sign because sub is add with b's sign bit inverted.
+                let one = <$f as Float>::ONE;
+                for input in [
+                    <$f as Float>::SNAN,
+                    <$f as Float>::NAN,
+                    <$f as Float>::NEG_SNAN,
+                    <$f as Float>::NEG_NAN,
+                ] {
+                    let expected =
+                        <$f>::from_bits(input.to_bits() | <$f as Float>::SIG_TOP_BIT);
+                    assert_eq!($fn_add(input, one).to_bits(), expected.to_bits());
+                    assert_eq!($fn_add(one, input).to_bits(), expected.to_bits());
+                    assert_eq!($fn_sub(input, one).to_bits(), expected.to_bits());
+                    let flipped =
+                        <$f>::from_bits(expected.to_bits() ^ <$f as Float>::SIGN_MASK);
+                    assert_eq!($fn_sub(one, input).to_bits(), flipped.to_bits());
+                }
             }
         )*
     }
