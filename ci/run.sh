@@ -56,7 +56,12 @@ fi
 
 # Test our implementation
 if [ "${BUILD_ONLY:-}" = "1" ]; then
-    echo "no tests to run for build-only targets"
+    # If we are on targets that can't run tests, verify that we can build.
+    cmd=(cargo build --target "$target" --package compiler_builtins --package libm)
+    "${cmd[@]}"
+    "${cmd[@]}" --features unstable-intrinsics
+
+    echo "can't run tests on $target; skipping"
 else
     test_builtins=(
         "${test_runner[@]}"
@@ -193,14 +198,7 @@ case "$target" in
     *windows-gnu) mflags+=(--exclude libm-macros) ;;
 esac
 
-if [ "${BUILD_ONLY:-}" = "1" ]; then
-    # If we are on targets that can't run tests, verify that we can build.
-    cmd=(cargo build --target "$target" --package libm)
-    "${cmd[@]}"
-    "${cmd[@]}" --features unstable-intrinsics
-
-    echo "can't run tests on $target; skipping"
-else
+if [ "${BUILD_ONLY:-}" != "1" ]; then
     # symcheck tests need specific env setup, and is already tested above
     mflags+=(--workspace --exclude symcheck --target "$target")
     cmd=("${test_runner[@]}" "${mflags[@]}")
