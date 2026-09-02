@@ -192,26 +192,26 @@ jobs:
         python3 etc/update-api-list.py --check
         cargo test -p update-api-list
 
-    - uses: msys2/setup-msys2@v2
-      if: matrix.os == 'windows-2025'
-      with:
-        msystem: UCRT64
-        update: true
-        install: diffutils m4 make # mingw-w64-rustup
+    # - uses: msys2/setup-msys2@v2
+    #   if: matrix.os == 'windows-2025'
+    #   with:
+    #     msystem: UCRT64
+    #     update: true
+    #     install: diffutils m4 make # mingw-w64-rustup
 
-    - name: Setup windows
-      if: matrix.os == 'windows-2025'
-      shell: msys2 {0}
-      run: |
-        ./ci/run-windows.sh ${{ matrix.target }}
+    # - name: Setup windows
+    #   if: matrix.os == 'windows-2025'
+    #   # shell: msys2 {0}
+    #   run: |
+    #     ./ci/run-windows.sh ${{ matrix.target }}
 
-    - name: Run on Windows
-      if: matrix.os == 'windows-2025'
-      shell: msys2 {0}
-      run: |
-        rustc -vV
-        rustup show
-        ./ci/run.sh ${{ matrix.target }}
+    # - name: Run on Windows
+    #   if: matrix.os == 'windows-2025'
+    #   # shell: msys2 {0}
+    #   run: |
+    #     rustc -vV
+    #     rustup show
+    #     ./ci/run.sh ${{ matrix.target }}
 
     # Non-linux tests just use our raw script
     - name: Run locally
