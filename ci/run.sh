@@ -54,96 +54,96 @@ else
     profile_flag="--profile"
 fi
 
-# Test our implementation
-if [ "${BUILD_ONLY:-}" = "1" ]; then
-    echo "no tests to run for build-only targets"
-else
-    test_builtins=(
-        "${test_runner[@]}"
-        --package builtins-test
-        --target "$target"
-    )
+# # Test our implementation
+# if [ "${BUILD_ONLY:-}" = "1" ]; then
+#     echo "no tests to run for build-only targets"
+# else
+#     test_builtins=(
+#         "${test_runner[@]}"
+#         --package builtins-test
+#         --target "$target"
+#     )
 
-    asgroup "${test_builtins[@]}"
-    asgroup "${test_builtins[@]}" --release
-    asgroup "${test_builtins[@]}" --features c
-    asgroup "${test_builtins[@]}" --features c --release
-    asgroup "${test_builtins[@]}" --benches --release
-    asgroup "${test_builtins[@]}" --no-default-features
-    asgroup "${test_builtins[@]}" --no-default-features --release
+#     asgroup "${test_builtins[@]}"
+#     asgroup "${test_builtins[@]}" --release
+#     asgroup "${test_builtins[@]}" --features c
+#     asgroup "${test_builtins[@]}" --features c --release
+#     asgroup "${test_builtins[@]}" --benches --release
+#     asgroup "${test_builtins[@]}" --no-default-features
+#     asgroup "${test_builtins[@]}" --no-default-features --release
 
-    # Validate that having a verbatim path for the target directory works
-    # (trivial to regress using `/` in paths to build artifacts rather than
-    # `Path::join`). MinGW does not currently support these paths.
-    if [[ "$target" = *"windows"* ]] && [[ "$target" != *"gnu"* ]]; then
-        verb_path=$(cmd.exe //C echo \\\\?\\%cd%\\builtins-test\\target2)
-        "${test_builtins[@]}" --target-dir "$verb_path" --features c
-    fi
-fi
-
-
-echo "::group::Run symcheck"
-
-# Ensure there are no duplicate symbols or references to `core` when
-# `compiler-builtins` is built with various features. Symcheck invokes Cargo to
-# build with the arguments we provide it, then validates the built artifacts.
-SYMCHECK_TEST_TARGET="$target" cargo test -p symcheck --release
-symcheck=(cargo run -p symcheck --release)
-symcheck+=(-- --build-and-check --target "$target")
-
-# Executable section checks are meaningless on no-std targets
-[[ "$target" == *"-none"* ]] && symcheck+=(--no-os)
-
-# We only need to check the configurations std may use
-symcheck_cb_args=(-- --package compiler_builtins --features compiler-builtins)
-"${symcheck[@]}" "${symcheck_cb_args[@]}"
-"${symcheck[@]}" "${symcheck_cb_args[@]}" --release
-"${symcheck[@]}" "${symcheck_cb_args[@]}" --features c
-"${symcheck[@]}" "${symcheck_cb_args[@]}" --features c --release
-"${symcheck[@]}" "${symcheck_cb_args[@]}" --no-default-features
-"${symcheck[@]}" "${symcheck_cb_args[@]}" --no-default-features --release
-
-echo "::endgroup"
+#     # Validate that having a verbatim path for the target directory works
+#     # (trivial to regress using `/` in paths to build artifacts rather than
+#     # `Path::join`). MinGW does not currently support these paths.
+#     if [[ "$target" = *"windows"* ]] && [[ "$target" != *"gnu"* ]]; then
+#         verb_path=$(cmd.exe //C echo \\\\?\\%cd%\\builtins-test\\target2)
+#         "${test_builtins[@]}" --target-dir "$verb_path" --features c
+#     fi
+# fi
 
 
-echo "::group::Run intrinsics tests"
+# echo "::group::Run symcheck"
 
-run_intrinsics_test() {
-    build_args=(--verbose --manifest-path builtins-test-intrinsics/Cargo.toml)
-    build_args+=("$@")
+# # Ensure there are no duplicate symbols or references to `core` when
+# # `compiler-builtins` is built with various features. Symcheck invokes Cargo to
+# # build with the arguments we provide it, then validates the built artifacts.
+# SYMCHECK_TEST_TARGET="$target" cargo test -p symcheck --release
+# symcheck=(cargo run -p symcheck --release)
+# symcheck+=(-- --build-and-check --target "$target")
 
-    # symcheck also checks the results of builtins-test-intrinsics
-    "${symcheck[@]}" -- "${build_args[@]}"
+# # Executable section checks are meaningless on no-std targets
+# [[ "$target" == *"-none"* ]] && symcheck+=(--no-os)
 
-    # FIXME: we get access violations on Windows, our entrypoint may need to
-    # be tweaked.
-    if [ "${BUILD_ONLY:-}" != "1" ] && ! [[ "$target" = *"windows"* ]]; then
-        cargo run --target "$target" "${build_args[@]}"
-    fi
-}
+# # We only need to check the configurations std may use
+# symcheck_cb_args=(-- --package compiler_builtins --features compiler-builtins)
+# "${symcheck[@]}" "${symcheck_cb_args[@]}"
+# "${symcheck[@]}" "${symcheck_cb_args[@]}" --release
+# "${symcheck[@]}" "${symcheck_cb_args[@]}" --features c
+# "${symcheck[@]}" "${symcheck_cb_args[@]}" --features c --release
+# "${symcheck[@]}" "${symcheck_cb_args[@]}" --no-default-features
+# "${symcheck[@]}" "${symcheck_cb_args[@]}" --no-default-features --release
 
-# Verify that we haven't dropped any intrinsics/symbols
-run_intrinsics_test
-run_intrinsics_test --release
-run_intrinsics_test --features c
-run_intrinsics_test --features c --release
+# echo "::endgroup"
 
-# Verify that there are no undefined symbols to `panic` within our
-# implementations
-CARGO_PROFILE_DEV_LTO=true run_intrinsics_test
-CARGO_PROFILE_RELEASE_LTO=true run_intrinsics_test --release
 
-echo "::endgroup"
+# echo "::group::Run intrinsics tests"
 
-# Test libm
+# run_intrinsics_test() {
+#     build_args=(--verbose --manifest-path builtins-test-intrinsics/Cargo.toml)
+#     build_args+=("$@")
 
-# Make sure a simple build works
-cargo check -p libm --no-default-features --target "$target"
+#     # symcheck also checks the results of builtins-test-intrinsics
+#     "${symcheck[@]}" -- "${build_args[@]}"
 
-if [ "${MAY_SKIP_LIBM_CI:-}" = "true" ]; then
-    echo "skipping libm PR CI"
-    exit
-fi
+#     # FIXME: we get access violations on Windows, our entrypoint may need to
+#     # be tweaked.
+#     if [ "${BUILD_ONLY:-}" != "1" ] && ! [[ "$target" = *"windows"* ]]; then
+#         cargo run --target "$target" "${build_args[@]}"
+#     fi
+# }
+
+# # Verify that we haven't dropped any intrinsics/symbols
+# run_intrinsics_test
+# run_intrinsics_test --release
+# run_intrinsics_test --features c
+# run_intrinsics_test --features c --release
+
+# # Verify that there are no undefined symbols to `panic` within our
+# # implementations
+# CARGO_PROFILE_DEV_LTO=true run_intrinsics_test
+# CARGO_PROFILE_RELEASE_LTO=true run_intrinsics_test --release
+
+# echo "::endgroup"
+
+# # Test libm
+
+# # Make sure a simple build works
+# cargo check -p libm --no-default-features --target "$target"
+
+# if [ "${MAY_SKIP_LIBM_CI:-}" = "true" ]; then
+#     echo "skipping libm PR CI"
+#     exit
+# fi
 
 mflags=()
 

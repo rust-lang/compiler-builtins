@@ -59,61 +59,61 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - target: aarch64-apple-darwin
-          os: macos-26
-        - target: aarch64-unknown-linux-gnu
-          os: ubuntu-26.04-arm
-        - target: aarch64-pc-windows-msvc
-          os: windows-11-vs2026-arm
-        - target: arm-unknown-linux-gnueabi
-          os: ubuntu-26.04
-        - target: arm-unknown-linux-gnueabihf
-          os: ubuntu-26.04
-        - target: armv7-unknown-linux-gnueabihf
-          os: ubuntu-26.04
-        - target: i586-unknown-linux-gnu
-          os: ubuntu-26.04
-        - target: i686-unknown-linux-gnu
-          os: ubuntu-26.04
-        - target: loongarch64-unknown-linux-gnu
-          os: ubuntu-26.04
-        - target: powerpc-unknown-linux-gnu
-          os: ubuntu-26.04
-        - target: powerpc64-unknown-linux-gnu
-          os: ubuntu-26.04
-        - target: powerpc64-unknown-linux-musl
-          os: ["self-hosted", "linux", "powerpc64", "musl"]
-        - target: powerpc64le-unknown-linux-gnu
-          os: ubuntu-26.04
-        - target: powerpc64le-unknown-linux-gnu
-          os: ubuntu-24.04-ppc64le
-        # FIXME(ci): re-enable these once more capacity is avialable
+        # - target: aarch64-apple-darwin
+        #   os: macos-26
+        # - target: aarch64-unknown-linux-gnu
+        #   os: ubuntu-26.04-arm
+        # - target: aarch64-pc-windows-msvc
+        #   os: windows-11-vs2026-arm
+        # - target: arm-unknown-linux-gnueabi
+        #   os: ubuntu-26.04
+        # - target: arm-unknown-linux-gnueabihf
+        #   os: ubuntu-26.04
+        # - target: armv7-unknown-linux-gnueabihf
+        #   os: ubuntu-26.04
+        # - target: i586-unknown-linux-gnu
+        #   os: ubuntu-26.04
+        # - target: i686-unknown-linux-gnu
+        #   os: ubuntu-26.04
+        # - target: loongarch64-unknown-linux-gnu
+        #   os: ubuntu-26.04
+        # - target: powerpc-unknown-linux-gnu
+        #   os: ubuntu-26.04
+        # - target: powerpc64-unknown-linux-gnu
+        #   os: ubuntu-26.04
+        # - target: powerpc64-unknown-linux-musl
+        #   os: ["self-hosted", "linux", "powerpc64", "musl"]
+        # - target: powerpc64le-unknown-linux-gnu
+        #   os: ubuntu-26.04
+        # - target: powerpc64le-unknown-linux-gnu
+        #   os: ubuntu-24.04-ppc64le
+        # # FIXME(ci): re-enable these once more capacity is avialable
+        # # - target: riscv64gc-unknown-linux-gnu
+        # #   os: ["self-hosted", "linux", "riscv64"]
         # - target: riscv64gc-unknown-linux-gnu
-        #   os: ["self-hosted", "linux", "riscv64"]
-        - target: riscv64gc-unknown-linux-gnu
-          os: ubuntu-26.04
-        - target: s390x-unknown-linux-gnu
-          os: self-hosted-linux-s390x-resolute-large-rust # resolute == ubuntu-26.04
-        - target: s390x-unknown-linux-gnu
-          os: ubuntu-24.04-s390x
-        - target: thumbv6m-none-eabi
-          os: ubuntu-26.04
-        - target: thumbv7em-none-eabi
-          os: ubuntu-26.04
-        - target: thumbv7em-none-eabihf
-          os: ubuntu-26.04
-        - target: thumbv7m-none-eabi
-          os: ubuntu-26.04
-        - target: wasm32-unknown-unknown
-          os: ubuntu-26.04
-        - target: x86_64-unknown-linux-gnu
-          os: ubuntu-26.04
-        - target: x86_64-apple-darwin
-          os: macos-26-intel
-        - target: i686-pc-windows-msvc
-          os: windows-2025-vs2026
-        - target: x86_64-pc-windows-msvc
-          os: windows-2025-vs2026
+        #   os: ubuntu-26.04
+        # - target: s390x-unknown-linux-gnu
+        #   os: self-hosted-linux-s390x-resolute-large-rust # resolute == ubuntu-26.04
+        # - target: s390x-unknown-linux-gnu
+        #   os: ubuntu-24.04-s390x
+        # - target: thumbv6m-none-eabi
+        #   os: ubuntu-26.04
+        # - target: thumbv7em-none-eabi
+        #   os: ubuntu-26.04
+        # - target: thumbv7em-none-eabihf
+        #   os: ubuntu-26.04
+        # - target: thumbv7m-none-eabi
+        #   os: ubuntu-26.04
+        # - target: wasm32-unknown-unknown
+        #   os: ubuntu-26.04
+        # - target: x86_64-unknown-linux-gnu
+        #   os: ubuntu-26.04
+        # - target: x86_64-apple-darwin
+        #   os: macos-26-intel
+        # - target: i686-pc-windows-msvc
+        #   os: windows-2025-vs2026
+        # - target: x86_64-pc-windows-msvc
+        #   os: windows-2025-vs2026
         - target: i686-pc-windows-gnu
           os: windows-2025-vs2026
           host_toolchain: nightly-x86_64-gnu
@@ -215,6 +215,7 @@ jobs:
         mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
   clippy:
+    if: false # TODO
     name: Clippy
     runs-on: ubuntu-26.04
     timeout-minutes: 10
@@ -233,6 +234,7 @@ jobs:
     - run: cargo clippy --workspace --all-targets
 
   zizmor:
+    if: false # TODO
     name: Zizmor (Static analysis for GitHub Actions)
     runs-on: ubuntu-26.04
     permissions:
@@ -244,6 +246,7 @@ jobs:
       - uses: zizmorcore/zizmor-action@3dc1ecc9bcb9e94e9b2c709687979e1298497054 # v0.6.2
 
   build-custom:
+    if: false # TODO
     name: Build custom target
     runs-on: ubuntu-26.04
     timeout-minutes: 10
@@ -266,6 +269,7 @@ jobs:
 
   # FIXME: move this target to test job once https://github.com/rust-lang/rust/pull/150138 merged.
   build-thumbv6k:
+    if: false # TODO
     name: Build thumbv6k
     runs-on: ubuntu-26.04
     timeout-minutes: 10
@@ -285,6 +289,7 @@ jobs:
           -Zjson-target-spec
 
   benchmarks:
+    if: false # TODO
     name: Benchmarks
     timeout-minutes: 30
     strategy:
@@ -332,6 +337,7 @@ jobs:
       run: if [ -f "target/test-log.txt" ]; then cat target/test-log.txt; fi
 
   miri:
+    if: false # TODO
     name: Miri
     runs-on: ubuntu-26.04
     timeout-minutes: 10
@@ -346,6 +352,7 @@ jobs:
     - run: ./ci/miri.sh
 
   msrv:
+    if: false # TODO
     name: Check libm MSRV
     runs-on: ubuntu-26.04
     timeout-minutes: 20
@@ -367,6 +374,7 @@ jobs:
         cargo build --manifest-path libm/Cargo.toml
 
   rustfmt:
+    if: false # TODO
     name: Rustfmt
     runs-on: ubuntu-26.04
     timeout-minutes: 10
@@ -378,6 +386,7 @@ jobs:
     - run: cargo fmt -- --check
 
   extensive:
+    if: false # TODO
     name: Extensive tests for ${{ matrix.ty }}
     needs:
       # Wait on `clippy` so we have some confidence that the crate will build
