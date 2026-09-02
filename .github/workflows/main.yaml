@@ -96,6 +96,8 @@ jobs:
           os: self-hosted-linux-s390x-resolute-large-rust # resolute == ubuntu-26.04
         - target: s390x-unknown-linux-gnu
           os: ubuntu-24.04-s390x
+        - target: thumbv6-none-eabi
+          os: ubuntu-26.04
         - target: thumbv6m-none-eabi
           os: ubuntu-26.04
         - target: thumbv7em-none-eabi
@@ -264,26 +266,6 @@ jobs:
           -Zbuild-std=core \
           -Zjson-target-spec
 
-  # FIXME: move this target to test job once https://github.com/rust-lang/rust/pull/150138 merged.
-  build-thumbv6k:
-    name: Build thumbv6k
-    runs-on: ubuntu-26.04
-    timeout-minutes: 10
-    steps:
-    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      with: { persist-credentials: false }
-    - name: Install Rust
-      run: |
-        rustup update nightly --no-self-update
-        rustup default nightly
-        rustup component add rust-src
-    - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-    - run: |
-        cargo build -p compiler_builtins -p libm \
-          --target etc/thumbv6-none-eabi.json \
-          -Zbuild-std=core \
-          -Zjson-target-spec
-
   benchmarks:
     name: Benchmarks
     timeout-minutes: 30
@@ -413,7 +395,6 @@ jobs:
     needs:
       - benchmarks
       - build-custom
-      - build-thumbv6k
       - clippy
       - extensive
       - miri
