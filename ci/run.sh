@@ -138,7 +138,7 @@ echo "::endgroup"
 # Test libm
 
 # Make sure a simple build works
-cargo check -p libm --no-default-features --target "$target"
+asgroup cargo check -p libm --no-default-features --target "$target"
 
 if [ "${MAY_SKIP_LIBM_CI:-}" = "true" ]; then
     echo "skipping libm PR CI"
@@ -204,6 +204,9 @@ else
     # symcheck tests need specific env setup, and is already tested above
     mflags+=(--workspace --exclude symcheck --target "$target")
     cmd=("${test_runner[@]}" "${mflags[@]}")
+
+    # Do a quick check for how slow or fast this computer may be
+    asgroup cargo bench -p libm-test --bench system_check "${mflags[@]}"
 
     # Test once without intrinsics
     asgroup "${cmd[@]}"
