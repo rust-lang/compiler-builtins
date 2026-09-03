@@ -268,6 +268,11 @@ fn find_math_source(math_root: &Path, cfg: &Config) -> BTreeMap<String, PathBuf>
         }
     }
 
+    let m = format!("{map:#?}");
+    for l in m.lines() {
+        println!("cargo:warning={l}");
+    }
+
     map
 }
 
