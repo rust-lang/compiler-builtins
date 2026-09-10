@@ -66,6 +66,11 @@ mod tests {
             let val = f(x);
             assert_biteq!(val, exp_res, "round({x:?}) {}", Hex(x));
         }
+
+        assert!(f(F::NAN).is_qnan());
+        assert!(f(F::NEG_NAN).is_qnan());
+        assert!(f(F::SNAN).is_qnan());
+        assert!(f(F::NEG_SNAN).is_qnan());
     }
 
     #[test]
