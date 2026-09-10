@@ -24,7 +24,18 @@
       // Every month
       schedule: "* 0 1 * *",
       groupName: "Github Actions",
-    }
+    },
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [".github/workflows/main.yaml"],
+      "matchStrings": ["BENCHMARK_RUSTC:\\s*(?<currentValue>\\S+)"],
+      "autoReplaceStringTemplate": "BENCHMARK_RUSTC: {{{newValue}}}",
+      "depNameTemplate": "nightly",
+      "datasourceTemplate": "rust-version",
+      "versioningTemplate": "rust-release-channel",
+    },
   ],
   // Receive any update that fixes security vulnerabilities.
   // We need this because we disabled "patch" updates for Rust.
