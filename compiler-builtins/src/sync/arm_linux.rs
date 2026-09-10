@@ -5,15 +5,17 @@ use core::{arch, mem};
 // https://www.kernel.org/doc/Documentation/arm/kernel_user_helpers.txt
 unsafe fn __kuser_cmpxchg(oldval: u32, newval: u32, ptr: *mut u32) -> bool {
     // FIXME(volatile): the third parameter is a volatile pointer
-    // SAFETY: kernel docs specify a known address with the given signature
+    // SAFETY: kernel docs specify a known address with the given signature.
+    // And the caller must guarantee that the pointer is valid for read and write
+    // and aligned to the element size.
     let f = unsafe {
         mem::transmute::<_, extern "C" fn(u32, u32, *mut u32) -> u32>(0xffff0fc0usize as *const ())
     };
     f(oldval, newval, ptr) == 0
 }
 
-unsafe fn __kuser_memory_barrier() {
-    // SAFETY: kernel docs specify a known address with the given signature
+fn __kuser_memory_barrier() {
+    // SAFETY: kernel docs specify a known address with the given signature.
     let f = unsafe { mem::transmute::<_, extern "C" fn()>(0xffff0fa0usize as *const ()) };
     f();
 }
@@ -107,12 +109,14 @@ unsafe fn atomic_rmw<T, F: Fn(u32) -> u32, G: Fn(u32, u32) -> u32>(ptr: *mut T, 
     let (shift, mask) = get_shift_mask(ptr);
 
     loop {
-        // FIXME(safety): preconditions review needed
+        // SAFETY: the caller must guarantee that the pointer is valid for read and write,
+        // and align_ptr returns the pointer aligned to 32-bit.
         let curval_aligned = unsafe { atomic_load_aligned::<T>(aligned_ptr) };
         let curval = extract_aligned(curval_aligned, shift, mask);
         let newval = f(curval);
         let newval_aligned = insert_aligned(curval_aligned, newval, shift, mask);
-        // FIXME(safety): preconditions review needed
+        // SAFETY: the caller must guarantee that the pointer is valid for read and write,
+        // and align_ptr returns the pointer aligned to 32-bit.
         if unsafe { __kuser_cmpxchg(curval_aligned, newval_aligned, aligned_ptr) } {
             return g(curval, newval);
         }
@@ -125,16 +129,19 @@ unsafe fn atomic_cmpxchg<T>(ptr: *mut T, oldval: u32, newval: u32) -> u32 {
     let (shift, mask) = get_shift_mask(ptr);
 
     loop {
-        // SAFETY: the caller must guarantee that the pointer is valid for read and write
-        // and aligned to the element size.
+        // SAFETY: the caller must guarantee that the pointer is valid for read and write,
+        // and align_ptr returns the pointer aligned to 32-bit.
         let curval_aligned = unsafe { atomic_load_aligned::<T>(aligned_ptr) };
         let curval = extract_aligned(curval_aligned, shift, mask);
         if curval != oldval {
+            // __sync builtins must have SeqCst semantics. So, failure path, which returns early
+            // without calling __kuser_cmpxchg, must emits a memory barrier.
+            __kuser_memory_barrier();
             return curval;
         }
         let newval_aligned = insert_aligned(curval_aligned, newval, shift, mask);
-        // SAFETY: the caller must guarantee that the pointer is valid for read and write
-        // and aligned to the element size.
+        // SAFETY: the caller must guarantee that the pointer is valid for read and write,
+        // and align_ptr returns the pointer aligned to 32-bit.
         if unsafe { __kuser_cmpxchg(curval_aligned, newval_aligned, aligned_ptr) } {
             return oldval;
         }
@@ -182,7 +189,6 @@ include!("arm_thumb_shared.rs");
 
 intrinsics! {
     pub unsafe extern "C" fn __sync_synchronize() {
-       // SAFETY: preconditions are the same as the calling function.
-       unsafe {  __kuser_memory_barrier() };
+       __kuser_memory_barrier();
     }
 }
