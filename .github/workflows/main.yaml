@@ -69,6 +69,10 @@ jobs:
           os: ubuntu-26.04
         - target: arm-unknown-linux-gnueabihf
           os: ubuntu-26.04
+        - target: arm-unknown-linux-gnueabihf
+          os: self-hosted-linux-armhf-noble-large-rust
+        - target: armv7-unknown-linux-gnueabihf
+          os: ubuntu-26.04
         - target: armv7-unknown-linux-gnueabihf
           os: self-hosted-linux-armhf-noble-large-rust
         - target: thumbv7neon-unknown-linux-gnueabihf
