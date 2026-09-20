@@ -33,6 +33,7 @@ indicatif = { workspace = true, features = ["wasmbind"] }
 rand = { workspace = true, optional = true }
 
 [dev-dependencies]
+getopts.workspace = true
 libtest-mimic.workspace = true
 
 [features]
@@ -70,6 +71,10 @@ required-features = ["icount"]
 name = "random"
 harness = false
 required-features = ["walltime"]
+
+[[bench]]
+name = "system_check"
+harness = false
 
 [[test]]
 # No harness so that we can skip tests at runtime based on env. Prefixed with
