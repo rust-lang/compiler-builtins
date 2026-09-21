@@ -35,8 +35,7 @@ if [ "$target" = "armv7-unknown-linux-gnueabihf" ] && [ "${RUN_IN_DOCKER:-}" != 
     [ "$(dpkg --print-architecture 2>/dev/null)" = "arm64" ]; then
 
     # expose these variables so we can keep the arm64 host toolchain, cross-link with
-    # the armhf gcc, and run the test binaries natively in AArch32 mode,
-    # available to canonical armhf runners
+    # the armhf gcc, and run the test binaries natively in AArch32 mode
     {
         echo "CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc"
         echo "CC_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc"
