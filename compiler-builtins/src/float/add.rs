@@ -1,7 +1,7 @@
 use crate::support::{CastFrom, CastInto, Float, Int, MinInt};
 
 /// Returns `a + b`
-fn add<F: Float>(a: F, b: F) -> F
+extern "C" fn add<F: Float>(a: F, b: F) -> F
 where
     u32: CastInto<F::Int>,
     F::Int: CastInto<u32>,
