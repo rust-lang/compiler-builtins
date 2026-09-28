@@ -18,7 +18,7 @@ mod i_to_f {
                 #[test]
                 fn $fn() {
                     use compiler_builtins::float::conv::$fn;
-                    use compiler_builtins::support::Int;
+                    use compiler_builtins::support::{Int, MinInt};
 
                     fuzz(N, |x: $i_ty| {
                         let f0 = apfloat_fallback!(
@@ -27,51 +27,83 @@ mod i_to_f {
                             // When the builtin is not available, we need to use a different conversion
                             // method (since apfloat doesn't support `as` casting).
                             |x: $i_ty| {
-                                use compiler_builtins::support::MinInt;
-
                                 let apf = if <$i_ty>::SIGNED {
                                     FloatTy::from_i128(x.try_into().unwrap()).value
                                 } else {
                                     FloatTy::from_u128(x.try_into().unwrap()).value
                                 };
 
-                                <$f_ty>::from_bits(apf.to_bits())
+                                <$f_ty>::from_bits(apf.to_bits().try_into().unwrap())
                             },
                             x
                         );
                         let f1: $f_ty = $fn(x);
 
+                        // This makes sure that the conversion produced the best rounding possible,
+                        // and does this independent of `x as $into` rounding correctly. It also
+                        // exercises the `f -> i` cast, which catches ABI and platform bugs that a
+                        // comparison against arbitrary-precision math would not.
+                        //
                         #[cfg($sys_available)] {
-                            // This makes sure that the conversion produced the best rounding possible, and does
-                            // this independent of `x as $into` rounding correctly.
-                            // This assumes that float to integer conversion is correct.
-                            let y_minus_ulp = <$f_ty>::from_bits(f1.to_bits().wrapping_sub(1)) as $i_ty;
-                            let y = f1 as $i_ty;
-                            let y_plus_ulp = <$f_ty>::from_bits(f1.to_bits().wrapping_add(1)) as $i_ty;
-                            let error_minus = <$i_ty as Int>::abs_diff(y_minus_ulp, x);
-                            let error = <$i_ty as Int>::abs_diff(y, x);
-                            let error_plus = <$i_ty as Int>::abs_diff(y_plus_ulp, x);
+                            if f1.is_infinite() {
+                                // Integer-to-float overflow is rounded as though the exponent were
+                                // unbounded. Recover the overflow threshold from the two largest
+                                // finite values, avoiding the meaningless `inf`/NaN-to-int casts.
+                                let y_toward_zero =
+                                    <$f_ty>::from_bits(f1.to_bits().wrapping_sub(1)) as $i_ty;
+                                let y_next_toward_zero =
+                                    <$f_ty>::from_bits(f1.to_bits().wrapping_sub(2)) as $i_ty;
+                                let half_ulp = <$i_ty as Int>::abs_diff(
+                                    y_toward_zero,
+                                    y_next_toward_zero,
+                                ) >> 1;
+                                let error = <$i_ty as Int>::abs_diff(y_toward_zero, x);
 
-                            // The first two conditions check that none of the two closest float values are
-                            // strictly closer in representation to `x`. The second makes sure that rounding is
-                            // towards even significand if two float values are equally close to the integer.
-                            if error_minus < error
-                                || error_plus < error
-                                || ((error_minus == error || error_plus == error)
-                                    && ((f0.to_bits() & 1) != 0))
-                            {
-                                panic!(
-                                    "incorrect rounding by {}({}): {}, ({}, {}, {}), errors ({}, {}, {})",
-                                    stringify!($fn),
-                                    x,
-                                    f1.to_bits(),
-                                    y_minus_ulp,
-                                    y,
-                                    y_plus_ulp,
-                                    error_minus,
-                                    error,
-                                    error_plus,
-                                );
+                                // Equality is the tie case: the unbounded power of two has an even
+                                // significand, so it rounds outward and then saturates to infinity.
+                                let x_is_negative = <$i_ty>::SIGNED && x.signed() < 0;
+                                if f1.is_sign_negative() != x_is_negative || error < half_ulp
+                                {
+                                    panic!(
+                                        "incorrect overflow by {}({}): {}, threshold error {} (half ULP {})",
+                                        stringify!($fn),
+                                        x,
+                                        f1.to_bits(),
+                                        error,
+                                        half_ulp,
+                                    );
+                                }
+                            } else {
+                                let y_minus_ulp =
+                                    <$f_ty>::from_bits(f1.to_bits().wrapping_sub(1)) as $i_ty;
+                                let y = f1 as $i_ty;
+                                let y_plus_ulp =
+                                    <$f_ty>::from_bits(f1.to_bits().wrapping_add(1)) as $i_ty;
+                                let error_minus = <$i_ty as Int>::abs_diff(y_minus_ulp, x);
+                                let error = <$i_ty as Int>::abs_diff(y, x);
+                                let error_plus = <$i_ty as Int>::abs_diff(y_plus_ulp, x);
+
+                                // The first two conditions check that none of the two closest float values are
+                                // strictly closer in representation to `x`. The second makes sure that rounding is
+                                // towards even significand if two float values are equally close to the integer.
+                                if error_minus < error
+                                    || error_plus < error
+                                    || ((error_minus == error || error_plus == error)
+                                        && ((f0.to_bits() & 1) != 0))
+                                {
+                                    panic!(
+                                        "incorrect rounding by {}({}): {}, ({}, {}, {}), errors ({}, {}, {})",
+                                        stringify!($fn),
+                                        x,
+                                        f1.to_bits(),
+                                        y_minus_ulp,
+                                        y,
+                                        y_plus_ulp,
+                                        error_minus,
+                                        error,
+                                        error_plus,
+                                    );
+                                }
                             }
                         }
 
@@ -95,6 +127,16 @@ mod i_to_f {
                 }
             )*
         };
+    }
+
+    #[cfg(f16_enabled)]
+    i_to_f! { f16, Half, not(no_sys_f16_int_convert),
+        u32, __floatunsihf;
+        i32, __floatsihf;
+        u64, __floatundihf;
+        i64, __floatdihf;
+        u128, __floatuntihf;
+        i128, __floattihf;
     }
 
     i_to_f! { f32, Single, all(),
