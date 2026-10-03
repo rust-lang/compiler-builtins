@@ -138,26 +138,14 @@ macro_rules! float_sum {
                     (neg_snan, neg_qnan, neg_qsnan),
                     (neg_snan, neg_snan, neg_qsnan),
                     (neg_snan, one, neg_qsnan),
-                ];
-                // Our semantics are to return a quieted version of the first NaN, which means
-                // results are flipped for subtraction when the second input is the NaN.
-                let add_cases = [
                     (one, qnan, qnan),
                     (one, snan, qsnan),
                     (one, neg_qnan, neg_qnan),
                     (one, neg_snan, neg_qsnan),
                 ];
-                let sub_cases = [
-                    (one, qnan, neg_qnan),
-                    (one, snan, neg_qsnan),
-                    (one, neg_qnan, qnan),
-                    (one, neg_snan, qsnan),
-                ];
 
-                for &(x, y, expected) in nan_cases.iter().chain(add_cases.iter()) {
+                for &(x, y, expected) in nan_cases.iter() {
                     assert_biteq!($fn_add(x, y), expected, "{} + {}", Hex(x), Hex(y));
-                }
-                for &(x, y, expected) in nan_cases.iter().chain(sub_cases.iter()) {
                     assert_biteq!($fn_sub(x, y), expected, "{} - {}", Hex(x), Hex(y));
                 }
             }
