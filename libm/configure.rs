@@ -57,7 +57,7 @@ impl Config {
             }
         }
 
-        Self {
+        let mut ret = Self {
             library,
             target_triple,
             target_triple_split,
@@ -79,7 +79,10 @@ impl Config {
             reliable_f128: env::var_os("CARGO_CFG_TARGET_HAS_RELIABLE_F128").is_some(),
             reliable_f16: env::var_os("CARGO_CFG_TARGET_HAS_RELIABLE_F16").is_some(),
             verbose_build,
-        }
+        };
+
+        ret.reliable_f16 |= ret.target_env == "gnu" && ret.target_os == "windows";
+        ret
     }
 
     #[allow(dead_code)]
