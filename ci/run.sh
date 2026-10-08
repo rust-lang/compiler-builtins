@@ -180,8 +180,10 @@ case "$target" in
     # MSVC cannot link MPFR
     *windows-msvc*) ;;
     # FIXME: MinGW should be able to build MPFR, but setup in CI is nontrivial.
-    *windows-gnu*) ;;
+    # *windows-gnu*) ;;
     # Targets that aren't cross compiled in CI work fine
+    i686-pc-windows-gnu) mflags+=(--features libm-test/build-mpfr --features gmp-mpfr-sys/force-cross,gmp-mpfr-sys/c-no-tests) ;;
+    *windows-gnu*) mflags+=(--features libm-test/build-mpfr) ;;
     aarch64*apple*) mflags+=(--features libm-test/build-mpfr) ;;
     aarch64*linux*) mflags+=(--features libm-test/build-mpfr) ;;
     i586*) mflags+=(--features libm-test/build-mpfr --features gmp-mpfr-sys/force-cross) ;;
