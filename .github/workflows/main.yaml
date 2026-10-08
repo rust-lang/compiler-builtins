@@ -13,6 +13,7 @@ env:
   CARGO_TERM_COLOR: always
   CARGO_TERM_VERBOSE: true
   LIBM_BUILD_VERBOSE: true
+  VERBOSE: 1
   RUSTDOCFLAGS: -Dwarnings
   RUSTFLAGS: -Dwarnings -Dlinker_messages
   RUST_BACKTRACE: full

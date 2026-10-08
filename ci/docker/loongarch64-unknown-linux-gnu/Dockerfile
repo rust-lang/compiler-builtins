@@ -7,6 +7,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc-14-loongarch64-linux-gnu \
     libc6-dev \
     libc6-dev-loong64-cross \
+    m4 \
+    make \
     qemu-user
 
 ENV CARGO_TARGET_LOONGARCH64_UNKNOWN_LINUX_GNU_LINKER=loongarch64-linux-gnu-gcc-14 \
