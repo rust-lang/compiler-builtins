@@ -29,8 +29,9 @@ if [ "$target" = "i686-pc-windows-gnu" ]; then
     ! command -v i686-w64-mingw32-gcc && to_install+=(mingw-w64-i686-gcc)
 fi
 
-# specific check for armv7-unknown-linux-gnueabihf on canonical runners
-# which are 32-bit armhf-native but have VMs running over an arm64 kernel with AArch32/EL0 support
+# specific check for armv7-unknown-linux-gnueabihf on canonical runners which
+# are 32-bit armhf-native but have VMs running over an arm64 kernel with
+# AArch32/EL0 support
 if [ "$target" = "armv7-unknown-linux-gnueabihf" ] && [ "${RUN_IN_DOCKER:-}" != "true" ] &&
     [ "$(dpkg --print-architecture 2>/dev/null)" = "arm64" ]; then
 

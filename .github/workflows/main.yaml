@@ -297,6 +297,8 @@ jobs:
         include:
         - target: aarch64-unknown-linux-gnu
           os: ubuntu-26.04-arm
+        - target: armv7-unknown-linux-gnueabihf
+          os: self-hosted-linux-armhf-noble-large-rust
         - target: i686-unknown-linux-gnu
           os: ubuntu-26.04
         - target: x86_64-unknown-linux-gnu
@@ -308,6 +310,8 @@ jobs:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with: { persist-credentials: false }
     - uses: taiki-e/install-action@7f4eb899022d8fe70b20c4f3de697aa85c309026 # v2.85.11
+      # Not available on armv7
+      if: matrix.os != 'self-hosted-linux-armhf-noble-large-rust'
       with:
         tool: cargo-binstall@1.17.7
 
