@@ -7,11 +7,17 @@ target="${1}"
 # Allow setting a channel to account for required components (MinGW)
 channel="${2:-nightly}"
 
-# Enable 32-bit tools if needed. Note this must come after existing path entries
-# like `/c/mingw64/bin`, otherwise they will be preferred over the host tools.
-if [ "$target" = "i686-pc-windows-gnu" ]; then
+# Add MinGW install directories to path, storing to `GITHUB_ENV` to persist for
+# future jobs.
+if [ "$target" = "x86_64-pc-windows-gnu" ]; then
+    # I actually have no idea what the difference between `/c/mingw64` and
+    # `/mingw64` is.
+    PATH="/mingw64/bin:$PATH"
+    echo "PATH=$PATH" >> "$GITHUB_ENV"
+elif [ "$target" = "i686-pc-windows-gnu" ]; then
+    # Note this must come after existing path entries like `/c/mingw64/bin`,
+    # otherwise they will be preferred over the host tools.
     PATH="$PATH:/mingw32/bin"
-    # Persist this for future jobs
     echo "PATH=$PATH" >> "$GITHUB_ENV"
 fi
 
@@ -25,7 +31,11 @@ if [ "$RUN_IN_DOCKER" != "0" ]; then
     ! command -v m4 && to_install+=(m4)
 fi
 
-if [ "$target" = "i686-pc-windows-gnu" ]; then
+if [ "$target" = "x86_64-pc-windows-gnu" ]; then
+    # FIXME(ci): `mingw-w64-x86_64-gcc` is GCC16, while `gcc` (the default) is
+    # GCC15. We need GCC16+ because of a change in the `_Float16` ABI.
+    to_install+=(mingw-w64-x86_64-gcc)
+elif [ "$target" = "i686-pc-windows-gnu" ]; then
     ! command -v i686-w64-mingw32-gcc && to_install+=(mingw-w64-i686-gcc)
 fi
 
