@@ -33,6 +33,15 @@
       groupName: "Github Actions",
     },
     {
+      matchManagers: ["github-actions"],
+      matchDepTypes: ["workflow"],
+      matchPackageNames: ["rust-lang/josh-sync"],
+      matchCurrentValue: "main",
+      // Do not pin workflows (ends in `.yml`) from `rust-lang/josh-sync` to a
+      // commit hash if they are tracking the `main` branch.
+      enabled: false,
+    },
+    {
       matchManagers: ["custom.regex"],
       commitMessage: "bench: Update pinned toolchain to {{{newVersion}}}",
     },
