@@ -782,6 +782,24 @@
         ],
         "type": "f32"
     },
+    "log2p1": {
+        "sources": [
+            "libm/src/math/log2p1/mod.rs"
+        ],
+        "type": "f64"
+    },
+    "log2p1f": {
+        "sources": [
+            "libm/src/math/log2p1/log2p1f.rs"
+        ],
+        "type": "f32"
+    },
+    "log2p1f16": {
+        "sources": [
+            "libm/src/math/log2p1/log2p1f16.rs"
+        ],
+        "type": "f16"
+    },
     "logf": {
         "sources": [
             "libm/src/math/logf.rs"

@@ -77,6 +77,7 @@ pub fn default_ulp(ctx: &CheckCtx) -> Option<u32> {
         Bn::Cbrt => 0,
         Bn::Hypot if ctx.fn_ident == Id::Hypot => 0,
         Bn::Exp2m1 => 0,
+        Bn::Log2p1 => 0,
 
         // Bessel functions have large inaccuracies.
         Bn::J0 | Bn::J1 | Bn::Y0 | Bn::Y1 | Bn::Jn | Bn::Yn => 8_000_000,
@@ -148,6 +149,7 @@ pub fn default_ulp(ctx: &CheckCtx) -> Option<u32> {
             Id::Hypot => ulp = 1,
             Id::Log1p => ulp = 2,
             Id::Log1pf => ulp = 2,
+            Id::Log2p1 => ulp = 32,
             Id::Tan => ulp = 2,
             Id::Exp2m1 => ulp = 512,
             _ => (),

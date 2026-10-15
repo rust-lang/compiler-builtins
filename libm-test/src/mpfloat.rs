@@ -365,6 +365,7 @@ libm_macros::for_each_function! {
         fminimum_num | fminimum_numf | fminimum_numf16 | fminimum_numf128 => min,
         log | logf => ln,
         log1p | log1pf => ln_1p,
+        log2p1 | log2p1f | log2p1f16 => log2_1p,
         tgamma | tgammaf => gamma,
         _ => MACRO_FN_NAME_NORMALIZED
     }
