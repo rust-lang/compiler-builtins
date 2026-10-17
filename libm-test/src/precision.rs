@@ -150,6 +150,7 @@ pub fn default_ulp(ctx: &CheckCtx) -> Option<u32> {
             Id::Log1p => ulp = 2,
             Id::Log1pf => ulp = 2,
             Id::Log2p1 => ulp = 32,
+            Id::Log2p1f => ulp = 1,
             Id::Tan => ulp = 2,
             Id::Exp2m1 => ulp = 512,
             _ => (),

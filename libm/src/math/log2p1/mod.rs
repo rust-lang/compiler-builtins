@@ -2129,7 +2129,7 @@ static EXCEPTIONS_RND: [i8; 247] = [
 mod tests {
     use super::super::ldexp;
     use super::super::support::Float;
-    use super::{log2p1};
+    use super::log2p1;
 
     #[test]
     fn known_results() {
