@@ -82,7 +82,7 @@ fn cr_log2p1f(x: f32) -> f32 {
     let d2 = d * d;
     let el = f64::from(e) - i!(LIX, j);
     let mut f = (el + d * B[0]) + d2 * (B[1] + d * B[2]);
-    let mut lb: f32 = f.cast_lossy();
+    let lb: f32 = f.cast_lossy();
     let ub: f32 = (f + hf64!("0x1.661p-32")).cast_lossy();
     if lb == ub {
         return lb;
