@@ -176,6 +176,7 @@ mod log1p;
 mod log1pf;
 mod log2;
 mod log2f;
+mod log2p1;
 mod logf;
 mod modf;
 mod modff;
@@ -205,7 +206,6 @@ mod tanhf;
 mod tgamma;
 mod tgammaf;
 mod trunc;
-
 // Use separated imports instead of {}-grouped imports for easier merging.
 pub use self::acos::acos;
 pub use self::acosf::acosf;
@@ -269,6 +269,7 @@ pub use self::log1p::log1p;
 pub use self::log1pf::log1pf;
 pub use self::log2::log2;
 pub use self::log2f::log2f;
+pub use self::log2p1::{log2p1, log2p1f};
 pub use self::log10::log10;
 pub use self::log10f::log10f;
 pub use self::logf::logf;
@@ -321,6 +322,7 @@ cfg_select_nofmt! {
         pub use self::frexp::frexpf16;
         pub use self::ilogb::ilogbf16;
         pub use self::ldexp::ldexpf16;
+        pub use self::log2p1::log2p1f16;
         pub use self::rint::rintf16;
         pub use self::round::roundf16;
         pub use self::roundeven::roundevenf16;

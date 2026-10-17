@@ -686,8 +686,8 @@ pub extern "C" fn eh_personality() {}
 
 #[cfg(any(all(windows, target_env = "gnu"), target_os = "cygwin"))]
 mod mingw_unwinding {
-    #[unsafe(no_mangle)]
-    pub fn rust_eh_personality() {}
+    #[lang = "eh_personality"]
+    pub extern "C" fn rust_eh_personality() {}
     #[unsafe(no_mangle)]
     pub fn rust_eh_unwind_resume() {}
     #[unsafe(no_mangle)]
