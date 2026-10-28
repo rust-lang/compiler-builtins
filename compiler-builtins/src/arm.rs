@@ -1,3 +1,19 @@
+#![allow(unexpected_cfgs)]
+// Define a conditional return instruction based on the target vendor
+#[cfg(target_vendor = "dec")]
+macro_rules! ret {
+    () => {
+        "mov pc, lr"
+    };
+}
+
+#[cfg(not(target_vendor = "dec"))]
+macro_rules! ret {
+    () => {
+        "bx lr"
+    };
+}
+
 // Interfaces used by naked trampolines.
 // SAFETY: these are defined in compiler-builtins
 unsafe extern "C" {
@@ -330,7 +346,7 @@ intrinsics! {
                     "orr r0, r3, r0, lsl #8",
                     "orr r1, r1, r2, lsl #8",
                     "orr r0, r1, r0, lsl #16",
-                    "bx lr",
+                    ret!(),
                 );
             }
             all(not(thumb1_only), target_endian = "big") => {
@@ -342,7 +358,7 @@ intrinsics! {
                     "orr r1, r2, r1, lsl #8",
                     "orr r0, r0, r3, lsl #8",
                     "orr r0, r0, r1, lsl #16",
-                    "bx lr",
+                    ret!(),
                 );
             }
         }
@@ -426,7 +442,7 @@ intrinsics! {
                     "orr r0, r3, r0, lsl #8",
                     "orr r1, r1, r0, lsl #16",
                     "mov r0, r2",
-                    "bx lr",
+                    ret!(),
                 );
             }
             all(not(thumb1_only), target_endian = "big") => {
@@ -447,7 +463,7 @@ intrinsics! {
                     "orr r1, r1, r3, lsl #8",
                     "orr r1, r1, r0, lsl #16",
                     "mov r0, r2",
-                    "bx lr",
+                    ret!(),
                 );
             }
         }
@@ -471,7 +487,7 @@ intrinsics! {
                     "strb r2, [r1, #2]",
                     "lsrs r2, r0, #8",
                     "strb r2, [r1, #1]",
-                    "bx lr",
+                    ret!(),
                 );
             }
             target_endian = "big" => {
@@ -483,7 +499,7 @@ intrinsics! {
                     "strb r2, [r1, #1]",
                     "lsrs r2, r0, #24",
                     "strb r2, [r1]",
-                    "bx lr",
+                    ret!(),
                 );
             }
         }
@@ -514,7 +530,7 @@ intrinsics! {
                     "strb r3, [r2, #6]",
                     "lsrs r3, r1, #24",
                     "strb r3, [r2, #7]",
-                    "bx lr",
+                    ret!(),
                 );
             }
             target_endian = "big" => {
@@ -533,7 +549,7 @@ intrinsics! {
                     "lsrs r3, r1, #8",
                     "strb r3, [r2, #6]",
                     "strb r1, [r2, #7]",
-                    "bx lr",
+                    ret!(),
                 );
             }
         }
