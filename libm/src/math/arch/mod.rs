@@ -85,3 +85,30 @@ cfg_select_nofmt! {
     }
     _ => {}
 }
+
+// Restrict table costs to targets with a clear measured benefit. MCU selection
+// requires broader input-distribution, special-case and memory-system profiling.
+#[cfg(all(feature = "arch", not(miri)))]
+cfg_select_nofmt! {
+    any(
+        all(target_arch = "wasm32", target_os = "unknown"),
+        all(
+            target_arch = "aarch64",
+            target_feature = "neon",
+            any(target_os = "macos", all(target_os = "linux", target_env = "gnu"))
+        ),
+        all(
+            target_arch = "x86_64",
+            target_feature = "sse2",
+            any(
+                all(target_os = "linux", target_env = "gnu"),
+                all(target_os = "windows", target_env = "msvc")
+            )
+        )
+    ) => {
+        mod exp_data;
+        mod pow;
+        pub use pow::pow;
+    }
+    _ => {}
+}

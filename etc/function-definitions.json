@@ -814,6 +814,7 @@
     },
     "pow": {
         "sources": [
+            "libm/src/math/arch/pow.rs",
             "libm/src/math/pow.rs"
         ],
         "type": "f64"

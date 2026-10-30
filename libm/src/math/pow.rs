@@ -92,6 +92,27 @@ const IVLN2_L: f64 = 1.92596299112661746887e-08; /* 0x3e54ae0b_f85ddf44 =1/ln2 t
 /// Returns `x` to the power of `y` (f64).
 #[cfg_attr(assert_no_panic, no_panic::no_panic)]
 pub fn pow(x: f64, y: f64) -> f64 {
+    select_implementation! {
+        name: pow,
+        use_arch: any(
+            all(target_arch = "wasm32", target_os = "unknown"),
+            all(
+                target_arch = "aarch64",
+                target_feature = "neon",
+                any(target_os = "macos", all(target_os = "linux", target_env = "gnu"))
+            ),
+            all(
+                target_arch = "x86_64",
+                target_feature = "sse2",
+                any(
+                    all(target_os = "linux", target_env = "gnu"),
+                    all(target_os = "windows", target_env = "msvc")
+                )
+            )
+        ),
+        args: x, y,
+    }
+
     let t1: f64;
     let t2: f64;
 
@@ -622,3 +643,7 @@ mod tests {
         assert!(pow(-1.0, -1.14).is_nan());
     }
 }
+
+#[cfg(test)]
+#[path = "pow/tests.rs"]
+mod regression_tests;
