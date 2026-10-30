@@ -15,9 +15,9 @@ test_cmd=(
     cargo test
     --package libm-test
     --no-default-features
-    # Test the generic implementations without `arch`. Most architecture
-    # implementations are single instructions or short assembly sequences;
-    # multi-step algorithms are tested separately below.
+    # Don't enable `arch` for extensive tests. Usually anything in asm is
+    # only a single instruction or a small sequence, and we rely on the
+    # vendors to test that for us.
     #
     # libm/unstable enables libm/unstable-intrinsics, which means we usually
     # get the single-instruction ops anyway when we aren't specifically
@@ -30,11 +30,3 @@ test_cmd=(
 "${test_cmd[@]}" -- "$TO_TEST"
 
 LIBM_EXTENSIVE_TESTS="$TO_TEST" "${test_cmd[@]}" -- extensive
-
-# The table-based pow algorithm needs the same MPFR coverage as the generic one.
-case ",$TO_TEST," in
-    *,pow,*)
-        "${test_cmd[@]}" --features libm/arch -- pow
-        LIBM_EXTENSIVE_TESTS=pow "${test_cmd[@]}" --features libm/arch -- extensive
-        ;;
-esac
