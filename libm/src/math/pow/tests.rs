@@ -264,3 +264,16 @@ fn range_reduction_boundaries() {
         }
     }
 }
+
+#[test]
+fn logarithm_tail_rounding() {
+    // MPFR-rounded references span subnormal and large-magnitude logarithms.
+    for (x, y, expected) in [
+        (0x0003ffffffffffff, 0x3feffffffffffff9, 0x000400000000026c),
+        (0x1b6a49249249248b, 0xbff8000000000003, 0x76b57dce3bbdf3e8),
+        (0x51e24ab03d87334c, 0x3fed073638e526fa, 0x5036f7fb48d26869),
+    ] {
+        let actual = pow(f64::from_bits(x), f64::from_bits(y)).to_bits();
+        assert!(actual.abs_diff(expected) <= 1, "x = {x:#x}, y = {y:#x}");
+    }
+}

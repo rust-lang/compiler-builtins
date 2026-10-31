@@ -22,11 +22,9 @@ SOFTWARE.
 // Scalar algorithm from ARM optimized-routines math/pow.c.
 
 use self::{EXP_POLY as C, LOG_POLY as A};
-
 const SIGN_BIAS: u32 = 0x800 << 7;
 const ONE: u64 = 0x3ff0000000000000;
 const INF: u64 = 0x7ff0000000000000;
-
 /// Returns `x` to the power of `y` (f64).
 #[cfg_attr(assert_no_panic, no_panic::no_panic)]
 pub fn pow(x: f64, y: f64) -> f64 {
@@ -154,6 +152,8 @@ fn log_inline(ix: u64) -> (f64, f64) {
     let p = ar3 * (A[1] + r * A[2] + ar2 * (A[3] + r * A[4] + ar2 * (A[5] + r * A[6])));
     let lo = lo1 + lo2 + lo3 + lo4 + p;
     let result = hi + lo;
+    #[cfg(x86_no_sse2)]
+    let result = force_eval!(result); // The tail needs a binary64-rounded high part.
     (result, hi - result + lo)
 }
 #[inline]
@@ -171,6 +171,8 @@ fn exp_inline(x: f64, tail: f64, sign: u32) -> f64 {
         return if sign != 0 { -value } else { value };
     }
     let kd = x * INV_LN2_N + SHIFT;
+    #[cfg(x86_no_sse2)]
+    let kd = force_eval!(kd); // The shift must round to an integer on x87 too.
     let ki = kd.to_bits();
     let kd = kd - SHIFT;
     let r = (x + kd * NEG_LN2_HI_N + kd * NEG_LN2_LO_N) + tail;
