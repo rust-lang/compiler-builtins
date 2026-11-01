@@ -1,4 +1,4 @@
-use compiler_builtins::mem::{memcmp, memcpy, memmove, memset, strlen, wchar_t};
+use compiler_builtins::mem::{memchr, memcmp, memcpy, memmove, memset, strlen, wchar_t};
 
 const WORD_SIZE: usize = core::mem::size_of::<usize>();
 
@@ -312,6 +312,41 @@ fn wide_string_length() {
 
     let s: &[wchar_t] = &[97, 98, 99, 0];
     assert_eq!(unsafe { wcslen(s.as_ptr()) }, 3);
+}
+
+#[test]
+fn test_memchr_smoke() {
+    let s: &[u8] = &[0, 1, 2, 3, 4];
+    assert!(unsafe { memchr(s.as_ptr().cast(), 42, s.len()).is_null() });
+
+    let check_found = |i| {
+        assert_eq!(
+            unsafe { memchr(s.as_ptr().cast(), i, s.len()).cast_const().cast() },
+            &raw const s[i as usize]
+        )
+    };
+
+    check_found(0);
+    check_found(1);
+    check_found(2);
+    check_found(3);
+    check_found(4);
+}
+
+#[test]
+fn test_memchr_early_stop() {
+    let s: &[u8] = &[42];
+    // The C standard says that memchr stops searching as soon as a matching byte
+    // is found, so it must be valid to pass a length much longer than the actual
+    // memory region being searched.
+    assert_eq!(
+        unsafe {
+            memchr(s.as_ptr().cast(), 42, usize::MAX)
+                .cast_const()
+                .cast()
+        },
+        s.as_ptr()
+    );
 }
 
 #[cfg(all(
