@@ -71,9 +71,9 @@ where
                 // Exactly `sbits`, nothing to do
             } else if d < sbits {
                 // Remaining shift fits within `sbits`. Leave `z` in place, shift `x * y`
-                rlo = (rhi << (sbits - d)) | (rlo >> d);
-                // Set the sticky bit
-                rlo |= IntTy::<F>::from((rlo << (sbits - d)) != zero);
+                // Set the sticky bit from the bits of `rlo` shifted out.
+                let sticky = IntTy::<F>::from((rlo << (sbits - d)) != zero);
+                rlo = (rhi << (sbits - d)) | (rlo >> d) | sticky;
                 rhi = rhi >> d;
             } else {
                 // `z`'s magnitude is enough that `x * y` is irrelevant. It was nonzero, so set
