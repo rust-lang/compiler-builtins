@@ -44,6 +44,37 @@ intrinsics! {
     }
 }
 
+#[cfg(all(
+    target_feature = "hvxv79",
+    target_feature = "hvx-ieee-fp",
+    target_feature = "hvx-qfloat",
+))]
+macro_rules! qfloat_asm {
+    () => {
+        concat!(
+            include_str!("hexagon/ieee_qfloat_conv_hf_to_b_rne.s"),
+            include_str!("hexagon/ieee_qfloat_conv_hf_to_h_rne.s"),
+            include_str!("hexagon/ieee_qfloat_conv_hf_to_ub_rne.s"),
+            include_str!("hexagon/ieee_qfloat_conv_hf_to_uh_rne.s"),
+            include_str!("hexagon/ieee_qfloat_fast_convert_hf_to_b_rne.s"),
+            include_str!("hexagon/ieee_qfloat_fast_convert_hf_to_h_rne.s"),
+            include_str!("hexagon/ieee_qfloat_fast_convert_hf_to_ub_rne.s"),
+            include_str!("hexagon/ieee_qfloat_fast_convert_hf_to_uh_rne.s"),
+        )
+    };
+}
+
+#[cfg(not(all(
+    target_feature = "hvxv79",
+    target_feature = "hvx-ieee-fp",
+    target_feature = "hvx-qfloat",
+)))]
+macro_rules! qfloat_asm {
+    () => {
+        ""
+    };
+}
+
 // All hexagon assembly must live in ONE `global_asm!` invocation, and
 // `func_macro.s` must come first.
 global_asm!(
@@ -73,5 +104,6 @@ global_asm!(
     include_str!("hexagon/udivsi3.s"),
     include_str!("hexagon/umoddi3.s"),
     include_str!("hexagon/umodsi3.s"),
+    qfloat_asm!(),
     options(raw)
 );
