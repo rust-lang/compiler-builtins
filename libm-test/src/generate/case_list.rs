@@ -1501,6 +1501,383 @@ fn log2f_cases() -> Vec<TestCase<op::log2f::Routine>> {
     cases![]
 }
 
+#[cfg(f16_enabled)]
+fn log2p1f16_cases() -> Vec<TestCase<op::log2p1f16::Routine>> {
+    let mut cases = cases![];
+
+    // Exceptional inputs and branch boundaries from CORE-MATH.
+    for bits in [
+        0x8cf6, 0x9505, 0xa5cf, 0x8309, 0x04b3, 0x0b46, 0x25ff, 0x0fb1, 0x1ffb, 0x2800, 0xa800,
+        0xbc00,
+    ] {
+        for adjacent in [bits - 1, bits, bits + 1] {
+            cases.push(TestCase {
+                input: (f16::from_bits(adjacent),),
+                output: None,
+            });
+        }
+    }
+
+    cases
+}
+
+fn log2p1f_cases() -> Vec<TestCase<op::log2p1f::Routine>> {
+    let mut cases = cases![];
+
+    // Exceptional inputs from CORE-MATH and their neighbors.
+    for bits in [
+        0x32ff_7045,
+        0xb395_efbb,
+        0x35a1_4df7,
+        0x3841_cb81,
+        0xbac9_363d,
+        0x5292_8e33,
+        0x4ebd_09e3,
+        0xbd6d_142e,
+    ] {
+        for adjacent in [bits - 1, bits, bits + 1] {
+            cases.push(TestCase {
+                input: (f32::from_bits(adjacent),),
+                output: None,
+            });
+        }
+    }
+
+    // Subnormal, polynomial, and domain boundaries, with both signs.
+    for bits in [
+        0x0000_0001,
+        0x0058_b90b,
+        0x0080_0000,
+        0x329c_5639,
+        0x3963_8a7e,
+        0x3b9d_9d34,
+        0x3cb7_aa26,
+        0x3cc0_0000,
+        0x3f80_0000,
+        0x7f7f_ffff,
+    ] {
+        for adjacent in [bits - 1, bits, bits + 1] {
+            for sign in [0, f32::SIGN_MASK] {
+                cases.push(TestCase {
+                    input: (f32::from_bits(adjacent | sign),),
+                    output: None,
+                });
+            }
+        }
+    }
+
+    // Check the neighbors of exact results with MPFR.
+    for n in 1..=24 {
+        for x in [libm::ldexpf(1.0, n) - 1.0, libm::ldexpf(1.0, -n) - 1.0] {
+            for bits in [x.to_bits() - 1, x.to_bits() + 1] {
+                cases.push(TestCase {
+                    input: (f32::from_bits(bits),),
+                    output: None,
+                });
+            }
+        }
+    }
+
+    cases
+}
+
+fn log2p1_cases() -> Vec<TestCase<op::log2p1::Routine>> {
+    let mut cases = cases![];
+
+    // Exceptional inputs from CORE-MATH.
+    for x in [
+        hf64!("-0x1.f5baee010ccc6p-6"),
+        hf64!("-0x1.98e2aeed83e64p-7"),
+        hf64!("-0x1.7ff01253739d1p-7"),
+        hf64!("-0x1.ddabc67cec3c1p-9"),
+        hf64!("-0x1.921c00a04d8a9p-9"),
+        hf64!("-0x1.ae85103cce3e5p-10"),
+        hf64!("-0x1.5955d05fd828cp-10"),
+        hf64!("-0x1.3623eff91de91p-10"),
+        hf64!("-0x1.73ccf8ee62819p-12"),
+        hf64!("-0x1.fa5579e9a6941p-16"),
+        hf64!("-0x1.75e4f1fb4d0f9p-17"),
+        hf64!("-0x1.b53dee1a96ca4p-18"),
+        hf64!("-0x1.c66cb81b37ebbp-19"),
+        hf64!("-0x1.a1b96d88621b3p-19"),
+        hf64!("-0x1.bdb50ccf06b7ap-20"),
+        hf64!("-0x1.77d66368613b4p-21"),
+        hf64!("-0x1.752326c780f68p-21"),
+        hf64!("-0x1.40e3f4e392fc8p-24"),
+        hf64!("-0x1.16bba98a001c1p-24"),
+        hf64!("-0x1.51fb235627c5cp-28"),
+        hf64!("-0x1.9b1805f30b4edp-31"),
+        hf64!("-0x1.37a6f3079625dp-31"),
+        hf64!("-0x1.672dad63d9469p-32"),
+        hf64!("-0x1.025b55debc13p-32"),
+        hf64!("-0x1.3278a26ed0162p-34"),
+        hf64!("-0x1.d88aedf0484a7p-36"),
+        hf64!("-0x1.6d4141037f32dp-37"),
+        hf64!("-0x1.40739786837bp-40"),
+        hf64!("-0x1.ba43bd8edc2a3p-42"),
+        hf64!("-0x1.5892a86231e56p-42"),
+        hf64!("-0x1.21b2c54479c4dp-42"),
+        hf64!("-0x1.526d1450f8572p-43"),
+        hf64!("-0x1.bab64e105226ap-45"),
+        hf64!("-0x1.e9c2de7f3aa23p-47"),
+        hf64!("-0x1.eaba84e0bd618p-49"),
+        hf64!("-0x1.2516dafdf17adp-50"),
+        hf64!("-0x1.9914a112c8dadp-51"),
+        hf64!("-0x1.a052e3d5e791p-52"),
+        hf64!("-0x1.92ba5fbf0a946p-54"),
+        hf64!("-0x1.6f332a62b59f9p-56"),
+        hf64!("-0x1.21530a306cc85p-56"),
+        hf64!("-0x1.292f4e5d19917p-57"),
+        hf64!("-0x1.12b592f889516p-59"),
+        hf64!("-0x1.7780d5e5cf5c5p-60"),
+        hf64!("-0x1.32ed98e196cf5p-60"),
+        hf64!("-0x1.d73ad29747834p-61"),
+        hf64!("-0x1.354976dca453cp-61"),
+        hf64!("-0x1.1483eb37c9829p-61"),
+        hf64!("-0x1.fa53cebe640ccp-62"),
+        hf64!("-0x1.6923c31228cd3p-62"),
+        hf64!("-0x1.796ad95f38488p-63"),
+        hf64!("-0x1.470187381f305p-63"),
+        hf64!("-0x1.9234c78cc23acp-64"),
+        hf64!("-0x1.c7c8b78d5a272p-65"),
+        hf64!("-0x1.a595e9f7d6e25p-65"),
+        hf64!("-0x1.47aea7608c02bp-65"),
+        hf64!("-0x1.1b19925f9fc06p-65"),
+        hf64!("-0x1.d62c98023cdbap-66"),
+        hf64!("-0x1.3b65311720a11p-66"),
+        hf64!("-0x1.026e1ee1c55aep-68"),
+        hf64!("-0x1.cf96e02037643p-70"),
+        hf64!("-0x1.b9ab928f8614ap-70"),
+        hf64!("-0x1.297ee84082dafp-70"),
+        hf64!("-0x1.f63a8ce2364f3p-71"),
+        hf64!("-0x1.ed7ff50423e4dp-71"),
+        hf64!("-0x1.6856506d8234ap-71"),
+        hf64!("-0x1.62a8f9300de6fp-71"),
+        hf64!("-0x1.de8c6ef8a4dcep-73"),
+        hf64!("-0x1.698f4eb77100ap-73"),
+        hf64!("-0x1.5536e12eb7335p-74"),
+        hf64!("-0x1.2b19ae19e4f3ep-74"),
+        hf64!("-0x1.7711d03d5c7bdp-75"),
+        hf64!("-0x1.6104ba44449ep-75"),
+        hf64!("-0x1.15108908835fp-75"),
+        hf64!("-0x1.1288bfd6f822ap-76"),
+        hf64!("-0x1.dbf55aa9a7eb9p-77"),
+        hf64!("-0x1.a175bf47b2093p-79"),
+        hf64!("-0x1.75817dcf08a91p-81"),
+        hf64!("-0x1.6340571968b67p-82"),
+        hf64!("-0x1.06501e96466cfp-83"),
+        hf64!("-0x1.86e6a6125ee5fp-85"),
+        hf64!("-0x1.ce9392feefd4dp-86"),
+        hf64!("-0x1.60fa7c8eee569p-86"),
+        hf64!("-0x1.30876af870c12p-86"),
+        hf64!("-0x1.1cf977003bdd6p-86"),
+        hf64!("-0x1.2c23f2bc02277p-87"),
+        hf64!("-0x1.05ae004891094p-87"),
+        hf64!("-0x1.b86b45d2c7c74p-88"),
+        hf64!("-0x1.63c4a608aac21p-89"),
+        hf64!("-0x1.ffc87ce076dfap-91"),
+        hf64!("-0x1.127630515eb89p-91"),
+        hf64!("-0x1.db7daf1e016dfp-92"),
+        hf64!("-0x1.ca7e01c959788p-92"),
+        hf64!("-0x1.4106468e7b671p-94"),
+        hf64!("-0x1.cd79e208d957ep-95"),
+        hf64!("-0x1.0c5a1aeb10a7cp-95"),
+        hf64!("-0x1.de8de3ca3cb0fp-97"),
+        hf64!("-0x1.8ba5360a2b553p-99"),
+        hf64!("-0x1.618b50a22cecp-105"),
+        hf64!("-0x1.09287c79a1b1p-105"),
+        hf64!("-0x1.618b50a22cecp-106"),
+        hf64!("-0x1.09287c79a1b1p-106"),
+        hf64!("0x1.198cc57cb19cfp-106"),
+        hf64!("0x1.71ef99a53cd7fp-106"),
+        hf64!("0x1.198cc57cb19cfp-105"),
+        hf64!("0x1.71ef99a53cd7fp-105"),
+        hf64!("0x1.198cc57cb19cfp-104"),
+        hf64!("0x1.71ef99a53cd7fp-104"),
+        hf64!("0x1.198cc57cb19cfp-103"),
+        hf64!("0x1.8253e2a84cc3ep-103"),
+        hf64!("0x1.dab6b6d0d7feep-103"),
+        hf64!("0x1.29f10e7fc188ep-102"),
+        hf64!("0x1.92b82bab5cafdp-102"),
+        hf64!("0x1.4ab9a085e160cp-101"),
+        hf64!("0x1.d4494fb79c5f9p-101"),
+        hf64!("0x1.e4ad98baac4b8p-101"),
+        hf64!("0x1.f511e1bdbc377p-101"),
+        hf64!("0x1.ebc08e5bdda62p-99"),
+        hf64!("0x1.6c27c113f6f3fp-98"),
+        hf64!("0x1.af040230221a5p-97"),
+        hf64!("0x1.e743d2da8338cp-97"),
+        hf64!("0x1.34e55b50b5476p-95"),
+        hf64!("0x1.4265b80b22415p-95"),
+        hf64!("0x1.4fe614c58f3b4p-95"),
+        hf64!("0x1.7bf0a5c56ed66p-95"),
+        hf64!("0x1.d896d7b343ddap-94"),
+        hf64!("0x1.4b7dadb0f0318p-93"),
+        hf64!("0x1.6201aba46fb8p-93"),
+        hf64!("0x1.05221bfa8a0fap-92"),
+        hf64!("0x1.3d5b61f8af06p-91"),
+        hf64!("0x1.572552ca58e6ep-91"),
+        hf64!("0x1.3a41b77e1cfcap-90"),
+        hf64!("0x1.94d5d40edd1e3p-90"),
+        hf64!("0x1.02f8c70e9f28p-89"),
+        hf64!("0x1.61de0b2528516p-89"),
+        hf64!("0x1.64cc21a428f53p-89"),
+        hf64!("0x1.31cdce0e38005p-88"),
+        hf64!("0x1.5b9ab5b571503p-88"),
+        hf64!("0x1.7654fc15c252dp-88"),
+        hf64!("0x1.abf231afdb1f5p-88"),
+        hf64!("0x1.8586b6e5cbb06p-87"),
+        hf64!("0x1.ae2b54125b144p-87"),
+        hf64!("0x1.1d640ce51c6b5p-86"),
+        hf64!("0x1.3a0e97e84bb1ep-86"),
+        hf64!("0x1.742efa2dfc234p-86"),
+        hf64!("0x1.63eb00801d3d6p-85"),
+        hf64!("0x1.a8b9097e3a9aep-85"),
+        hf64!("0x1.807d37ffa6069p-83"),
+        hf64!("0x1.3528bc4882f1fp-82"),
+        hf64!("0x1.982a8e52379abp-82"),
+        hf64!("0x1.317c7aec05f2cp-81"),
+        hf64!("0x1.4376f83fcc3c7p-81"),
+        hf64!("0x1.569aad73361dap-80"),
+        hf64!("0x1.575476e5e84cp-80"),
+        hf64!("0x1.f20aa391bfeabp-80"),
+        hf64!("0x1.181b21bfde59bp-79"),
+        hf64!("0x1.0934d6a88672dp-78"),
+        hf64!("0x1.0f9c8867c5241p-78"),
+        hf64!("0x1.4c5324339bb48p-78"),
+        hf64!("0x1.f7d8b04b61989p-78"),
+        hf64!("0x1.8f27d6bf246acp-75"),
+        hf64!("0x1.f83edae3aa93fp-75"),
+        hf64!("0x1.cda9fe2248ec6p-74"),
+        hf64!("0x1.c0ee5d2d2d30ap-73"),
+        hf64!("0x1.628c0b5b4b9bbp-72"),
+        hf64!("0x1.f018c61839599p-72"),
+        hf64!("0x1.87a0cd7eeca98p-71"),
+        hf64!("0x1.5c5f1081b8abdp-70"),
+        hf64!("0x1.77e590243e48fp-69"),
+        hf64!("0x1.c943ea0da88dfp-69"),
+        hf64!("0x1.d33e23beb1528p-68"),
+        hf64!("0x1.186615833f8f7p-67"),
+        hf64!("0x1.4891077ffbab6p-66"),
+        hf64!("0x1.4193614150725p-64"),
+        hf64!("0x1.572569359da9p-64"),
+        hf64!("0x1.6a5f8252d9f3bp-64"),
+        hf64!("0x1.7b5eedadbdbd6p-64"),
+        hf64!("0x1.b2669d6e81f95p-64"),
+        hf64!("0x1.02754e0d621p-63"),
+        hf64!("0x1.42c2504353e38p-63"),
+        hf64!("0x1.9a8cb37e9acd5p-63"),
+        hf64!("0x1.bd1c7919023cp-63"),
+        hf64!("0x1.e505bd69056d9p-63"),
+        hf64!("0x1.2dbbb07d596fep-62"),
+        hf64!("0x1.9a2e439736a07p-62"),
+        hf64!("0x1.112c460eafdcp-61"),
+        hf64!("0x1.7dcdac46803eep-61"),
+        hf64!("0x1.4b2ed4f196fe5p-60"),
+        hf64!("0x1.bc6526d12f2a9p-60"),
+        hf64!("0x1.95242afed5822p-59"),
+        hf64!("0x1.158d3212d17dfp-58"),
+        hf64!("0x1.f2bb88afdad28p-58"),
+        hf64!("0x1.057d5711bfd9ep-57"),
+        hf64!("0x1.18cebea44da63p-57"),
+        hf64!("0x1.4cd45d85f97bp-57"),
+        hf64!("0x1.596a35cd55af7p-57"),
+        hf64!("0x1.9b7e25fae77ffp-56"),
+        hf64!("0x1.67c00f810444cp-55"),
+        hf64!("0x1.e62ce3c0305e7p-54"),
+        hf64!("0x1.b2078ba8f6835p-52"),
+        hf64!("0x1.cbe169f09f95ep-52"),
+        hf64!("0x1.9ce011cf5f46ep-51"),
+        hf64!("0x1.9b37cdd819b7cp-48"),
+        hf64!("0x1.ed87135915039p-48"),
+        hf64!("0x1.389bb3cfc42c2p-47"),
+        hf64!("0x1.56cd7d201444cp-46"),
+        hf64!("0x1.fc53c8d303c2p-46"),
+        hf64!("0x1.396ae5fe7edc6p-44"),
+        hf64!("0x1.57c17dadff53fp-44"),
+        hf64!("0x1.8e05d9bf54ff5p-43"),
+        hf64!("0x1.7a55eea45459dp-39"),
+        hf64!("0x1.d204a5710c6b4p-38"),
+        hf64!("0x1.0477b177d47a9p-37"),
+        hf64!("0x1.912cc5483c4bbp-37"),
+        hf64!("0x1.32ba6bfc6df61p-36"),
+        hf64!("0x1.b881f93d3d7bcp-35"),
+        hf64!("0x1.33c28a8adb35dp-33"),
+        hf64!("0x1.1bab50d82fdf7p-30"),
+        hf64!("0x1.5b8a987b105b9p-29"),
+        hf64!("0x1.a7915a8ef7252p-29"),
+        hf64!("0x1.51cba0164bed2p-27"),
+        hf64!("0x1.1859f2f12c686p-26"),
+        hf64!("0x1.5004cdd3ec269p-26"),
+        hf64!("0x1.970634f93920ap-25"),
+        hf64!("0x1.446805a9fe779p-23"),
+        hf64!("0x1.4f86281412f0bp-21"),
+        hf64!("0x1.53e1ee4cd607ep-21"),
+        hf64!("0x1.91848ab4215a3p-20"),
+        hf64!("0x1.7dbc650f5516cp-19"),
+        hf64!("0x1.5ed15c24566e4p-16"),
+        hf64!("0x1.66e3866f48983p-14"),
+        hf64!("0x1.4a82829ba33efp-13"),
+        hf64!("0x1.ddacfe52ca881p-13"),
+        hf64!("0x1.cee52926a8cdep-11"),
+        hf64!("0x1.50878a3127c53p-10"),
+        hf64!("0x1.c60c6b10503bdp-10"),
+        hf64!("0x1.cb331784430e1p-10"),
+        hf64!("0x1.d19f229d1451dp-10"),
+        hf64!("0x1.15862abd340e8p-9"),
+        hf64!("0x1.6d42e64d940acp-9"),
+        hf64!("0x1.df670b0e00641p-9"),
+        hf64!("0x1.fe604d486351fp-9"),
+        hf64!("0x1.0b896d69a6a9ap-7"),
+        hf64!("0x1.c91984e0cebe7p-7"),
+        hf64!("0x1.cdfe4fcde7278p-7"),
+        hf64!("0x1.fa7ca1e176885p-7"),
+        hf64!("0x1.2cbfdc5da28d9p-6"),
+    ] {
+        for bits in [x.to_bits() - 1, x.to_bits(), x.to_bits() + 1] {
+            cases.push(TestCase {
+                input: (f64::from_bits(bits),),
+                output: None,
+            });
+        }
+    }
+
+    // Branch boundaries from CORE-MATH
+    for x in [
+        hf64!("0x1p-920"),
+        hf64!("0x1p-255"),
+        hf64!("0x1p-105"),
+        hf64!("0x1p-5"),
+        hf64!("0x1p1022"),
+        hf64!("0x1.6a09e667f3bcdp0"),
+        hf64!("0x0.2c316a14459d8p-1022"),
+    ] {
+        for bits in [x.to_bits() - 1, x.to_bits(), x.to_bits() + 1] {
+            for sign in [0, f64::SIGN_MASK] {
+                cases.push(TestCase {
+                    input: (f64::from_bits(bits | sign),),
+                    output: None,
+                });
+            }
+        }
+    }
+
+    // Check the neighbors of exact results with MPFR.
+    for n in 1..=53 {
+        let power = libm::ldexp(1.0, n);
+        for x in [power - 1.0, libm::ldexp(1.0, -n) - 1.0] {
+            for bits in [x.to_bits() - 1, x.to_bits() + 1] {
+                cases.push(TestCase {
+                    input: (f64::from_bits(bits),),
+                    output: None,
+                });
+            }
+        }
+    }
+
+    cases
+}
+
 fn logf_cases() -> Vec<TestCase<op::logf::Routine>> {
     cases![]
 }

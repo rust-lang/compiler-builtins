@@ -308,6 +308,7 @@ pub fn get_domain<F: Float, I: Int>(
         BaseName::Log10 => &EitherPrim::LOG[..],
         BaseName::Log1p => &EitherPrim::LOG1P[..],
         BaseName::Log2 => &EitherPrim::LOG[..],
+        BaseName::Log2p1 => &EitherPrim::LOG1P[..],
         BaseName::Modf => &EitherPrim::UNBOUNDED1[..],
         BaseName::Nextafter => &EitherPrim::UNBOUNDED2[..],
         BaseName::Pow => &EitherPrim::UNBOUNDED2[..],

@@ -88,6 +88,7 @@ libm_helper! {
         (fn log10(x: f32) -> (f32);                 => log10f);
         (fn log1p(x: f32) -> (f32);                 => log1pf);
         (fn log2(x: f32) -> (f32);                  => log2f);
+        (fn log2p1(x: f32) -> (f32);                => log2p1f);
         (fn modf(x: f32) -> (f32, f32);             => modff);
         (fn nextafter(x: f32, y: f32) -> (f32);     => nextafterf);
         (fn pow(x: f32, y: f32) -> (f32);           => powf);
@@ -163,6 +164,7 @@ libm_helper! {
         (fn log10(x: f64) -> (f64);                 => log10);
         (fn log1p(x: f64) -> (f64);                 => log1p);
         (fn log2(x: f64) -> (f64);                  => log2);
+        (fn log2p1(x: f64) -> (f64);                => log2p1);
         (fn modf(x: f64) -> (f64, f64);             => modf);
         (fn nextafter(x: f64, y: f64) -> (f64);     => nextafter);
         (fn pow(x: f64, y: f64) -> (f64);           => pow);
@@ -209,6 +211,7 @@ libm_helper! {
         (fn frexp(x: f16) -> (f16, i32);            => frexpf16);
         (fn ilogb(x: f16) -> (i32);                 => ilogbf16);
         (fn ldexp(x: f16, n: i32) -> (f16);         => ldexpf16);
+        (fn log2p1(x: f16) -> (f16);                => log2p1f16);
         (fn rint(x: f16) -> (f16);                  => rintf16);
         (fn round(x: f16) -> (f16);                 => roundf16);
         (fn roundeven(x: f16) -> (f16);             => roundevenf16);

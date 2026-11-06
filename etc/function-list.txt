@@ -117,6 +117,9 @@ log1p
 log1pf
 log2
 log2f
+log2p1
+log2p1f
+log2p1f16
 logf
 modf
 modff
