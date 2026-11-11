@@ -1,7 +1,7 @@
 use crate::support::{CastFrom, CastInto, Float, Int, MinInt};
 
 /// Returns `a + b`
-fn add<F: Float>(a: F, b: F) -> F
+pub(super) fn addsub<F: Float, const SUB: bool>(a: F, mut b: F) -> F
 where
     u32: CastInto<F::Int>,
     F::Int: CastInto<u32>,
@@ -17,7 +17,7 @@ where
 
     let implicit_bit = F::IMPLICIT_BIT;
     let significand_mask = F::SIG_MASK;
-    let sign_bit = F::SIGN_MASK as F::Int;
+    let sign_bit = F::SIGN_MASK;
     let abs_mask = sign_bit - one;
     let exponent_mask = F::EXP_MASK;
     let inf_rep = exponent_mask;
@@ -26,8 +26,14 @@ where
 
     let mut a_rep = a.to_bits();
     let mut b_rep = b.to_bits();
+    let orig_b_rep = b_rep;
     let a_abs = a_rep & abs_mask;
     let b_abs = b_rep & abs_mask;
+
+    if SUB {
+        b_rep = b_rep ^ sign_bit;
+        b = F::from_bits(b_rep);
+    }
 
     // Detect if a or b is zero, infinity, or NaN.
     if a_abs.wrapping_sub(one) >= inf_rep - one || b_abs.wrapping_sub(one) >= inf_rep - one {
@@ -37,12 +43,12 @@ where
         }
         // anything + NaN = qNaN
         if b_abs > inf_rep {
-            return F::from_bits(b_rep | quiet_bit);
+            return F::from_bits(orig_b_rep | quiet_bit);
         }
 
         if a_abs == inf_rep {
             // +/-infinity + -/+infinity = qNaN
-            if (a.to_bits() ^ b.to_bits()) == sign_bit {
+            if (a_rep ^ b_rep) == sign_bit {
                 return F::from_bits(qnan_rep);
             } else {
                 // +/-infinity + anything remaining = +/- infinity
@@ -192,22 +198,22 @@ where
 intrinsics! {
     #[cfg(f16_enabled)]
     pub extern "C" fn __addhf3(a: f16, b: f16) -> f16 {
-        add(a, b)
+        addsub::<_, false>(a, b)
     }
 
     #[arm_aeabi_alias = __aeabi_fadd]
     pub extern "C" fn __addsf3(a: f32, b: f32) -> f32 {
-        add(a, b)
+        addsub::<_, false>(a, b)
     }
 
     #[arm_aeabi_alias = __aeabi_dadd]
     pub extern "C" fn __adddf3(a: f64, b: f64) -> f64 {
-        add(a, b)
+        addsub::<_, false>(a, b)
     }
 
     #[ppc_name = __addkf3]
     #[cfg(f128_enabled)]
     pub extern "C" fn __addtf3(a: f128, b: f128) -> f128 {
-        add(a, b)
+        addsub::<_, false>(a, b)
     }
 }
