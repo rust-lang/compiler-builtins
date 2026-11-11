@@ -72,4 +72,22 @@ intrinsics! {
         }
         n
     }
+
+    #[mem_builtin]
+    pub unsafe extern "C" fn memchr(s: *const core::ffi::c_void, c: core::ffi::c_int, n: usize) -> *mut core::ffi::c_void {
+        let needle = c as u8;
+        let mut ptr = s as *const u8;
+        let mut remaining = n;
+        while remaining > 0 {
+            let byte = unsafe { ptr.read() };
+            if byte == needle {
+                return ptr as *mut core::ffi::c_void;
+            }
+
+            ptr = unsafe { ptr.add(1) };
+            remaining -= 1;
+        }
+
+        core::ptr::null_mut()
+    }
 }
