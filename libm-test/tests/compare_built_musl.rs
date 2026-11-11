@@ -102,6 +102,8 @@ libm_macros::for_each_function! {
         fminimum_num,
         fminimum_numf,
         fminimumf,
+        log2p1,
+        log2p1f,
         roundeven,
         roundevenf,
         // // verify-sorted-end
