@@ -169,6 +169,73 @@ mod tests {
     }
 
     #[test]
+    fn fmaf_subnormal_double_rounding() {
+        // https://github.com/rust-lang/compiler-builtins/issues/1262
+        let a = f32::from_bits(0x9700_0800);
+        let b = f32::from_bits(0x1cff_f001);
+        let c = f32::from_bits(0x0001_0002);
+
+        // The exact result is (65537.5 - 2^-37) * 2^-149, just below the
+        // midpoint between these two subnormal values.
+        let expected = f32::from_bits(0x0001_0001);
+        let result = generic::fma_wide_round::<f32, f64>(a, b, c, Round::Nearest).val;
+        assert_biteq!(result, expected);
+    }
+
+    #[test]
+    fn fmaf_subnormal_round_to_odd_parity() {
+        let a = f32::from_bits(0x15ef_b8d7);
+        let b = f32::from_bits(0x9e08_b110);
+        let c = f32::from_bits(0x8004_c5ce);
+
+        // The widened sum is inexact but already odd. Moving it another ULP
+        // toward the residual would incorrectly round back to c.
+        let product = f64::from(a) * f64::from(b);
+        let widened_sum = product + f64::from(c);
+        assert_eq!(widened_sum.to_bits() & 1, 1);
+
+        let expected = f32::from_bits(0x8004_c5cf);
+        let result = generic::fma_wide_round::<f32, f64>(a, b, c, Round::Nearest).val;
+        assert_biteq!(result, expected);
+    }
+
+    #[test]
+    fn fmaf_round_to_odd_before_overflow() {
+        let a = f32::from_bits(0x5f78_0000);
+        let b = f32::from_bits(0x5f84_2108);
+        let c = f32::from_bits(0x8000_0001);
+
+        // The exact product is 2^128 - 2^103, the round-to-nearest overflow midpoint. Subtracting
+        // the minimum subnormal puts the fused result just below that midpoint, so it rounds to the
+        // maximum finite value rather than infinity.
+        let result = generic::fma_wide_round::<f32, f64>(a, b, c, Round::Nearest).val;
+        assert_biteq!(result, f32::MAX);
+    }
+
+    #[test]
+    fn fmaf_wide_infinity() {
+        let result =
+            generic::fma_wide_round::<f32, f64>(f32::INFINITY, 1.0, 1.0, Round::Nearest).val;
+        assert_biteq!(result, f32::INFINITY);
+    }
+
+    // 32-bit ARM has ABI bugs around f128 as of rustc 1.99.0-nightly, so it's disabled for this test
+    #[test]
+    #[cfg(all(f128_enabled, not(target_arch = "arm")))]
+    fn fma_wide_f64_subnormal_double_rounding() {
+        let a = f64::from_bits(0x9e55_2156_d547_5b4a);
+        let b = f64::from_bits(0x1e58_3b0e_3ea1_8955);
+        let c = f64::from_bits(0x0000_0040_0000_0002);
+
+        // If q = 2^-1074, the exact product is
+        // -(1/2 + 0x5615e992 * 2^-106) * q. The fused result is therefore
+        // just below the midpoint between the expected value and c.
+        let expected = f64::from_bits(0x0000_0040_0000_0001);
+        let result = generic::fma_wide_round::<f64, f128>(a, b, c, Round::Nearest).val;
+        assert_biteq!(result, expected);
+    }
+
+    #[test]
     fn fma_segfault() {
         // These two inputs cause fma to segfault on release due to overflow:
         assert_eq!(
