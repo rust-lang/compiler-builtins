@@ -154,14 +154,13 @@ jobs:
     - name: Set up dependencies and Rust
       run: ./ci/install-test-deps.sh "$JOB_TARGET" "$JOB_HOST_TOOLCHAIN"
 
-    - uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
-      continue-on-error: true
+    - uses: taiki-e/install-action@b80e2bb2635f28eb98b9fce1e2f0887e1535c6b2 # v2.90.0
       with:
         tool: nextest@0.9.131
         # On platforms without prebuilts, nextest can be installed system-wide
         # or omitted. Building it probably takes longer than running tests
         # without it
-        fallback: none
+        fallback: skip
 
     - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       with:
