@@ -646,22 +646,23 @@ mod parse_tests {
         }
     }
 
-    // FIXME: this test is causing failures that are likely UB on various platforms
-    #[cfg(all(target_arch = "x86_64", target_os = "linux"))]
     #[test]
     #[cfg(f128_enabled)]
     fn rounding() {
+        use crate::math::roundevenf128;
+
         let pi = std::f128::consts::PI;
         let s = format!("{}", Hex(pi));
 
         for k in 0..=111 {
             let (bits, status) = parse_any(&s, 128 - k, 112 - k, Round::Nearest).unwrap();
             let scale = (1u128 << (112 - k - 1)) as f128;
-            let expected = (pi * scale).round_ties_even() / scale;
+            let expected = roundevenf128(pi * scale) / scale;
             assert_eq!(bits << k, expected.to_bits(), "k = {k}, s = {s}");
             assert_eq!(expected != pi, status.inexact());
         }
     }
+
     #[test]
     fn rounding_extreme_underflow() {
         for k in 1..1000 {
