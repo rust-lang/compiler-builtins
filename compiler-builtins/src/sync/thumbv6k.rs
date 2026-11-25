@@ -19,7 +19,8 @@ macro_rules! cp15_barrier {
 }
 
 #[instruction_set(arm::a32)]
-unsafe fn fence() {
+fn fence() {
+    // SAFETY: `mcr p15, 0, {zero}, c7, c10, 5` is safe on Armv6k with Arm mode.
     unsafe {
         asm!(
             cp15_barrier!(),
@@ -49,7 +50,7 @@ macro_rules! atomic {
                 // and aligned to the element size.
                 unsafe {
                     asm!(
-                        concat!("ldr", $suffix, " {out}, [{src}]"), // atomic { out = *src }
+                        concat!("ldr", $suffix, " {out}, [{src}]"), // atomic { out = zero_extend(*src) }
                         src = in(reg) src,
                         out = lateout(reg) out,
                         options(nostack, preserves_flags),
@@ -72,19 +73,19 @@ macro_rules! atomic {
                 // LLVM, which omits the preceding fence if no write operation is performed.
                 unsafe {
                     asm!(
-                            concat!("ldrex", $suffix, " {out}, [{dst}]"),      // atomic { out = *dst; EXCLUSIVE = dst }
+                            concat!("ldrex", $suffix, " {out}, [{dst}]"),      // atomic { out = zero_extend(*dst); EXCLUSIVE = dst }
                             "cmp {out}, {old}",                                // if out == old { Z = 1 } else { Z = 0 }
                             "bne 3f",                                          // if Z == 0 { jump 'cmp-fail }
-                            cp15_barrier!(),                                            // fence
+                            cp15_barrier!(),                                   // fence
                         "2:", // 'retry:
                             concat!("strex", $suffix, " {r}, {new}, [{dst}]"), // atomic { if EXCLUSIVE == dst { *dst = new; r = 0 } else { r = 1 }; EXCLUSIVE = None }
                             "cmp {r}, #0",                                     // if r == 0 { Z = 1 } else { Z = 0 }
                             "beq 3f",                                          // if Z == 1 { jump 'success }
-                            concat!("ldrex", $suffix, " {out}, [{dst}]"),      // atomic { out = *dst; EXCLUSIVE = dst }
+                            concat!("ldrex", $suffix, " {out}, [{dst}]"),      // atomic { out = zero_extend(*dst); EXCLUSIVE = dst }
                             "cmp {out}, {old}",                                // if out == old { Z = 1 } else { Z = 0 }
                             "beq 2b",                                          // if Z == 1 { jump 'retry }
                         "3:", // 'cmp-fail | 'success:
-                            cp15_barrier!(),                                            // fence
+                            cp15_barrier!(),                                   // fence
                         dst = in(reg) dst,
                         // Note: this cast must be a zero-extend since loaded value
                         // which compared to it is zero-extended.
@@ -207,7 +208,6 @@ include!("arm_thumb_shared.rs");
 
 intrinsics! {
     pub unsafe extern "C" fn __sync_synchronize() {
-       // SAFETY: preconditions are the same as the calling function.
-       unsafe { fence() };
+       fence();
     }
 }
