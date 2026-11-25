@@ -160,6 +160,58 @@ mod tests {
     }
 
     #[test]
+    fn fma_sticky_after_shift() {
+        // https://github.com/rust-lang/compiler-builtins/issues/1353
+        // `x * y = 1 + 2^-78`, just above a rounding tie when added to `z`.
+        // Aligning the product with `z` must preserve its low bits as sticky.
+        let x = hf64!("0x1.0000004p+0");
+        let y = hf64!("0x1.ffffff8000002p-1");
+        let z = hf64!("0x1p+53");
+        let next = hf64!("0x1.0000000000001p+53");
+        let cases = [
+            (x, y, z, next),
+            (-x, y, -z, -next),
+            (x, y, -next, -z),
+            (-x, y, next, z),
+            // Additional reproducer from the issue discussion.
+            (
+                f64::from_bits(0xc02f870e3619b278),
+                f64::from_bits(0xbff03d60e0000000),
+                f64::from_bits(0xc38fbd2f3eb1057e),
+                f64::from_bits(0xc38fbd2f3eb1057d),
+            ),
+        ];
+
+        check(fma, &cases);
+        check(
+            |x, y, z| generic::fma_round(x, y, z, Round::Nearest).val,
+            &cases,
+        );
+    }
+
+    #[test]
+    #[cfg(f128_enabled)]
+    fn fmaf128_sticky_after_shift() {
+        // The same alignment loses the low bits of `x * y = 1 + 2^-168`.
+        let x = hf128!("0x1.00000000000001p+0");
+        let y = hf128!("0x1.fffffffffffffe00000000000002p-1");
+        let z = hf128!("0x1p+113");
+        let next = hf128!("0x1.0000000000000000000000000001p+113");
+        let cases = [
+            (x, y, z, next),
+            (-x, y, -z, -next),
+            (x, y, -next, -z),
+            (-x, y, next, z),
+        ];
+
+        check(fmaf128, &cases);
+        check(
+            |x, y, z| generic::fma_round(x, y, z, Round::Nearest).val,
+            &cases,
+        );
+    }
+
+    #[test]
     fn issue_263() {
         let a = f32::from_bits(1266679807);
         let b = f32::from_bits(1300234242);
