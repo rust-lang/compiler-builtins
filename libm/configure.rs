@@ -113,14 +113,23 @@ pub fn emit(cfg: &Config) {
     let opt = !matches!(cfg.opt_level.as_str(), "0" | "1");
 
     // To compile builtins-test-intrinsics for thumb targets, where there is no libc
-    let thumb = split[0].starts_with("thumb");
+    let thumb_by_name = split[0].starts_with("thumb");
 
     // compiler-rt `cfg`s away some intrinsics for targets that do not have full Thumb-2 support
     // but only original Thumb-1. We have to cfg our code accordingly.
-    let thumb1_only = matches!(
+    let thumb1_only_by_name = matches!(
         split[0].as_str(),
         "thumbv4t" | "thumbv5te" | "thumbv6" | "thumbv6m" | "thumbv8m.base"
     );
+
+    // ARM target features are only reported on nightly (`arm_target_feature` is unstable). Prefer
+    // them when present: unlike the name, they are also correct for custom target specs.
+    let (thumb, thumb1_only) = if cfg.target_features.is_empty() {
+        (thumb_by_name, thumb1_only_by_name)
+    } else {
+        let thumb = cfg.has_target_feature("thumb-mode");
+        (thumb, thumb && !cfg.has_target_feature("thumb2"))
+    };
 
     // FIXME(msrv): `cfg(target_abi)` is usable since 1.78.
     let target_abi_eabihf = cfg.target_abi.as_deref() == Some("eabihf");
@@ -131,18 +140,15 @@ pub fn emit(cfg: &Config) {
     // If set, enable `no-panic` for `libm`. Requires LTO (`release-opt` profile).
     let assert_no_panic = env_flag("ENSURE_NO_PANIC");
 
-    // Ensure that thumb is set when expected. We match on target name rather than using target
-    // features directly, since `arm_target_feature` is unfortunately not yet stable. If any
-    // target features are present, we are running on nightly and can do these checks.
+    // Check that the name-based fallback agrees with the target features (nightly only).
     if cfg.verbose_build && !cfg.target_features.is_empty() {
-        if thumb {
-            assert!(cfg.has_target_feature("thumb-mode"));
+        if thumb_by_name {
+            assert!(thumb);
         }
-        if thumb1_only {
-            assert!(cfg.has_target_feature("thumb-mode"));
-            assert!(!cfg.has_target_feature("thumb2"));
-        } else if thumb {
-            assert!(cfg.has_target_feature("thumb2"));
+        if thumb1_only_by_name {
+            assert!(thumb1_only);
+        } else if thumb_by_name {
+            assert!(!thumb1_only);
         }
     }
 
